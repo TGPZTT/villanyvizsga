@@ -121,7 +121,11 @@
     document.querySelector('.skip').hidden = false;
     const script = document.createElement('script');
     script.src = 'app.js';
-    script.onerror = () => showError('Az oldal működéséhez szükséges fájl nem töltődött be. Frissítsd az oldalt.');
+    script.onerror = () => {
+      document.querySelector('.shell').hidden = true;
+      screen.hidden = false;
+      showError('Az oldal működéséhez szükséges fájl nem töltődött be. Frissítsd az oldalt.');
+    };
     document.head.appendChild(script);
   }
 
