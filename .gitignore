@@ -1,0 +1,15 @@
+/*
+!/.nojekyll
+!/.gitignore
+!/README.md
+!/app.js
+!/index.html
+!/style.css
+!/unlock.js
+!/protected/
+/protected/*
+!/protected/manifest.json
+!/protected/content.vve
+!/protected/assets/
+/protected/assets/*
+!/protected/assets/*.vve
