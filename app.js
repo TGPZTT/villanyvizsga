@@ -4,6 +4,30 @@
   const TYPE={single:'Egy jó válasz',multi:'Több jó válasz',number:'Számolás',open:'Kifejtés'};
   const KEY='villanyvizsga-progress-v1';
   const norm=s=>String(s??'').toLocaleLowerCase('hu').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+  const CATEGORY={foundations:'Villanyszerelési alapok, készülékek és kapcsolások',calculation:'Számítás és méretezés',safety:'Biztonság, védelem és mérések',wiring:'Vezetékek és szereléstechnológia'};
+  const TOPIC_GROUPS={
+    [CATEGORY.calculation]:['szamitas','szamitasok','szazalekos feszultsegeses','feszultsegeses','haromfazisu motor arama','haromfazisu transzformator','haromfazisu teljesitmeny es energia','aszinkronmotor szlipje','fazis nulla zarlati aram','egyfazisu hatasos teljesitmeny','meddo teljesitmeny','teljesitmenytenyezo','terhelo aram es kismegszakito','vezetekkeresztmetszet feszultsegesesre','villamos energia','aramvalto','soros napelemek','vezetek es energia','ellenallas','parhuzamos ellenallas','zarlati aram'],
+    [CATEGORY.safety]:['villamos biztonsag','erintesvedelem','vedelmi keszulekek','ip vedettseg','avk','halozati rendszerek','vedo vezeto','olvadobiztosito','kismegszakito','tularamvedelem','tulfeszultseg vedelem','villamvedelem','tuzeseti kapcsolas','meres','meresek es szabvanyok','szabvanyismeret','hurokimpedancia','avk es hurokimpedancia'],
+    [CATEGORY.wiring]:['vezetekek es kabelek','vezetektipusok','vezetek szinek','technologia','szerelestechnologia'],
+    [CATEGORY.foundations]:['villanyszerelesi alapismeretek','villamos alapismeretek','aramkori alapok','alkatresz es anyag','rajzolvasas','villamos gepek','hibakereses','kapcsolok','keszulekismeret','motorok','szerelvenyek es kapcsolasok']
+  };
+  function questionCategory(topic,prompt,type){
+    const key=norm(topic).replace(/[-–—]/g,' '),text=norm(prompt);
+    if(key==='ismeret'){
+      if(/keresztmetszet|mertekegysege|energia alap/.test(text))return CATEGORY.calculation;
+      if(/szimmetrikus|haromfazisu|csillagkapcsolas|vonali feszultseg/.test(text))return CATEGORY.foundations;
+      if(/vezetek|kabel|zold|sarga|szinjeloles/.test(text))return CATEGORY.wiring;
+      if(/kapcsolo|lampatest|ket helyrol|ket aramkor/.test(text))return CATEGORY.foundations;
+      if(/szetvalaszt|ujraegyesit|ved|aramutes|mentes|kisfeszultseg|szabvany|foldel|feszultsegmentes|tuzeseti|talaj|ip\d|(?:^|\s)pe(?:\s|$)/.test(text))return CATEGORY.safety;
+      return CATEGORY.foundations;
+    }
+    for(const [category,topics] of Object.entries(TOPIC_GROUPS))if(category!==CATEGORY.foundations&&topics.includes(key))return category;
+    if(/szamits|szamolja|szamitsa|hat[aá]rozza meg.*(aram|feszultseg|ellenallas|energia|teljesitmeny|keresztmetszet)|mennyi.*(aram|energia|teljesitmeny)/.test(text)||type==='number')return CATEGORY.calculation;
+    if(/aramvedo|erintesved|tularam|foldel|zarlat|vedovezeto|vedettseg|vedelmi|aramutes|feszultsegmentes|hurokimpedancia|szabvany|tuzeseti|kisfeszultseg/.test(text))return CATEGORY.safety;
+    if(/kapcsolo|kismegszakito|motor|biztosito|rele|keszulek|rajz|aramkor/.test(text))return CATEGORY.foundations;
+    if(/vezetek|kabel|szigeteles|vezeto|szereles|csatorna|szerszam|munkafolyamat|bekotes/.test(text))return CATEGORY.wiring;
+    return CATEGORY.foundations;
+  }
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const seed=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return {}}};
   const progress=seed();
@@ -25,7 +49,8 @@
     const low=['low','uncertain','review','unknown','none'].includes(String(confidence).toLowerCase())||q.review===true;
     const figurePaths=(Array.isArray(q.figurePaths)?q.figurePaths:[]).filter(Boolean);
     if(!figurePaths.length&&q.figurePath)figurePaths.push(q.figurePath);
-    return {...q,id:String(q.id||`q-${i+1}`),sourceId:q.sourceId||src?.id||file,sourceTitle:q.sourceTitle||src?.title||file,sourceFile:file,sourcePath:q.sourcePath||src?.path||'',year,page,number:q.number||q.taskNumber||`${i+1}`,section:q.section||'',topic:q.topic||q.category||'Egyéb',type,options,answer,explanation:q.explanation||q.solution||'',points:Number(q.points)||2,review:low||answer===null||answer==='',requiresFigure:!!q.requiresFigure,figurePath:figurePaths[0]||'',figurePaths,figureCaptions:Array.isArray(q.figureCaptions)?q.figureCaptions:[],prompt:q.prompt||q.question||''};
+    const sourceTopic=q.topic||q.category||'Egyéb',prompt=q.prompt||q.question||'';
+    return {...q,id:String(q.id||`q-${i+1}`),sourceId:q.sourceId||src?.id||file,sourceTitle:q.sourceTitle||src?.title||file,sourceFile:file,sourcePath:q.sourcePath||src?.path||'',year,page,number:q.number||q.taskNumber||`${i+1}`,section:q.section||'',sourceTopic,topic:questionCategory(sourceTopic,prompt,type),type,options,answer,explanation:q.explanation||q.solution||'',points:Number(q.points)||2,review:low||answer===null||answer==='',requiresFigure:!!q.requiresFigure,figurePath:figurePaths[0]||'',figurePaths,figureCaptions:Array.isArray(q.figureCaptions)?q.figureCaptions:[],prompt};
   }).filter(q=>!q.drawing&&q.prompt.trim());
   const byId=new Map(qlist.map(q=>[q.id,q]));
   const $=(s,root=document)=>root.querySelector(s);
@@ -63,6 +88,14 @@
     if(q.answer===null||q.answer==='')return 'A megoldás felülvizsgálat alatt.';
     return String(q.answer);
   };
+  const answerForReview=(q,response)=>{
+    if(response===undefined||response===null||response===''||Array.isArray(response)&&!response.length)return 'Nem jelöltél választ.';
+    if(!q.options.length)return Array.isArray(response)?response.join(', '):String(response);
+    return (Array.isArray(response)?response:[response]).map(value=>{
+      const option=q.options.find(item=>item.key===value)||q.options.find(item=>item.text===value);
+      return option?`${option.key}. ${option.text}`:String(value);
+    }).join('\n');
+  };
   const attemptStatus=q=>progress[q.id]?.status||'new';
   let view='home',bankPage=0,practice=null,exam=null,timerId=null,questionState=null;
 
@@ -89,6 +122,7 @@
     if(scroll)window.scrollTo({top:0,behavior:'instant'});
     if(target==='bank')renderBank();
     if(target==='home')renderHome();
+    if(target==='practice')renderWrongTasks();
   }
   function fillSelect(select,items,label){if(!select)return;select.innerHTML=`<option value="">${esc(label)}</option>`+items.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')}
   function sourceNames(){return [...new Set(qlist.map(sourceLabel))].sort((a,b)=>b.localeCompare(a,'hu'))}
@@ -103,16 +137,30 @@
     $$('.source-tile').forEach(e=>e.addEventListener('click',()=>{const opt=[...$('#sourceFilter').options].find(o=>o.value===e.dataset.source);$('#sourceFilter').value=opt?e.dataset.source:'';navigate('bank')}));
     setText('#navCount',qlist.length);
   }
+  function renderWrongTasks(){
+    const root=$('#wrongTaskList');if(!root)return;
+    const wrong=qlist.filter(q=>attemptStatus(q)==='retry');
+    setText('#wrongTaskCount',wrong.length);setText('#wrongTaskDescription',wrong.length?`${wrong.length} feladat van az újragyakorlási listán.`:'Most nincs elrontottként megjelölt feladat.');
+    root.innerHTML=wrong.map(q=>`<button class="wrong-task-item" type="button" data-wrong-task="${esc(q.id)}"><strong>${esc(q.prompt)}</strong><small>${esc(q.topic)} · ${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</small></button>`).join('');
+    $$('#wrongTaskList [data-wrong-task]').forEach(button=>button.addEventListener('click',()=>openQuestion(byId.get(button.dataset.wrongTask))));
+    const clear=$('#clearWrongTasks');if(clear)clear.disabled=!wrong.length;
+  }
+  function clearWrongTasks(){
+    const wrong=qlist.filter(q=>attemptStatus(q)==='retry');if(!wrong.length)return;
+    if(!window.confirm(`Törlöd az újragyakorlási jelölést ${wrong.length} feladatnál? A többi mentett eredmény megmarad.`))return;
+    wrong.forEach(q=>delete progress[q.id]);save();renderWrongTasks();renderHome();renderBank();
+  }
   function setupProgressReset(){
     const button=$('#reset-progress-btn'),confirm=$('#reset-progress-confirm');
     if(!button||!confirm)return;
     const close=()=>{confirm.hidden=true;button.setAttribute('aria-expanded','false')};
+    $('#clearWrongTasks')?.addEventListener('click',clearWrongTasks);
     button.addEventListener('click',()=>{const open=confirm.hidden;confirm.hidden=!open;button.setAttribute('aria-expanded',String(open));if(open)$('#reset-progress-cancel')?.focus()});
     $('#reset-progress-cancel')?.addEventListener('click',()=>{close();button.focus()});
     $('#reset-progress-yes')?.addEventListener('click',()=>{
       Object.keys(progress).forEach(id=>delete progress[id]);
       try{localStorage.removeItem(KEY)}catch{}
-      questionState=null;practice=null;
+      questionState=null;practice=null;renderWrongTasks();
       if(exam?.submitted)resetExam();
       const practiceSession=$('#practiceSession'),practiceSetup=$('#practiceSetup');
       practiceSession?.classList.add('hidden');practiceSetup?.classList.remove('hidden');$('#practiceView')?.classList.remove('practice-running');
@@ -165,20 +213,32 @@
     fillSelect($('#topicFilter'),topicNames(),'Minden téma');
     updatePracticeFilters();
     $('#practiceScope')?.addEventListener('change',updatePracticeFilters);
+    $('#practiceSource')?.addEventListener('change',updatePracticeTopicChoices);
+    $('#practiceTopicList')?.addEventListener('change',updatePracticeTopicSummary);
+    $('#practiceTopicsAll')?.addEventListener('click',()=>{$$('#practiceTopicList input').forEach(input=>input.checked=true);updatePracticeTopicSummary()});
+    $('#practiceTopicsClear')?.addEventListener('click',()=>{$$('#practiceTopicList input').forEach(input=>input.checked=false);updatePracticeTopicSummary()});
     ['#searchInput','#sourceFilter','#topicFilter','#typeFilter','#statusFilter'].forEach(s=>$(s).addEventListener(s==='#searchInput'?'input':'change',()=>{bankPage=0;renderBank()}));
     $('#clearFilters').addEventListener('click',()=>{['#searchInput','#sourceFilter','#topicFilter','#typeFilter','#statusFilter'].forEach(s=>$(s).value='');bankPage=0;renderBank()});
   }
+  function updatePracticeTopicSummary(){
+    const selected=$$('#practiceTopicList input:checked').length,total=$$('#practiceTopicList input').length,summary=$('#practiceTopicSummary');
+    if(summary)summary.textContent=selected===0?'Minden téma':selected===total?`Mind a ${total} téma`:`${selected} téma kijelölve`;
+  }
+  function updatePracticeTopicChoices(){
+    const scope=$('#practiceScope')?.value||'papers',source=$('#practiceSource')?.value||'';
+    const selected=new Set($$('#practiceTopicList input:checked').map(input=>input.value));
+    const pool=qlist.filter(q=>inSourceScope(q,scope)&&(!source||q.sourceId===source));
+    const topics=[...new Set(pool.map(q=>q.topic))].sort((a,b)=>a.localeCompare(b,'hu'));
+    const root=$('#practiceTopicList');
+    root.innerHTML=topics.map(topic=>{const count=pool.filter(q=>q.topic===topic).length;return `<label class="practice-topic-option"><input type="checkbox" value="${esc(topic)}" ${selected.has(topic)?'checked':''}><span>${esc(topic)}</span><small>${count}</small></label>`}).join('');
+    updatePracticeTopicSummary();
+  }
   function updatePracticeFilters(){
-    const scope=$('#practiceScope')?.value||'papers';
-    const list=qlist.filter(q=>inSourceScope(q,scope));
-    const sourceSelect=$('#practiceSource'),topicSelect=$('#practiceTopic');
-    const oldSource=sourceSelect.value,oldTopic=topicSelect.value;
+    const scope=$('#practiceScope')?.value||'papers',list=qlist.filter(q=>inSourceScope(q,scope)),sourceSelect=$('#practiceSource'),oldSource=sourceSelect.value;
     const groups=[...new Map(list.map(q=>[q.sourceId,sourceLabel(q)])).entries()].sort((a,b)=>b[1].localeCompare(a[1],'hu'));
     sourceSelect.innerHTML='<option value="">Minden feladatsor</option>'+groups.map(([id,label])=>`<option value="${esc(id)}">${esc(label)}</option>`).join('');
-    fillSelect(topicSelect,[...new Set(list.map(q=>q.topic))].sort((a,b)=>a.localeCompare(b,'hu')),'Vegyes témák');
     if(groups.some(([id])=>id===oldSource))sourceSelect.value=oldSource;
-    if([...topicSelect.options].some(option=>option.value===oldTopic))topicSelect.value=oldTopic;
-    $('#practicePoolNotice')?.remove();
+    updatePracticeTopicChoices();$('#practicePoolNotice')?.remove();
   }
   function filteredBankQuestions(){
     const query=norm($('#searchInput').value),source=$('#sourceFilter').value,topic=$('#topicFilter').value,type=$('#typeFilter').value,status=$('#statusFilter').value;
@@ -225,52 +285,50 @@
     const wrong=given.filter(x=>!right.includes(x)).length;
     return Math.max(0,Math.min(q.points,(good-wrong)*q.points/right.length));
   }
-  function mark(q,result){if(result===null)return;progress[q.id]={status:result?'correct':'retry',at:Date.now()};save()}
+  function mark(q,result,refresh=true){if(result===null)return;progress[q.id]={status:result?'correct':'retry',at:Date.now()};save();if(refresh)renderWrongTasks()}
   function explanationMarkup(q){
-    if(!q.explanation)return '';
-    const equation=/[=≈≤≥]/.test(q.explanation)&&/\d|[Δ√Ωφρη]/u.test(q.explanation);
-    const steps=q.type==='number'
-      ? '<strong class="explanation-subtitle">Ellenőrzési menet</strong><ol class="explanation-steps"><li>Írd ki külön a megadott adatokat, a mértékegységekkel együtt.</li><li>Nevezd meg a keresett mennyiséget, majd válaszd ki a hozzá tartozó összefüggést.</li><li>Rendezd át a képletet, helyettesíts be, végül ellenőrizd a mértékegységet és a nagyságrendet.</li></ol>'
-      : q.type==='multi'
-        ? '<strong class="explanation-subtitle">Ellenőrzési menet</strong><ol class="explanation-steps"><li>Olvasd el az állításokat külön-külön.</li><li>Minden állítást a jelölés, a névleges adat vagy a védelmi funkció alapján ellenőrizz.</li><li>Csak azt jelöld, amelyik teljes egészében igaz; egyetlen hibás rész miatt az állítás nem jó.</li></ol>'
-        : q.figurePaths.length
-          ? '<strong class="explanation-subtitle">Ellenőrzési menet</strong><ol class="explanation-steps"><li>Először azonosítsd az ábra jelmagyarázatát és a kérdésben keresett jelet.</li><li>Haladj következetesen ugyanabban az irányban, és minden elemet csak egyszer vegyél figyelembe.</li><li>A végén hasonlítsd össze a leolvasott adatot a válaszlehetőségekkel.</li></ol>'
-          : '<strong class="explanation-subtitle">Ellenőrzési menet</strong><ol class="explanation-steps"><li>Húzd alá a kérdés feltételét és a kulcsszót.</li><li>Idézd fel az ehhez tartozó fogalmat vagy szabályt, majd hasonlítsd össze a válaszokkal.</li><li>A végső választ rövid indoklással is tudd megfogalmazni.</li></ol>';
-    const body=equation?`<div class="calculation-note"><span class="calculation-note-label">Levezetés</span><p>${esc(q.explanation)}</p>${steps}</div>`:`<p>${esc(q.explanation)}</p>${steps}`;
-    return body;
+    const text=String(q.explanation||'').trim();
+    if(!text)return '';
+    const equation=/[=≈≤≥]/.test(text)&&/\d|[Δ√Ωφρη]/u.test(text);
+    return equation?`<div class="calculation-note"><span class="calculation-note-label">A számítás indoklása</span><p>${esc(text)}</p></div>`:`<p class="specific-explanation">${esc(text)}</p>`;
   }
   function questionHint(q){
-    const words=norm(`${q.topic} ${q.prompt}`);
-    if(q.figurePaths.length){
-      if(/hany|darab|db|szamol|mennyi/.test(words))return '1. Karikázd be az ábrán a kérdésben megnevezett jeleket. 2. Haladj helyiségről helyiségre, és minden jelet csak egyszer számolj. 3. A részösszegeket add össze, majd ellenőrizd, hogy nem számoltál-e tartalék vagy más típusú elemet.';
-      if(/muszer|meres|mereshatar|skala|mutato/.test(words))return '1. Olvasd le a méréshatárt és a skála tartományát. 2. Keresd meg a mutató pontos helyét, ne csak a legközelebbi számot. 3. A skálaértéket váltsd át a méréshatár szerint, majd ellenőrizd a mértékegységet.';
-      return '1. Olvasd el a jelmagyarázatot. 2. Keresd meg az ábrán pontosan azt a jelet, amelyre a kérdés rákérdez. 3. Csak a megadott feltételekhez tartozó részeket vedd figyelembe, és a válasz előtt ellenőrizd a darabszámot vagy irányt.';
-    }
-    if(q.type==='number'){
-      if(/haromfazis|3 fazis|harom fazis/.test(words))return '1. Döntsd el, hogy vonali vagy fázisfeszültséget kaptál. 2. Válaszd ki a csillag- vagy háromszögkapcsolásnak megfelelő összefüggést. 3. A √3 tényezőt csak akkor használd, ha az adott képlet indokolja, majd ellenőrizd a végeredmény nagyságrendjét.';
-      if(/feszultsegeses|vezetek hossza|keresztmetszet/.test(words))return '1. Írd ki a vezeték anyagát, hosszát és keresztmetszetét. 2. Ellenőrizd, hogy az áram útja egy vagy két vezetőt jelent-e. 3. A végén hasonlítsd össze a kapott feszültségesést a megengedett értékkel.';
-      if(/teljesitmeny|fogyasztas|energia|hatasfok/.test(words))return '1. Döntsd el, teljesítményt (W) vagy energiát (Wh/kWh) keres a feladat. 2. Az időt csak energiafeladatnál vond be. 3. A százalékos hatásfokot tizedes tört alakban helyettesítsd be, és a mértékegységet írd ki.';
-      if(/ellenallas|aram|feszultseg/.test(words))return '1. Nevezd meg, hogy U, I vagy R a keresett mennyiség. 2. Rendezd át az U = R · I összefüggést. 3. Helyettesítsd be az azonos mértékegységű adatokat, majd becsüld meg, reális-e az eredmény.';
-      return '1. Írd ki külön az adatokat és a keresett mennyiséget. 2. Válassz egyetlen, a feladat feltételéhez illő összefüggést. 3. A behelyettesítés után mindig írd ki a mértékegységet, és végezz nagyságrendi ellenőrzést.';
-    }
-    if(q.type==='multi')return '1. Bontsd fel az állítást kisebb részekre. 2. Ellenőrizd külön a névleges adatot, a működési feltételt és a védelmi szerepet. 3. Csak akkor jelöld, ha az állítás minden része igaz.';
-    if(q.type==='single')return '1. Keresd meg a kérdés kulcsszavát és feltételét. 2. Zárd ki a biztosan ellentmondó válaszokat. 3. A maradó válaszokat hasonlítsd össze a szakkifejezés pontos jelentésével, ne csak a hasonlóan hangzó szavakkal.';
-    return '1. Írj fel 2–3 kulcsszót a kérdésből. 2. Kapcsold őket a tanult szabályhoz vagy fogalomhoz. 3. Fogalmazz rövid, indokolt választ, és használd a feladat saját adatait.';
+    if(String(q.hint||'').trim())return q.hint.trim();
+    const explanation=String(q.explanation||'').trim();
+    if(!explanation)return '';
+    const answers=[];
+    if(Array.isArray(q.answer))answers.push(...q.answer.map(String));else if(q.answer!=null)answers.push(String(q.answer));
+    if(q.options?.length){for(const key of getCorrectKeys(q)){const option=q.options.find(item=>item.key===key);if(option)answers.push(option.text)}}
+    const clauses=explanation.split(/[;.!?]+|,\s*(?=(?:ezert|igy|mert|viszont|azonban)\b)/iu).map(x=>x.trim()).filter(Boolean);
+    const numericWords={0:'nulla',1:'egy',2:'kettő',3:'három',4:'négy',5:'öt',6:'hat',7:'hét',8:'nyolc',9:'kilenc',10:'tíz'};
+    const candidates=clauses.map(clause=>{
+      let value=clause;
+      for(const answer of [...answers].sort((a,b)=>b.length-a.length)){
+        if(answer.length>1)value=value.replace(new RegExp(answer.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&'),'giu'),' ');
+        if(/^\d{1,2}$/u.test(answer)&&numericWords[Number(answer)])value=value.replace(new RegExp(`\\b${numericWords[Number(answer)]}\\b`,'giu'),' ');
+      }
+      value=value.replace(/\s+/gu,' ').replace(/^[,;:.\s]+|[,;:.\s]+$/gu,'').trim();
+      const words=value.split(/\s+/u).length,overlap=answers.some(answer=>answer.length>3&&norm(value).includes(norm(answer)));
+      const concrete=norm(value).split(' ').filter(word=>word.length>4).length;
+      return {value,score:(words>=4?words:0)+concrete*2-(overlap?100:0)};
+    }).filter(item=>item.score>0&&item.value.length>=22).sort((a,b)=>b.score-a.score);
+    return candidates[0]?`${candidates[0].value.replace(/[.!?]+$/u,'')}.`:'';
   }
   function questionBody(q,mode,response,show){
     const auto=isAuto(q),multi=q.type==='multi',choice=q.type==='single'||q.type==='multi';
     const values=Array.isArray(response)?response:[response];
     const right=show&&choice?getCorrectKeys(q):[];
-    const opts=q.options.length?(choice?`<div class="options">${q.options.map(o=>`<label class="option ${values.includes(o.key)?'selected':''} ${right.includes(o.key)?'correct-option':''} ${show&&values.includes(o.key)&&!right.includes(o.key)?'incorrect-option':''}"><input type="${multi?'checkbox':'radio'}" name="answer" value="${esc(o.key)}" ${values.includes(o.key)?'checked':''} ${show&&mode==='exam'?'disabled':''}><span><b>${esc(o.key)}.</b> ${esc(o.text)}</span>${right.includes(o.key)?'<span class="option-result" aria-label="Helyes válasz">✓</span>':''}${show&&values.includes(o.key)&&!right.includes(o.key)?'<span class="option-result" aria-label="Nem helyes válasz">×</span>':''}</label>`).join('')}</div>`:`<div class="options">${q.options.map(o=>`<div class="option"><span><b>${esc(o.key)}.</b> ${esc(o.text)}</span></div>`).join('')}</div>`):'';
-    const input=!choice?(!auto&&mode!=='exam'?'<p class="self-check-note">Gondold végig a választ, majd nyisd meg a megoldást. Ezután jelöld, hogy sikerült-e.</p>':q.type==='number'?`<input class="answer-input" id="freeAnswer" inputmode="decimal" type="text" placeholder="Eredmény mértékegységgel" ${show&&mode==='exam'?'disabled':''}>`:`<textarea class="answer-input long" id="freeAnswer" rows="4" placeholder="Írd ide a megoldásod" ${show&&mode==='exam'?'disabled':''}>${esc(response||'')}</textarea>`):'';
+    const opts=q.options.length?(choice?`<div class="options">${q.options.map(o=>`<label class="option ${values.includes(o.key)?'selected':''} ${right.includes(o.key)?'correct-option':''} ${show&&values.includes(o.key)&&!right.includes(o.key)?'incorrect-option':''}"><input type="${multi?'checkbox':'radio'}" name="answer" value="${esc(o.key)}" ${values.includes(o.key)?'checked':''} ${show&&['exam','review'].includes(mode)?'disabled':''}><span><b>${esc(o.key)}.</b> ${esc(o.text)}</span>${right.includes(o.key)?'<span class="option-result" aria-label="Helyes válasz">✓</span>':''}${show&&values.includes(o.key)&&!right.includes(o.key)?'<span class="option-result" aria-label="Nem helyes válasz">×</span>':''}</label>`).join('')}</div>`:`<div class="options">${q.options.map(o=>`<div class="option"><span><b>${esc(o.key)}.</b> ${esc(o.text)}</span></div>`).join('')}</div>`):'';
+    const input=!choice?(mode==='review'||(!auto&&mode!=='exam')?'':q.type==='number'?`<input class="answer-input" id="freeAnswer" inputmode="decimal" type="text" placeholder="Eredmény mértékegységgel" ${show&&['exam','review'].includes(mode)?'disabled':''}>`:`<textarea class="answer-input long" id="freeAnswer" rows="4" placeholder="Írd ide a megoldásod" ${show&&['exam','review'].includes(mode)?'disabled':''}>${esc(response||'')}</textarea>`):'';
     const figure=q.figurePaths.length?`<div class="question-figures">${q.figurePaths.map((src,i)=>{const caption=q.figureCaptions[i]||`A feladathoz tartozó ábra${q.figurePaths.length>1?` ${i+1}`:''}`;return `<figure class="question-figure"><a class="figure-open" href="#" data-zoom-asset="${esc(src)}" data-zoom-caption="${esc(caption)}" aria-haspopup="dialog" aria-label="${esc(caption)} nagyítása"><img data-asset-src="${esc(src)}" alt="${esc(sourceLabel(q))}: ${esc(caption)}" loading="lazy" decoding="async"></a><figcaption>${esc(caption)} <a href="#" data-zoom-asset="${esc(src)}" data-zoom-caption="${esc(caption)}" aria-haspopup="dialog">Nagyítás</a></figcaption></figure>`}).join('')}</div>`:'';
-    const sourceFigureLink=mode!=='exam'?sourceLink(q):'';
+    const sourceFigureLink=['bank','practice'].includes(mode)?sourceLink(q):'';
     const hintOpen=mode==='bank'&&!!questionState?.hints[q.id];
-    const hint=mode==='bank'?`<div class="question-inline-hint"><button id="questionHintToggle" class="question-hint-toggle" type="button" aria-expanded="${hintOpen}" aria-controls="questionHint"><span aria-hidden="true">?</span> ${hintOpen?'Támpont elrejtése':'Támpont kérése'} <span aria-hidden="true">${hintOpen?'−':'+'}</span></button><div id="questionHint" class="question-hint-body" ${hintOpen?'':'hidden'}><strong>Támpont</strong><p>${esc(questionHint(q))}</p></div></div>`:'';
+    const hintText=mode==='bank'?questionHint(q):'';
+    const hint=hintText?`<div class="question-inline-hint"><button id="questionHintToggle" class="question-hint-toggle" type="button" aria-expanded="${hintOpen}" aria-controls="questionHint"><span aria-hidden="true">?</span> ${hintOpen?'Támpont elrejtése':'Támpont kérése'} <span aria-hidden="true">${hintOpen?'−':'+'}</span></button><div id="questionHint" class="question-hint-body" ${hintOpen?'':'hidden'}><strong>Támpont</strong><p>${esc(hintText)}</p></div></div>`:'';
     const title=mode==='bank'?`<div class="question-meta" aria-label="Forrás és feladatszám">${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</div>`:`<div class="question-meta">${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</div>`;
     const prompt=mode==='bank'?`<h1 id="questionTitle" class="question-title question-prompt" tabindex="-1">${esc(q.prompt)}</h1>`:`<h2 class="question-title question-prompt">${esc(q.prompt)}</h2>`;
     const mobileActions=mode==='bank'?`<div class="question-mobile-actions">${isAuto(q)?'<button id="questionCheckMobile" class="button primary" type="button">Válasz ellenőrzése</button>':''}<button id="questionShowMobile" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás</button></div><div id="questionFeedbackMobile" role="status" aria-live="polite"></div>`:'';
-    return `<div class="question-top"><div class="tags"><span class="chip">${esc(q.topic)}</span><span class="chip">${esc(TYPE[q.type]||'Feladat')}</span>${q.requiresFigure?'<span class="chip">Ábrás feladat</span>':''}${q.review?'<span class="chip review">Megoldás ellenőrzendő</span>':''}</div><span>${q.points} pont</span></div>${title}${prompt}${figure}${sourceFigureLink}${hint}${opts}${input}${mobileActions}${!auto&&mode==='exam'?'<div class="feedback review">Ezt a feladatot a vizsga végén önellenőrzéssel lehet értékelni.</div>':''}${show?`<div class="explanation"><strong>Megoldás</strong><p>${esc(answerLabel(q))}</p>${q.explanation?`<strong style="margin-top:14px">Miért?</strong>${explanationMarkup(q)}`:''}${q.review?'<p>A forrás vagy a válaszkulcs ellenőrzése szükséges; biztonsági szempontból kétes állítást ne tanulj meg tényként.</p>':''}${sourceLink(q)}</div>`:''}`;
+    return `<div class="question-top"><div class="tags"><span class="chip">${esc(q.topic)}</span><span class="chip">${esc(TYPE[q.type]||'Feladat')}</span>${q.requiresFigure?'<span class="chip">Ábrás feladat</span>':''}${q.review?'<span class="chip review">Megoldás ellenőrzendő</span>':''}</div><span>${q.points} pont</span></div>${title}${prompt}${figure}${sourceFigureLink}${hint}${opts}${input}${mobileActions}${!auto&&mode==='exam'?'<div class="feedback review">Ezt a feladatot a vizsga végén önellenőrzéssel lehet értékelni.</div>':''}${show&&mode!=='review'?`<div class="explanation"><strong>Megoldás</strong><p>${esc(answerLabel(q))}</p>${q.explanation?`<strong style="margin-top:14px">Miért?</strong>${explanationMarkup(q)}`:''}${q.review?'<p>A forrás vagy a válaszkulcs ellenőrzése szükséges; biztonsági szempontból kétes állítást ne tanulj meg tényként.</p>':''}${sourceLink(q)}</div>`:''}`;
   }
   function selectedFrom(root,q){if(q.type==='single'||q.type==='multi'){const checked=$$('input[name="answer"]:checked',root).map(x=>x.value);return q.type==='multi'?checked:checked[0]||''}return $('#freeAnswer',root)?.value||''}
   function bindOptions(root){$$('.option input',root).forEach(input=>input.addEventListener('change',()=>$$('.option',root).forEach(label=>label.classList.toggle('selected',!!$('input:checked',label)))))}
@@ -335,7 +393,7 @@
     $('#questionBack',root).addEventListener('click',returnFromQuestion);
     $$('[data-question-step]',root).forEach(button=>button.addEventListener('click',()=>questionStep(Number(button.dataset.questionStep))));
     $('#questionJump',root).addEventListener('change',event=>{const index=Number(event.target.value);if(!Number.isInteger(index)||index<0||index>=state.ids.length)return;captureQuestionResponse();state.index=index;renderQuestionPage('replace',true)});
-    $('#questionHintToggle',root).addEventListener('click',()=>{
+    $('#questionHintToggle',root)?.addEventListener('click',()=>{
       state.hints[q.id]=!state.hints[q.id];
       const open=state.hints[q.id],button=$('#questionHintToggle',root);
       button.setAttribute('aria-expanded',String(open));
@@ -354,8 +412,8 @@
     $('#questionShow',root).addEventListener('click',()=>{captureQuestionResponse();state.shown[q.id]=true;renderQuestionPage();requestAnimationFrame(()=>$('.explanation',$('#questionContent'))?.scrollIntoView({behavior:'smooth',block:'center'}))});
     $('#questionCheckMobile',root)?.addEventListener('click',()=>$('#questionCheck',root).click());
     $('#questionShowMobile',root).addEventListener('click',()=>$('#questionShow',root).click());
-    $('#questionGotIt',root)?.addEventListener('click',()=>{progress[q.id]={status:'correct',at:Date.now()};save();state.feedback[q.id]={kind:'',text:'Önellenőrzés szerint sikerült.'};renderQuestionPage()});
-    $('#questionRetry',root).addEventListener('click',()=>{captureQuestionResponse();progress[q.id]={status:'retry',at:Date.now()};save();state.feedback[q.id]={kind:'review',text:'Felvéve az újragyakorláshoz.'};renderQuestionPage()});
+    $('#questionGotIt',root)?.addEventListener('click',()=>{progress[q.id]={status:'correct',at:Date.now()};save();renderWrongTasks();state.feedback[q.id]={kind:'',text:'Önellenőrzés szerint sikerült.'};renderQuestionPage()});
+    $('#questionRetry',root).addEventListener('click',()=>{captureQuestionResponse();progress[q.id]={status:'retry',at:Date.now()};save();renderWrongTasks();state.feedback[q.id]={kind:'review',text:'Felvéve az újragyakorláshoz.'};renderQuestionPage()});
     hydrateAssets(root);
   }
   function exitPractice(){
@@ -383,8 +441,8 @@
       setFeedback(result?'':'wrong',result?'Helyes válasz.':'Most nem sikerült. Nézd át a magyarázatot.');
     });
     $('#practiceShow',root).addEventListener('click',()=>{preserve();practice.shown[q.id]=true;renderPractice()});
-    $('#practiceGotIt',root)?.addEventListener('click',()=>{progress[q.id]={status:'correct',at:Date.now()};save();setFeedback('','Önellenőrzés szerint sikerült.')});
-    $('#practiceHard',root).addEventListener('click',()=>{progress[q.id]={status:'retry',at:Date.now()};save();setFeedback('review','Felvéve az újragyakorláshoz.')});
+    $('#practiceGotIt',root)?.addEventListener('click',()=>{progress[q.id]={status:'correct',at:Date.now()};save();renderWrongTasks();setFeedback('','Önellenőrzés szerint sikerült.')});
+    $('#practiceHard',root).addEventListener('click',()=>{progress[q.id]={status:'retry',at:Date.now()};save();renderWrongTasks();setFeedback('review','Felvéve az újragyakorláshoz.')});
     $('#practicePrev',root).addEventListener('click',()=>{preserve();practice.index--;renderPractice();window.scrollTo({top:0,behavior:'instant'})});
     $('#practiceNext',root).addEventListener('click',()=>{preserve();if(position<total){practice.index++;renderPractice();window.scrollTo({top:0,behavior:'instant'})}else{root.innerHTML=`<div class="exam-summary"><strong>Kész</strong><p>${total} feladaton mentél végig. A megjelölteket a feladatbank „Újra gyakorlom” szűrőjével találod meg.</p></div><button id="practiceAgain" class="button primary" type="button">Új gyakorlás</button>`;$('#practiceAgain').addEventListener('click',exitPractice)}});
     $('#practiceExit',root).addEventListener('click',exitPractice);
@@ -392,8 +450,8 @@
     hydrateAssets(root);
   }
   function startPractice(){
-    const scope=$('#practiceScope')?.value||'papers',topic=$('#practiceTopic').value,source=$('#practiceSource').value,retryOnly=$('#retryOnly').checked,count=Number($('#practiceCount').value);
-    const pool=qlist.filter(q=>inSourceScope(q,scope)&&(!topic||q.topic===topic)&&(!source||q.sourceId===source)&&(!retryOnly||attemptStatus(q)==='retry'));
+    const scope=$('#practiceScope')?.value||'papers',topics=new Set($$('#practiceTopicList input:checked').map(input=>input.value)),source=$('#practiceSource').value,retryOnly=$('#retryOnly').checked,count=Number($('#practiceCount').value);
+    const pool=qlist.filter(q=>inSourceScope(q,scope)&&(!topics.size||topics.has(q.topic))&&(!source||q.sourceId===source)&&(!retryOnly||attemptStatus(q)==='retry'));
     if(!pool.length){
       const setup=$('#practiceSetup');let notice=$('#practicePoolNotice',setup);
       if(!notice){setup.insertAdjacentHTML('beforeend','<p id="practicePoolNotice" class="feedback review" role="alert"></p>');notice=$('#practicePoolNotice',setup)}
@@ -410,7 +468,7 @@
     {id:'safety',label:'Villamos biztonság',weight:40}
   ];
   function examArea(q){
-    const topic=norm(`${q.topic} ${q.section}`),prompt=norm(q.prompt);
+    const topic=norm(`${q.sourceTopic||q.topic} ${q.section}`),prompt=norm(q.prompt);
     if(/szamitas|szamolas|teljesitmeny|feszultsegeses|hurokimpedancia|zarlati aram|szlip|aramvalto|haromfazisu motor arama|villamos energia|vezetekkeresztmetszet feszultsegesesre|soros napelemek/.test(topic)||/szamitsa ki|szamolja ki|szamitsd ki/.test(prompt))return 'calculation';
     if(/villamos biztonsag|erintesvedelem|vedelmi keszulekek|avk|meresek es szabvanyok/.test(topic)||/erintesvedelem|vedovezeto|foldeles|tularamvedelem|feszultsegmentesites|aramvedo kapcsolo|fi rele|hibaaram/.test(prompt))return 'safety';
     if(/technologia|szerelvenyek es kapcsolasok/.test(topic)||/szereles menete|bekotes sorrendje|munkafolyamat|milyen sorrendben/.test(prompt))return 'technology';
@@ -550,15 +608,27 @@
   function renderExamLearning(){
     if(!exam||!exam.submitted)return;
     exam.revealed=true;
-    exam.list.forEach(q=>{const points=earnedPoints(q,exam.responses[q.id]??'');mark(q,points===q.points)});
+    exam.list.forEach(q=>{const points=earnedPoints(q,exam.responses[q.id]??'');mark(q,points===q.points,false)});renderWrongTasks();
     const {score,correct,breakdown}=exam.evaluation,root=$('#examSession');
-    const reviewMarkup=()=>exam.list.map((q,i)=>{const points=earnedPoints(q,exam.responses[q.id]??'');const answer=exam.responses[q.id];const given=Array.isArray(answer)?answer.join(', '):String(answer||'').trim()||'Nem jelöltél választ';return `<article class="review-row"><strong>${i+1}. ${esc(q.prompt.replace(/\s+/g,' ').slice(0,150))}</strong><div class="review-answer-grid"><div><span>Válaszod</span><p>${esc(given)}</p></div><div><span>Helyes megoldás</span><p>${esc(answerLabel(q))}</p></div></div><small class="review-points">${Number(points.toFixed(1))} / ${q.points} pont</small><button class="text-button" type="button" data-review="${esc(q.id)}">Feladat és magyarázat ↗</button></article>`}).join('');
+    const reviewMarkup=()=>exam.list.map((q,i)=>{
+      const points=earnedPoints(q,exam.responses[q.id]??''),answer=exam.responses[q.id],status=points===q.points?'Jó válasz':points>0?'Részpont':'Nem sikerült';
+      const explanation=q.explanation?`<div class="review-explanation"><strong>Miért ez a megoldás?</strong>${explanationMarkup(q)}</div>`:'<p class="review-explanation-missing">Ehhez a feladathoz nem tartozik külön magyarázat.</p>';
+      return `<article class="review-row"><div class="review-heading"><strong>${i+1}. feladat</strong><span class="review-status ${points===q.points?'is-correct':points>0?'is-partial':'is-wrong'}">${status}</span><small class="review-points">${Number(points.toFixed(1))} / ${q.points} pont</small></div><div class="review-question">${questionBody(q,'review',answer,true)}</div><div class="review-answer-grid"><div class="${points===q.points?'is-correct':'is-wrong'}"><span>Válaszod</span><p>${esc(answerForReview(q,answer))}</p></div><div class="is-correct"><span>Helyes válasz</span><p>${esc(answerLabel(q))}</p></div></div>${explanation}</article>`;
+    }).join('');
     root.innerHTML=`<div class="exam-szev-results"><div class="kicker">TANULÁSI KIÉRTÉKELÉS</div><h2 class="question-title">A mintavizsga eredménye</h2><div class="exam-summary"><strong>${score} / 100 pont</strong><p>${correct} teljes pontszámú feladat ${exam.list.length} közül. A 40%-os KKK-küszöböt ez a gyakorló eredmény ${score>=40?'eléri':'nem éri el'}. Ez nem hivatalos vizsgaeredmény.</p></div><div class="exam-area-breakdown">${breakdown.map(area=>`<div><span>${esc(area.label)}</span><strong>${Math.round(area.points*10)/10} / ${area.weight} pont</strong><small>${area.count} mintafeladat</small></div>`).join('')}</div><p class="exam-score-note">A négy KKK-témakör pontjait 20 / 20 / 20 / 40 arányra súlyoztuk. A kérdések száma és válogatása saját gyakorló összeállítás.</p><div class="question-actions"><button id="newExam" class="button outline" type="button">Új mintavizsga</button></div><section id="examReview" class="exam-review"><h3>Válaszaid és a helyes megoldások</h3>${reviewMarkup()}</section></div>`;
-    $('#newExam',root).addEventListener('click',resetExam);
-    $$('[data-review]',root).forEach(el=>el.addEventListener('click',()=>openQuestion(byId.get(el.dataset.review))));
+    $('#newExam',root).addEventListener('click',resetExam);hydrateAssets(root);
+  }
+  function setupWorkedAnimations(root){
+    if(!root)return;
+    const examples=$$('.worked-steps',root);
+    if(!('IntersectionObserver' in window)){examples.forEach(example=>example.classList.add('is-visible'));return}
+    const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{
+      if(entry.isIntersecting){entry.target.classList.add('is-visible');observer.unobserve(entry.target)}
+    }),{threshold:.12});
+    examples.forEach(example=>observer.observe(example));
   }
   function init(){
-    setupFilters();renderHome();setupProgressReset();
+    setupFilters();renderHome();setupProgressReset();renderWrongTasks();setupWorkedAnimations($('#guideView'));
     $('#startPractice').addEventListener('click',startPractice);$('#startExam').addEventListener('click',startExam);
     $$('[data-view]').forEach(e=>e.addEventListener('click',()=>navigate(e.dataset.view)));
     $$('[data-go]').forEach(e=>e.addEventListener('click',event=>{if(e.tagName==='A')event.preventDefault();navigate(e.dataset.go)}));
