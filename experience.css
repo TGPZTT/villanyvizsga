@@ -1435,6 +1435,10 @@ body.question-open main {
 .solution-derivation li > p { margin: 6px 0 0; }
 .solution-equation { width: fit-content; max-width: 100%; padding: 8px 14px; border-left: 3px solid #c78e33; background: #fff8e9; color: #21434b; font: 600 20px/1.6 'Cambria Math',Cambria,serif; overflow-wrap: anywhere; }
 .specific-explanation + .specific-explanation { margin-top: 11px; }
+.option.correct-option, .option.correct-option.selected, .option.correct-option:hover { border-color: #58a577; background: #e8f7ed; box-shadow: inset 4px 0 0 #3b9160; }
+.option.incorrect-option, .option.incorrect-option.selected, .option.incorrect-option:hover { border-color: #cf8a79; background: #fff0ea; box-shadow: inset 4px 0 0 #bc6450; }
+.answer-selection-summary { padding: 12px 15px; border-radius: 9px; background: #f1f6f4; color: #34535b; }
+.answer-selection-summary strong { margin-right: 6px; }
 @media (max-width: 1280px) {
   .tutorial-layout, #guideView .tutorial-layout { grid-template-columns: minmax(0,1fr); gap: 15px; }
   .tutorial-content, #guideView .tutorial-content { grid-column: 1; grid-row: 2; }
