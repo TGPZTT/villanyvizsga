@@ -42,6 +42,7 @@
     let answer=q.answer??q.correctAnswer??null;
     if(typeof answer==='object'&&answer!==null&&!Array.isArray(answer))answer=answer.text??answer.value??null;
     const type=q.type||q.kind||(options.length?'single':'open');
+    const categorizationType=(q.answerFields||q.numericFields)?.length&&(q.answerFields||q.numericFields).every(field=>field.kind==='choice')?'open':type;
     const year=Number(q.year||src?.year||String(file).match(/20\d{2}/)?.[0]||0);
     const sourcePages=q.sourcePages||q.pages||[];
     const page=Number(q.page||sourcePages[0]||1);
@@ -50,7 +51,7 @@
     const figurePaths=(Array.isArray(q.figurePaths)?q.figurePaths:[]).filter(Boolean);
     if(!figurePaths.length&&q.figurePath)figurePaths.push(q.figurePath);
     const sourceTopic=q.topic||q.category||'Egyéb',prompt=q.prompt||q.question||'';
-    return {...q,id:String(q.id||`q-${i+1}`),sourceId:q.sourceId||src?.id||file,sourceTitle:q.sourceTitle||src?.title||file,sourceFile:file,sourcePath:q.sourcePath||src?.path||'',year,page,number:q.number||q.taskNumber||`${i+1}`,section:q.section||'',sourceTopic,topic:questionCategory(sourceTopic,prompt,type),type,options,answer,explanation:q.explanation||q.solution||'',points:Number(q.points)||2,review:low||answer===null||answer==='',requiresFigure:!!q.requiresFigure,figurePath:figurePaths[0]||'',figurePaths,figureCaptions:Array.isArray(q.figureCaptions)?q.figureCaptions:[],prompt};
+    return {...q,id:String(q.id||`q-${i+1}`),sourceId:q.sourceId||src?.id||file,sourceTitle:q.sourceTitle||src?.title||file,sourceFile:file,sourcePath:q.sourcePath||src?.path||'',year,page,number:q.number||q.taskNumber||`${i+1}`,section:q.section||'',sourceTopic,topic:questionCategory(sourceTopic,prompt,categorizationType),type,options,answer,explanation:q.explanation||q.solution||'',points:Number(q.points)||2,review:low||answer===null||answer==='',requiresFigure:!!q.requiresFigure,figurePath:figurePaths[0]||'',figurePaths,figureCaptions:Array.isArray(q.figureCaptions)?q.figureCaptions:[],prompt};
   }).filter(q=>!q.drawing&&q.prompt.trim());
   const byId=new Map(qlist.map(q=>[q.id,q]));
   const $=(s,root=document)=>root.querySelector(s);
@@ -267,13 +268,16 @@
   }
   function getCorrectKeys(q){
     if(!q.options.length||q.answer==null)return [];
-    const ans=Array.isArray(q.answer)?q.answer.map(String):String(q.answer).split(/[;,]/).map(s=>s.trim());
-    const keys=[];
-    for(const a of ans){const normalized=norm(a).replace(/[.)]/g,'');const idx=q.options.findIndex((o,i)=>norm(o.key)===normalized||norm(o.text)===normalized||String(i+1)===normalized);if(idx>=0)keys.push(q.options[idx].key)}
-    return [...new Set(keys)];
+    const clean=value=>norm(value).replace(/^[a-z][.)]\s+/u,'').replace(/[.!;]+$/u,'').trim();
+    const match=value=>q.options.find(o=>norm(o.text)===norm(value)||clean(o.text)===clean(value))?.key
+      ??q.options.find(o=>norm(o.key)===norm(value).replace(/[.)]$/u,''))?.key;
+    const whole=!Array.isArray(q.answer)?match(String(q.answer)):undefined;
+    if(whole!==undefined)return [whole];
+    const ans=Array.isArray(q.answer)?q.answer.map(String):String(q.answer).split(/[;,]/u).map(s=>s.trim());
+    return [...new Set(ans.map(value=>match(value)).filter(value=>value!==undefined))];
   }
   function answerFields(q){return q.answerFields||q.numericFields||[]}
-  function typeLabel(q){const fields=answerFields(q);if(q.type==='number'&&fields.length&&fields.every(field=>field.kind==='choice'))return 'Párosítás';if(q.type==='number'&&fields.some(field=>field.kind==='choice'))return 'Számolás és választás';return TYPE[q.type]||'Feladat'}
+  function typeLabel(q){const fields=answerFields(q);if(q.interaction==='order')return 'Sorrend';if(q.type==='number'&&fields.length&&fields.every(field=>field.kind==='choice'))return 'Párosítás';if(q.type==='number'&&fields.some(field=>field.kind==='choice'))return 'Számolás és választás';return TYPE[q.type]||'Feladat'}
   function numericTolerance(field,q,expected){
     if(field&&Object.hasOwn(field,'tolerance'))return Math.max(0,Number(field.tolerance)||0);
     if(q&&Object.hasOwn(q,'tolerance'))return Math.max(0,Number(q.tolerance)||0);
@@ -305,10 +309,8 @@
   function explanationMarkup(q){
     const text=String(q.explanation||'').trim();
     if(!text)return '';
-    const equation=/[=≈≤≥]/.test(text)&&/\d|[Δ√Ωφρη]/u.test(text);
-    const base=equation?`<div class="calculation-note"><span class="calculation-note-label">A számítás indoklása</span><p>${esc(text)}</p></div>`:`<p class="specific-explanation">${esc(text)}</p>`;
-    const rule=text.length<185?learningRule(q):'';
-    return base+(rule?`<div class="concept-note"><strong>A feladatban erre figyelj</strong><p>${esc(rule)}</p></div>`:'');
+    if(q.solutionSteps?.length)return `<ol class="solution-derivation">${q.solutionSteps.map(step=>`<li><strong>${esc(step.title)}</strong>${step.math?`<div class="solution-equation">${esc(step.math)}</div>`:''}<p>${esc(step.body)}</p></li>`).join('')}</ol>`;
+    return text.split(/\n+/u).filter(Boolean).map(paragraph=>`<p class="specific-explanation">${esc(paragraph)}</p>`).join('');
   }
   function questionHint(q){
     if(String(q.hint||'').trim())return q.hint.trim();
@@ -424,16 +426,31 @@
       const missed=correct.filter(key=>!selected.includes(key));
       if(!wrong.length&&!missed.length)return '';
       const correctText=correct.map(key=>{const option=q.options.find(item=>item.key===key);return option?`${option.key}. ${option.text}`:key}).join('; ');
-      const reasons=wrong.map(key=>{const option=q.options.find(item=>item.key===key),reason=q.optionReasons?.[key]||`A helyes állítás: ${correctText}. ${q.explanation||learningRule(q)||questionHint(q)}`;return `<li><b>${esc(option?`${option.key}. ${option.text}`:key)}</b><span>${esc(reason)}</span></li>`}).join('');
-      const missedHtml=missed.length?`<p>A több jó válaszos feladatból ezeket is jelölni kellett volna: ${esc(missed.map(key=>{const option=q.options.find(item=>item.key===key);return option?`${option.key}. ${option.text}`:key}).join('; '))}.</p>`:'';
-      return `<div class="answer-rationale"><strong>A választásodról</strong>${reasons?`<p>Ezt jelölted, de ezek az állítások nem helyesek:</p><ul>${reasons}</ul>`:''}${missedHtml}</div>`;
+      const reasons=wrong.map(key=>{const option=q.options.find(item=>item.key===key),reason=q.optionReasons?.[key]||q.answerReason||'';return `<li><b>${esc(option?`${option.key}. ${option.text}`:key)}</b>${reason?`<span>${esc(reason)}</span>`:''}</li>`}).join('');
+      const missedHtml=missed.length?`<p>${q.type==='multi'?'Ezek a helyes állítások kimaradtak:':'Ezt kellett volna választani:'} ${esc(missed.map(key=>{const option=q.options.find(item=>item.key===key);return option?`${option.key}. ${option.text}`:key}).join('; '))}</p>`:'';
+      return `<div class="answer-rationale"><strong>${wrong.length?'A választásod javítása':'A válaszod nem teljes'}</strong>${reasons?`<ul>${reasons}</ul>`:''}${missedHtml}</div>`;
     }
     if(q.type==='number'&&isAuto(q)){
-      const expected=answerFields(q).length?answerFields(q):[{label:'Eredmény',answer:parseNumeric(q.answer),unit:'',tolerance:q.tolerance}],values=Array.isArray(response)?response:[response];
-      const missed=expected.map((field,index)=>!fieldCorrect(field,values[index],q)?field:null).filter(Boolean);
+      const expected=answerFields(q).length?answerFields(q):[{label:'Eredmény',answer:parseNumeric(q.answer),unit:q.unit||'',tolerance:q.tolerance}],values=Array.isArray(response)?response:[response];
+      const missed=expected.map((field,index)=>!fieldCorrect(field,values[index],q)?{field,value:values[index]}:null).filter(Boolean);
       if(!missed.length)return '';
-      const expectedFor=field=>field.kind==='choice'?`ezt kellett választani: ${field.answer}`:`az elfogadott érték ${field.answer}${field.unit?` ${field.unit}`:''}`;
-      return `<div class="answer-rationale"><strong>A válaszod javítása</strong><p>${missed.map(field=>`${esc(field.label)}: ${field.kind==='choice'?'a kiválasztott válasz nem megfelelő; '+expectedFor(field):'a beírt szám nem megfelelő; '+expectedFor(field)}.`).join(' ')}</p><p>${esc(q.explanation||'Ellenőrizd az adatokat, a képletbe helyettesítést és a mértékegységek átváltását.')}</p></div>`;
+      const feedback=missed.map(({field,value})=>{
+        const given=String(value??'').trim(),unit=field.unit?` ${field.unit}`:'',got=parseEnteredNumber(value),right=Number(field.answer);
+        let reason=field.optionReasons?.[given]||field.explanation||q.numericMistakes?.find(m=>Number.isFinite(got)&&Math.abs(got-m.value)<=m.tolerance)?.reason||'';
+        if(!given)reason='Ehhez a részhez még nem adtál választ.';
+        else if(field.kind!=='choice'){
+          if(!Number.isFinite(got))reason='Csak számot adj meg; a mértékegységet a mező mellett feltüntetjük. Tizedesvesszőt és tizedespontot is használhatsz.';
+          else if(!reason){
+            const ratio=right?got/right:0;
+            if(Math.abs(ratio-1000)<15)reason='A beírt szám körülbelül ezerszerese a helyes értéknek. Ellenőrizd az alapegység és a kilo-/milliegység közötti átváltást a levezetésben.';
+            else if(Math.abs(ratio-.001)<.000015)reason='A beírt szám körülbelül ezredrésze a helyes értéknek. Ellenőrizd az alapegység és a kilo-/milliegység közötti átváltást a levezetésben.';
+            else if((Math.abs(ratio-100)<1.5||Math.abs(ratio-.01)<.00015)&&/[%ηφ]/u.test(q.prompt))reason='Az eltérés körülbelül százszoros. Ellenőrizd, hogy a százalékot arányszámként kellett-e behelyettesíteni.';
+            else reason=`A kapott érték ${got>right?'nagyobb':'kisebb'} a megengedett kerekítéssel elfogadható eredménynél. A lenti behelyettesítésnél hasonlítsd össze az adataidat.`;
+          }
+        }
+        return `<li><b>${esc(field.label)}</b><span>Válaszod: ${esc(given||'—')} → helyesen: ${esc(field.answer)}${esc(unit)}</span>${reason?`<span>${esc(reason)}</span>`:''}</li>`;
+      }).join('');
+      return `<div class="answer-rationale"><strong>A válaszod javítása</strong><ul>${feedback}</ul></div>`;
     }
     return '';
   }
@@ -442,7 +459,7 @@
     const values=Array.isArray(response)?response:[response];
     const right=show&&choice?getCorrectKeys(q):[];
     const opts=q.options.length?(choice?`<div class="options">${q.options.map(o=>`<label class="option ${values.includes(o.key)?'selected':''} ${right.includes(o.key)?'correct-option':''} ${show&&values.includes(o.key)&&!right.includes(o.key)?'incorrect-option':''}"><input type="${multi?'checkbox':'radio'}" name="answer" value="${esc(o.key)}" ${values.includes(o.key)?'checked':''} ${show&&['exam','review'].includes(mode)?'disabled':''}><span><b>${esc(o.key)}.</b> ${esc(o.text)}</span>${right.includes(o.key)?'<span class="option-result" aria-label="Helyes válasz">✓</span>':''}${show&&values.includes(o.key)&&!right.includes(o.key)?'<span class="option-result" aria-label="Nem helyes válasz">×</span>':''}</label>`).join('')}</div>`:`<div class="options">${q.options.map(o=>`<div class="option"><span><b>${esc(o.key)}.</b> ${esc(o.text)}</span></div>`).join('')}</div>`):'';
-    const input=!choice?(mode==='review'||(!auto&&mode!=='exam')?'':q.type==='number'?answerFields(q).length?`<div class="numeric-answer-list">${answerFields(q).map((field,i)=>`<label class="numeric-answer-row"><span><b>${esc(field.label)}</b><small>${esc(field.unit|| (field.kind==='choice'?'Válassz egy értéket':'Számérték, mértékegység nélkül'))}</small></span>${field.kind==='choice'?`<select class="answer-input answer-field-select" data-numeric-index="${i}" aria-label="${esc(field.label)}" ${show&&['exam','review'].includes(mode)?'disabled':''}><option value="">Válassz…</option>${field.options.map(option=>`<option value="${esc(option)}">${esc(option)}</option>`).join('')}</select>`:`<input class="answer-input numeric-answer" data-numeric-index="${i}" inputmode="decimal" type="text" aria-label="${esc(field.label)} számértéke" placeholder="Számérték" ${show&&['exam','review'].includes(mode)?'disabled':''}>`}</label>`).join('')}</div>`:`<label class="numeric-answer-row numeric-answer-single"><span><b>Válasz</b><small>Számérték, mértékegység nélkül</small></span><input class="answer-input" id="freeAnswer" inputmode="decimal" type="text" placeholder="Írd be a számot" ${show&&['exam','review'].includes(mode)?'disabled':''}></label>`:`<textarea class="answer-input long" id="freeAnswer" rows="4" placeholder="Írd ide a megoldásod" ${show&&['exam','review'].includes(mode)?'disabled':''}>${esc(response||'')}</textarea>`):'';
+    const input=!choice?(mode==='review'||(!auto&&mode!=='exam')?'':q.type==='number'?answerFields(q).length?`<div class="numeric-answer-list">${answerFields(q).map((field,i)=>`<label class="numeric-answer-row"><span><b>${esc(field.label)}</b><small>${esc(field.unit|| (field.kind==='choice'?(q.interaction==='order'?'Hányadik lépés?':'Válassz egy értéket'):'Számérték, mértékegység nélkül'))}</small></span>${field.kind==='choice'?`<select class="answer-input answer-field-select" data-numeric-index="${i}" aria-label="${esc(field.label)}" ${show&&['exam','review'].includes(mode)?'disabled':''}><option value="">Válassz…</option>${field.options.map(option=>`<option value="${esc(option)}">${esc(option)}</option>`).join('')}</select>`:`<input class="answer-input numeric-answer" data-numeric-index="${i}" inputmode="decimal" type="text" aria-label="${esc(field.label)} számértéke" placeholder="Számérték" ${show&&['exam','review'].includes(mode)?'disabled':''}>`}</label>`).join('')}</div>`:`<label class="numeric-answer-row numeric-answer-single"><span><b>Válasz</b><small>${esc(q.unit ? q.unit+' · csak a számot írd be' : 'Számérték, mértékegység nélkül')}</small></span><input class="answer-input" id="freeAnswer" inputmode="decimal" type="text" placeholder="Írd be a számot" ${show&&['exam','review'].includes(mode)?'disabled':''}></label>`:`<textarea class="answer-input long" id="freeAnswer" rows="4" placeholder="Írd ide a megoldásod" ${show&&['exam','review'].includes(mode)?'disabled':''}>${esc(response||'')}</textarea>`):'';
     const figure=q.figurePaths.length?`<div class="question-figures">${q.figurePaths.map((src,i)=>{const caption=q.figureCaptions[i]||`A feladathoz tartozó ábra${q.figurePaths.length>1?` ${i+1}`:''}`;return `<figure class="question-figure"><a class="figure-open" href="#" data-zoom-asset="${esc(src)}" data-zoom-caption="${esc(caption)}" aria-haspopup="dialog" aria-label="${esc(caption)} nagyítása"><img data-asset-src="${esc(src)}" alt="${esc(sourceLabel(q))}: ${esc(caption)}" loading="lazy" decoding="async"></a><figcaption>${esc(caption)} <a href="#" data-zoom-asset="${esc(src)}" data-zoom-caption="${esc(caption)}" aria-haspopup="dialog">Nagyítás</a></figcaption></figure>`}).join('')}</div>`:'';
     const sourceFigureLink=['bank','practice'].includes(mode)?sourceLink(q):'';
     const hintOpen=mode==='bank'?!!questionState?.hints[q.id]:mode==='practice'?!!practice?.hints?.[q.id]:false;
@@ -745,80 +762,7 @@
     root.innerHTML=`<div class="exam-szev-results"><div class="kicker">TANULÁSI KIÉRTÉKELÉS</div><h2 class="question-title">A mintavizsga eredménye</h2><div class="exam-summary"><strong>${score} / 100 pont</strong><p>${correct} teljes pontszámú feladat ${exam.list.length} közül. A 40%-os KKK-küszöböt ez a gyakorló eredmény ${score>=40?'eléri':'nem éri el'}. Ez nem hivatalos vizsgaeredmény.</p></div><div class="exam-area-breakdown">${breakdown.map(area=>`<div><span>${esc(area.label)}</span><strong>${Math.round(area.points*10)/10} / ${area.weight} pont</strong><small>${area.count} mintafeladat</small></div>`).join('')}</div><p class="exam-score-note">A négy KKK-témakör pontjait 20 / 20 / 20 / 40 arányra súlyoztuk. A kérdések száma és válogatása saját gyakorló összeállítás.</p><div class="question-actions"><button id="newExam" class="button outline" type="button">Új mintavizsga</button></div><section id="examReview" class="exam-review"><h3>Válaszaid és a helyes megoldások</h3>${reviewMarkup()}</section></div>`;
     $('#newExam',root).addEventListener('click',resetExam);hydrateAssets(root);
   }
-  function setupWorkedAnimations(root){
-    if(!root)return;
-    const meaningMap={pn:'Névleges teljesítmény',u:'Feszültség',i:'Áram',eta:'Hatásfok',cosphi:'Teljesítménytényező',n:'Fordulatszám',f:'Frekvencia',rho:'Fajlagos ellenállás',l:'Vezeték hossza',lh:'Oda-vissza vezetékhossz',a:'Vezető-keresztmetszet',e:'Villamos energia',t:'Üzemidő',c:'Egységár',r:'Ellenállás',re:'Eredő ellenállás',s:'Látszólagos teljesítmény',p:'Hatásos teljesítmény',q:'Meddő teljesítmény',uoc:'Üresjárási feszültség',isc:'Rövidzárási áram',in:'Névleges áram',iw:'Terhelőáram',u0:'Fázisfeszültség',z:'Impedancia',zs:'Hurokimpedancia',epsilon:'Relatív feszültségesés'};
-    const symbolKey=value=>{
-      const raw=String(value).trim().toLocaleLowerCase('hu').replace(/[₀₁₂₃₄₅₆₇₈₉]/gu,'').replace(/ₙ/gu,'n');
-      if(/^p\s*n?$/u.test(raw))return raw.includes('n')?'pn':'p';
-      if(/^i\s*n?$/u.test(raw))return raw.includes('n')?'in':'i';
-      return norm(raw).replace(/ρ/gu,'rho').replace(/η/gu,'eta').replace(/ε/gu,'epsilon').replace(/φ/gu,'phi').replace(/[^a-z0-9]/gu,'');
-    };
-    const unitMatch=value=>value.match(/\s*(Ω\s*[·.]?\s*mm²\s*\/\s*m|A\s*\/\s*mm²|Ft\s*\/\s*kWh|kWh|Wh|kVA|kW|W|kvar|var|mA|A|V|Ω|mm²|mm|m²|m|h|min|Hz|1\/min|Ft|%|VA)\s*$/u);
-    const escapeHtml=value=>String(value).replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-    const decorateNumbers=element=>{const value=element.textContent||'';element.innerHTML=escapeHtml(value).replace(/(\d+(?:[.,]\d+)?)/gu,'<span class="calc-number-token" data-value="$1">$1</span>')};
-    const splitInputRows=example=>{
-      const first=$('.worked-steps__panel',example),math=$('.worked-step-math',first),heading=$('.worked-steps__body > strong',first);
-      if(!first||!math||!heading||!/^adat/u.test(norm(heading.textContent)))return;
-      const entries=math.textContent.split(/\s*;\s*/u).map(value=>value.trim()).filter(Boolean).map(value=>value.match(/^(.+?)\s*=\s*(.+)$/u)).filter(Boolean);
-      if(entries.length<2)return;
-      const lesson=example.closest('.lesson'),legend=[...(lesson?.querySelectorAll('.formula-legend div')||[])].map(row=>({symbol:row.querySelector('dt')?.textContent||'',meaning:row.querySelector('dd')?.textContent||''}));
-      const list=document.createElement('div');list.className='worked-input-list';list.setAttribute('aria-label','A feladat megadott adatai');
-      for(const [,rawSymbol,rawValue] of entries){
-        const symbol=rawSymbol.trim(),value=rawValue.trim(),key=symbolKey(symbol),unit=unitMatch(value),unitText=unit?.[1]||'',valueOnly=unit?value.slice(0,unit.index).trim():value;
-        const legendItem=legend.find(item=>symbolKey(item.symbol)===key),meaning=meaningMap[key]||legendItem?.meaning?.split(/[·;]/u)[0]?.trim()||'A feladatban megadott érték';
-        const row=document.createElement('div');row.className='worked-input-row';
-        const symbolNode=document.createElement('span');symbolNode.className='worked-input-symbol';symbolNode.textContent=symbol;
-        const valueNode=document.createElement('strong');valueNode.className='worked-input-value';valueNode.textContent=valueOnly;decorateNumbers(valueNode);
-        const meaningNode=document.createElement('small');meaningNode.textContent=`${meaning}${unitText?` · mértékegység: ${unitText}`:' · mértékegység nélküli arányszám'}`;
-        row.append(symbolNode,valueNode,meaningNode);list.append(row);
-      }
-      math.replaceWith(list);
-    };
-    const tokenValue=token=>String(token.dataset.value||token.textContent||'').replace(/\s/g,'').replace(',','.');
-    const flyValues=(from,to)=>{
-      const sources=$$('.calc-number-token',from),targets=$$('.calc-number-token',to),available=new Map();
-      for(const token of sources){const value=tokenValue(token);if(!available.has(value))available.set(value,[]);available.get(value).push(token)}
-      const flights=[];
-      for(const target of targets){const value=tokenValue(target),source=available.get(value)?.shift();if(!source)continue;flights.push({from:source.getBoundingClientRect(),to:target.getBoundingClientRect(),text:source.textContent,target})}
-      for(const item of flights){
-        item.target.classList.add('calc-number-carried');
-        if(matchMedia('(prefers-reduced-motion: reduce)').matches||!Element.prototype.animate)continue;
-        const chip=document.createElement('span');chip.className='calc-fly-token';chip.textContent=item.text;chip.setAttribute('aria-hidden','true');chip.style.left=`${item.from.left}px`;chip.style.top=`${item.from.top}px`;document.body.append(chip);
-        const animation=chip.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${item.to.left-item.from.left}px,${item.to.top-item.from.top}px) scale(.92)`,opacity:.2}],{duration:620,easing:'cubic-bezier(.22,.75,.23,1)'});
-        animation.finished.catch(()=>{}).finally(()=>chip.remove());
-      }
-    };
-    $$('.worked-steps',root).forEach(example=>{
-      if(example.dataset.stepperReady)return;
-      const panels=$$('.worked-steps__panels .worked-steps__panel',example);
-      if(!panels.length)return;
-      example.dataset.stepperReady='true';
-      panels.forEach((panel,index)=>{const math=$('.worked-step-math',panel);if(math)decorateNumbers(math);panel.hidden=index!==0;panel.classList.toggle('is-current',index===0)});
-      splitInputRows(example);
-      const controls=document.createElement('div');controls.className='worked-stepper-controls';
-      const previous=document.createElement('button');previous.type='button';previous.className='button outline';previous.textContent='← Előző';
-      const status=document.createElement('div');status.className='worked-stepper-status';status.setAttribute('aria-live','polite');
-      const meter=document.createElement('span');meter.className='worked-stepper-meter';
-      const label=document.createElement('strong');
-      status.append(label,meter);
-      const next=document.createElement('button');next.type='button';next.className='button primary';
-      controls.append(previous,status,next);example.append(controls);
-      let active=0;
-      const update=(targetIndex,animate=true)=>{
-        const old=panels[active],target=panels[targetIndex];
-        const oldWasHidden=old.hidden;target.hidden=false;
-        if(animate&&!oldWasHidden)flyValues(old,target);
-        old.hidden=targetIndex===active?false:true;old.classList.remove('is-current');active=targetIndex;target.hidden=false;target.classList.add('is-current');
-        label.textContent=`${active+1}. lépés / ${panels.length}`;meter.style.setProperty('--step-progress',`${(active+1)/panels.length*100}%`);
-        previous.disabled=active===0;next.textContent=active===panels.length-1?'Példa újrakezdése':'Folytatás →';
-        if(animate){target.classList.remove('step-arrive');void target.offsetWidth;target.classList.add('step-arrive')}
-      };
-      previous.addEventListener('click',()=>{if(active>0)update(active-1)});
-      next.addEventListener('click',()=>update(active===panels.length-1?0:active+1));
-      update(0,false);
-    });
-  }
+  function setupWorkedAnimations(root){if(root)window.VV_WORKED?.setup(root)}
   function init(){
     setupFilters();renderHome();setupProgressReset();renderWrongTasks();setupWorkedAnimations($('#guideView'));
     $('#startPractice').addEventListener('click',startPractice);$('#startExam').addEventListener('click',startExam);

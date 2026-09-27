@@ -1383,3 +1383,79 @@ body.question-open main {
   .worked-stepper-controls .button { width: 100%; }
   .numeric-answer-row { grid-template-columns: minmax(0,1fr); gap: 7px; }
 }
+
+/* One continuous sheet; revealed calculations stay on the paper. */
+.tutorial-layout, #guideView .tutorial-layout { display: grid; grid-template-columns: 180px minmax(0,1fr); align-items: start; gap: 24px; }
+.tutorial-content, #guideView .tutorial-content { grid-column: 2; grid-row: 1; min-width: 0; width: 100%; }
+.tutorial-toc, #guideView .tutorial-toc { grid-column: 1; grid-row: 1; min-width: 0; width: 100%; }
+.tutorial-group, .lesson, .formula-card, .worked-details { min-width: 0; }
+.worked-details { overflow: visible; margin: 18px 0 4px; border-color: #cbded9; border-radius: 14px; }
+.worked-details > summary { padding: 14px 18px; font-size: 16px; border-radius: 13px; }
+.worked-details[open] > summary { border-radius: 13px 13px 0 0; background: #eaf4ef; }
+.worked-details > .calculation-board { margin: 0; }
+.calculation-board.worked-steps { position: relative; padding: 0; overflow: visible; border: 0; border-radius: 0 0 14px 14px; background: #fffefa; box-shadow: 0 12px 22px -18px #274840; }
+.board-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 20px; border-bottom: 1px solid #e6e5dc; }
+.board-heading > strong { font-size: 16px; color: #214d55; }
+.worked-source { display: flex; flex-wrap: wrap; gap: 5px 14px; padding: 11px 20px; margin: 0; background: #f2f6f2; color: #61746d; font-size: 13px; line-height: 1.6; }
+.worked-source a { font-weight: 700; color: #14747d; text-underline-offset: 3px; }
+.board-mode { flex: 0 0 auto; color: #677b77; font-size: 13px; }
+.board-paper { padding: 6px 20px 16px; background-image: radial-gradient(#bfd3c94d .7px,transparent .7px); background-size: 18px 18px; }
+.board-line { display: grid; grid-template-columns: 28px minmax(0,1fr) minmax(170px, .6fr); column-gap: 14px; align-items: start; padding: 17px 0; border-bottom: 1px solid #dce6dd; }
+.board-line[hidden] { display: none !important; }
+.board-line:last-child { border-bottom: 0; }
+.board-line-number { font: 600 12px/28px var(--mono); color: #80928b; text-align: center; border-left: 2px solid #d4dfd7; }
+.board-line.is-current .board-line-number { border-left-color: #c28927; color: #846321; }
+.board-writing { min-width: 0; align-self: center; }
+.board-equation { color: #163f49; font: 500 clamp(19px,1.6vw,24px)/1.65 'Cambria Math', Cambria, Georgia, serif; white-space: normal; overflow-wrap: anywhere; font-variant-numeric: lining-nums tabular-nums; }
+.board-note { min-width: 0; padding-left: 13px; border-left: 1px solid #e0e6dc; }
+.board-note > strong { font-size: 14px; color: #365751; }
+.board-note > p { margin: 5px 0 0; color: #5d716e; font-size: 14px; line-height: 1.55; }
+.board-data-line { grid-template-columns: 28px minmax(0,1fr); }
+.board-data-line .board-note { grid-column: 2; grid-row: 1; border: 0; padding: 0 0 7px; }
+.board-data-line .board-note p { display: none; }
+.board-data-line .board-writing { grid-column: 2; }
+.calculation-board .worked-input-list { margin: 0; gap: 0; }
+.calculation-board .worked-input-row { grid-template-columns: 78px 126px minmax(0,1fr); justify-content: start; padding: 5px 0; gap: 10px 14px; border: 0; border-radius: 0; background: none; }
+.calculation-board .worked-input-symbol { font: 500 19px/1.6 'Cambria Math',Cambria,serif; color: #38524d; }
+.calculation-board .worked-input-value { font: 600 20px/1.6 'Cambria Math',Cambria,serif; color: #264f54; white-space: normal; overflow-wrap: anywhere; }
+.worked-input-meaning { font-size: 14px; color: #5d716e; line-height: 1.5; }
+.calculation-board .calc-number-token { color: var(--value-color,inherit); font: inherit; font-weight: 700; display: inline-block; white-space: nowrap; }
+.calculation-board .calc-number-token[data-flow] { border-bottom: 2px solid color-mix(in srgb,var(--value-color) 35%,transparent); }
+.calculation-board .calc-number-token.is-arriving { visibility: hidden; }
+.board-ghost { position: fixed; z-index: 10000; pointer-events: none; white-space: nowrap; color: var(--value-color); border-bottom: 2px solid currentColor; background: #fffefaea; box-shadow: 0 5px 12px #163f491c; }
+.board-result .board-writing { border: 1px solid #9fbeb0; border-left: 4px solid #508b75; padding: 8px 14px; border-radius: 4px 10px 10px 4px; background: #eef7ed; }
+.calculation-board .worked-stepper-controls { position: sticky; bottom: 10px; z-index: 3; margin: 0; padding: 12px 16px; border: 1px solid #d2e0d6; border-radius: 0 0 13px 13px; background: #f7faf5f5; box-shadow: 0 -6px 18px #294f4410; backdrop-filter: blur(8px); }
+.calculation-board .worked-stepper-controls .button { font-size: 14px; min-height: 44px; }
+.calculation-board .worked-stepper-status strong { font: 600 13px var(--mono); }
+.board-new-line .board-equation { animation: board-write .55s ease-out both; }
+@keyframes board-write { from { clip-path: inset(0 100% 0 0); opacity: .2; } to { clip-path: inset(0); opacity: 1; } }
+.solution-derivation { padding-left: 22px; margin: 12px 0; display: grid; gap: 15px; }
+.solution-derivation li::marker { color: #14838b; font-weight: 800; }
+.solution-derivation li > strong { display: block; margin-bottom: 6px; }
+.solution-derivation li > p { margin: 6px 0 0; }
+.solution-equation { width: fit-content; max-width: 100%; padding: 8px 14px; border-left: 3px solid #c78e33; background: #fff8e9; color: #21434b; font: 600 20px/1.6 'Cambria Math',Cambria,serif; overflow-wrap: anywhere; }
+.specific-explanation + .specific-explanation { margin-top: 11px; }
+@media (max-width: 1280px) {
+  .tutorial-layout, #guideView .tutorial-layout { grid-template-columns: minmax(0,1fr); gap: 15px; }
+  .tutorial-content, #guideView .tutorial-content { grid-column: 1; grid-row: 2; }
+  .tutorial-toc, #guideView .tutorial-toc { grid-column: 1; grid-row: 1; position: static; display: flex; gap: 6px; overflow-x: auto; white-space: nowrap; padding: 10px; }
+  .tutorial-toc strong, #guideView .tutorial-toc strong { display: none; }
+  .tutorial-toc a, #guideView .tutorial-toc a { flex: 0 0 auto; }
+}
+@media (max-width: 760px) {
+  .board-heading { padding: 14px; }
+  .board-mode { display: none; }
+  .board-paper { padding: 3px 14px 14px; }
+  .board-line { grid-template-columns: 23px minmax(0,1fr); column-gap: 9px; padding: 14px 0; }
+  .board-note { grid-column: 2; grid-row: auto; padding: 6px 0 0; border: 0; }
+  .board-data-line .board-note { grid-row: 1; padding-top: 0; }
+  .board-note > p { font-size: 14px; }
+  .board-equation { font-size: 20px; }
+  .calculation-board .worked-input-row { grid-template-columns: minmax(48px,auto) minmax(0,1fr); gap: 0 9px; padding: 7px 0; }
+  .worked-input-meaning { grid-column: 1 / -1; }
+  .calculation-board .worked-stepper-controls { gap: 8px; bottom: 5px; padding: 10px; }
+  .calculation-board .worked-stepper-controls .button { font-size: 13px; padding: 8px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-new-line .board-equation { animation: none; }
+}
