@@ -80,16 +80,18 @@
   const isContest=q=>q.sourceId==='szkt_írásbeli.pdf'||q.sourceId.startsWith('szakmasztar_forrasok/')||q.id.startsWith('szs-');
   const inSourceScope=(q,scope)=>isExamPaper(q)||(scope==='papers-plus-star'&&isContest(q));
   const answerLabel=q=>{
+    if(answerFields(q).length)return answerFields(q).map(field=>`${field.label}: ${field.answer}${field.unit?` ${field.unit}`:''}`).join('\n');
     if(q.options.length){
       const keys=getCorrectKeys(q);
       if(keys.length)return keys.map(key=>{const option=q.options.find(o=>o.key===key);return `${key}. ${option?.text||''}`.trim()}).join('\n');
     }
     if(Array.isArray(q.answer))return q.answer.join(', ');
     if(q.answer===null||q.answer==='')return 'A megoldás felülvizsgálat alatt.';
-    return String(q.answer);
+    return q.answerDisplay||String(q.answer);
   };
   const answerForReview=(q,response)=>{
     if(response===undefined||response===null||response===''||Array.isArray(response)&&!response.length)return 'Nem jelöltél választ.';
+    if(answerFields(q).length){const values=Array.isArray(response)?response:[response];return answerFields(q).map((field,i)=>`${field.label}: ${values[i]||'—'}${field.unit?` ${field.unit}`:''}`).join('\n')}
     if(!q.options.length)return Array.isArray(response)?response.join(', '):String(response);
     return (Array.isArray(response)?response:[response]).map(value=>{
       const option=q.options.find(item=>item.key===value)||q.options.find(item=>item.text===value);
@@ -256,7 +258,7 @@
       const group=q.sourceId;let head='';if(group!==last){head=`<div class="section-head"><div><div class="kicker">${esc(q.year||'')}</div><h2>${esc(sourceLabel(q))}</h2></div></div>`;last=group}
       const status=attemptStatus(q);
       const preview=q.prompt.replace(/\s+/g,' ').slice(0,150);
-      return head+`<button class="bank-item" data-id="${esc(q.id)}"><span class="bank-index">${esc(q.number)}</span><span class="bank-main"><strong>${esc(preview)}${q.prompt.length>150?'…':''}</strong><small>${esc(q.topic)} · ${TYPE[q.type]||'Feladat'} · ${q.points} pont · ${q.page}. oldal</small></span><span class="bank-meta">${q.requiresFigure?'<span class="chip">Ábrás</span>':''}${q.review?'<span class="chip review">Ellenőrzendő megoldás</span>':''}${status!=='new'?`<span class="chip ${status}">${status==='correct'?'Sikerült':'Újra'}</span>`:''}<span aria-hidden="true">↗</span></span></button>`
+      return head+`<button class="bank-item" data-id="${esc(q.id)}"><span class="bank-index">${esc(q.number)}</span><span class="bank-main"><strong>${esc(preview)}${q.prompt.length>150?'…':''}</strong><small>${esc(q.topic)} · ${esc(typeLabel(q))} · ${q.points} pont · ${q.page}. oldal</small></span><span class="bank-meta">${q.requiresFigure?'<span class="chip">Ábrás</span>':''}${q.review?'<span class="chip review">Ellenőrzendő megoldás</span>':''}${status!=='new'?`<span class="chip ${status}">${status==='correct'?'Sikerült':'Újra'}</span>`:''}<span aria-hidden="true">↗</span></span></button>`
     }).join('');
     $$('.bank-item').forEach(e=>e.addEventListener('click',()=>openQuestion(byId.get(e.dataset.id))));
     $('#bankPager').innerHTML=pages>1?`<button id="prevPage" ${bankPage===0?'disabled':''}>← Előző</button><span>${bankPage+1} / ${pages}</span><button id="nextPage" ${bankPage===pages-1?'disabled':''}>Következő →</button>`:'';
@@ -270,15 +272,29 @@
     for(const a of ans){const normalized=norm(a).replace(/[.)]/g,'');const idx=q.options.findIndex((o,i)=>norm(o.key)===normalized||norm(o.text)===normalized||String(i+1)===normalized);if(idx>=0)keys.push(q.options[idx].key)}
     return [...new Set(keys)];
   }
-  function isAuto(q){const nums=String(q.answer??'').match(/[-+]?\d+(?:[.,]\d+)?/g)||[];return !q.review&&((q.type==='single'||q.type==='multi')&&getCorrectKeys(q).length>0||q.type==='number'&&nums.length===1&&Number.isFinite(parseNumeric(q.answer)))}
+  function answerFields(q){return q.answerFields||q.numericFields||[]}
+  function typeLabel(q){const fields=answerFields(q);if(q.type==='number'&&fields.length&&fields.every(field=>field.kind==='choice'))return 'Párosítás';if(q.type==='number'&&fields.some(field=>field.kind==='choice'))return 'Számolás és választás';return TYPE[q.type]||'Feladat'}
+  function numericTolerance(field,q,expected){
+    if(field&&Object.hasOwn(field,'tolerance'))return Math.max(0,Number(field.tolerance)||0);
+    if(q&&Object.hasOwn(q,'tolerance'))return Math.max(0,Number(q.tolerance)||0);
+    return Math.max(.01,Math.abs(expected)*.015)
+  }
+  function fieldCorrect(field,value,q){if(field.kind==='choice')return norm(value)===norm(field.answer);const expected=Number(field.answer),got=parseEnteredNumber(value),tol=numericTolerance(field,q,expected);return Number.isFinite(got)&&Math.abs(got-expected)<=tol}
+  function isAuto(q){const nums=String(q.answer??'').match(/[-+]?\d+(?:[.,]\d+)?/g)||[],fields=answerFields(q);return !q.review&&((q.type==='single'||q.type==='multi')&&getCorrectKeys(q).length>0||q.type==='number'&&(fields.length?fields.every(field=>field.kind==='choice'?field.answer!=null:Number.isFinite(Number(field.answer))):nums.length===1&&Number.isFinite(parseNumeric(q.answer))))}
   function parseNumeric(v){if(typeof v==='number')return v;const m=String(v??'').replace(/\s/g,'').replace(',','.').match(/[-+]?\d+(?:\.\d+)?/);return m?Number(m[0]):NaN}
+  function parseEnteredNumber(v){const value=String(v??'').trim().replace(/\s/g,'').replace(',','.');return /^[-+]?\d+(?:\.\d+)?$/.test(value)?Number(value):NaN}
   function grade(q,response){
     if(!isAuto(q))return null;
-    if(q.type==='number'){const expected=parseNumeric(q.answer),got=parseNumeric(response),tol=Number(q.tolerance)||Math.max(.01,Math.abs(expected)*.015);return Number.isFinite(got)&&Math.abs(got-expected)<=tol}
+    if(q.type==='number'){
+      const fields=answerFields(q);
+      if(fields.length){const entered=Array.isArray(response)?response:[response];return fields.every((field,index)=>fieldCorrect(field,entered[index],q))}
+      const expected=parseNumeric(q.answer),got=parseEnteredNumber(response),tol=numericTolerance(null,q,expected);return Number.isFinite(got)&&Math.abs(got-expected)<=tol;
+    }
     const right=getCorrectKeys(q).sort(),given=(Array.isArray(response)?response:[response]).filter(Boolean).sort();return right.length===given.length&&right.every((k,i)=>k===given[i]);
   }
   function earnedPoints(q,response){
     if(!isAuto(q))return 0;
+    if(q.type==='number'&&answerFields(q).length){const values=Array.isArray(response)?response:[response],fields=answerFields(q),passed=fields.filter((field,index)=>fieldCorrect(field,values[index],q)).length;return q.points*passed/fields.length}
     if(q.type!=='multi')return grade(q,response)?q.points:0;
     const right=getCorrectKeys(q),given=(Array.isArray(response)?response:[response]).filter(Boolean);
     const good=given.filter(x=>right.includes(x)).length;
@@ -290,47 +306,157 @@
     const text=String(q.explanation||'').trim();
     if(!text)return '';
     const equation=/[=≈≤≥]/.test(text)&&/\d|[Δ√Ωφρη]/u.test(text);
-    return equation?`<div class="calculation-note"><span class="calculation-note-label">A számítás indoklása</span><p>${esc(text)}</p></div>`:`<p class="specific-explanation">${esc(text)}</p>`;
+    const base=equation?`<div class="calculation-note"><span class="calculation-note-label">A számítás indoklása</span><p>${esc(text)}</p></div>`:`<p class="specific-explanation">${esc(text)}</p>`;
+    const rule=text.length<185?learningRule(q):'';
+    return base+(rule?`<div class="concept-note"><strong>A feladatban erre figyelj</strong><p>${esc(rule)}</p></div>`:'');
   }
   function questionHint(q){
     if(String(q.hint||'').trim())return q.hint.trim();
-    const explanation=String(q.explanation||'').trim();
-    if(!explanation)return '';
-    const answers=[];
-    if(Array.isArray(q.answer))answers.push(...q.answer.map(String));else if(q.answer!=null)answers.push(String(q.answer));
-    if(q.options?.length){for(const key of getCorrectKeys(q)){const option=q.options.find(item=>item.key===key);if(option)answers.push(option.text)}}
-    const clauses=explanation.split(/[;.!?]+|,\s*(?=(?:ezert|igy|mert|viszont|azonban)\b)/iu).map(x=>x.trim()).filter(Boolean);
-    const numericWords={0:'nulla',1:'egy',2:'kettő',3:'három',4:'négy',5:'öt',6:'hat',7:'hét',8:'nyolc',9:'kilenc',10:'tíz'};
-    const candidates=clauses.map(clause=>{
-      let value=clause;
-      for(const answer of [...answers].sort((a,b)=>b.length-a.length)){
-        if(answer.length>1)value=value.replace(new RegExp(answer.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&'),'giu'),' ');
-        if(/^\d{1,2}$/u.test(answer)&&numericWords[Number(answer)])value=value.replace(new RegExp(`\\b${numericWords[Number(answer)]}\\b`,'giu'),' ');
-      }
-      value=value.replace(/\s+/gu,' ').replace(/^[,;:.\s]+|[,;:.\s]+$/gu,'').trim();
-      const words=value.split(/\s+/u).length,overlap=answers.some(answer=>answer.length>3&&norm(value).includes(norm(answer)));
-      const concrete=norm(value).split(' ').filter(word=>word.length>4).length;
-      return {value,score:(words>=4?words:0)+concrete*2-(overlap?100:0)};
-    }).filter(item=>item.score>0&&item.value.length>=22).sort((a,b)=>b.score-a.score);
-    return candidates[0]?`${candidates[0].value.replace(/[.!?]+$/u,'')}.`:'';
+    const text=norm(`${q.prompt} ${q.topic}`),topic=norm(q.topic),prompt=q.prompt;
+    if(/szerelvenydoboz/.test(text)&&/rajz|terv/.test(text))return 'A rajzjelmagyarázatból azonosítsd a dugaljakat és a kapcsolókat, majd helyiségenként számold meg a szerelvényhelyeket. A lámpatest és az elosztó jelét ne kezeld külön szerelvénydobozként.';
+    if(/(?:vezetek|vezeto)szam|hany vezetek/.test(text)&&q.requiresFigure)return 'A jelölt szakasz két oldalán kövesd végig az ereket egyenként. A vonal egy kábelnyomvonalat mutat; a válasz a benne továbbhaladó külön vezetők száma.';
+    if(/(?:lampatest|szerelvenydoboz|fuggetlen .*? aramkor|fogyasztoi aramkor)/.test(text)&&q.requiresFigure)return 'A kérdésben felsorolt mennyiségeket külön oszlopban vedd számba. Előbb a terv jelmagyarázatával azonosítsd a jeleket, utána helyiségenként ellenőrizd, melyik áramkörhöz tartoznak.';
+    if(/kapocstabl/.test(text)&&/csillag|delta|bekot/.test(text))return 'Nézd meg a kapocstáblán a tekercsek hat kezdő- és végpontját, majd keresd meg, mely kapcsokat kell közösíteni. A hálózati feszültséget is vesd össze a motor adattábláján szereplő Δ/Y értékekkel.';
+    if(/akkumul|telep/.test(text)&&/kapcsok|feszultseg|tolt/.test(text))return 'A kapocsfeszültség nem ugyanaz töltés, nyugalmi állapot és kisütés közben. Hasonlítsd össze, melyik állapotban van a telepben a legnagyobb elektromotoros erő, és vedd figyelembe, hogy a töltőáram a kapocsfeszültségre ráadódik.';
+    if(/hosszabbito/.test(text)&&/epitesi|terulet/.test(text))return 'Építési területen a vezeték mechanikai igénybevétele és mozgatása is számít. Olyan hajlékony, kültéri/nehéz üzemi kábelt keress, amelynek köpenye bírja a helyszíni igénybevételt; a sima falba szerelhető vezetéket zárd ki.';
+    if(/belogas|tavvezetek|vezetek.*feszul/.test(text))return 'A belógást a vezető súlya és feszessége, a két tartópont távolsága, valamint a hőmérséklet miatti hosszváltozás befolyásolja. A válaszok közül azokat válaszd, amelyek ténylegesen megváltoztatják ezeket.';
+    if(/villamos energia|energiafogyaszt|fogyasztas/.test(text)||/villamos energia/.test(topic)){
+      if(/haromfaz/.test(text))return 'Ha az energiafeladat előbb teljesítményt kér, háromfázisú esetben P=√3·U·I·cosφ-t használd; utána szorozd meg az üzemidővel. A kW és az óra szorzata kWh.';
+      if(/cos.?φ|cosphi|teljesitmenytenyezo/.test(text))return 'Előbb számítsd ki a hatásos teljesítményt a cosφ figyelembevételével, majd az üzemidővel szorozz. A kW·h eredménye kWh; percben megadott időt előbb alakíts órára.';
+      return 'Ellenállásos vízmelegítőnél előbb P=U·I alapján kapod meg a wattot, majd E=P·t szerint számold az energiát. Az időt órában használd, az eredményt kWh-ban add meg.';
+    }
+    if(/egyfazisu hatasos teljesitmeny|teljesitmenytenyezo/.test(topic)||/mekkora a hatasos teljesitmeny/.test(text))return 'Egyfázisú váltakozó áramnál a hatásos teljesítményhez a feszültséget, az áramot és a cosφ-t szorozd össze: P=U·I·cosφ. A cosφ nélküli U·I csak a látszólagos teljesítmény.';
+    if(/haromfazisu transzformator/.test(topic)||/transzformator/.test(text))return 'A névleges teljesítményből az áramot a feszültséggel osztva kapod meg. Háromfázisú oldalon a √3·U vonali teljesítményképlet szerepel; az elsődleges és szekunder oldalt a saját feszültségével számold.';
+    if(/hurokimpedancia|zarlati aram/.test(text)||/hurokimpedancia/.test(topic))return 'A kioldási áramot a kismegszakító névleges áramából és a megadott α tényezőből határozd meg. A megengedett Zs-hez a fázisfeszültséget oszd ezzel az árammal; ne a 400 V vonali feszültséget használd.';
+    if(/vezetekkeresztmetszet feszultsegesesre|feszultsegeses/.test(topic)||/feszultsegeses/.test(text))return 'Előbb a százalékos határt váltsd át voltokra. Egyfázisú oda-vissza vezetéknél a teljes út kétszeres hossz; háromfázisú képletnél √3 és vonali feszültség szerepel. A végén ellenőrizd, hogy a választott keresztmetszetnél az esés a határ alatt marad-e.';
+    if(/aramvalto/.test(text)||/aramvalto/.test(topic))return 'Az áttételt a névleges primer és szekunder áram hányadosa adja. Ezt szorozd meg a tényleges szekunder árammal; a VA-adat terhelhetőségi adat, nem az áramáttétel része.';
+    if(/soros napelem/.test(topic)||/napelem/.test(text))return 'Soros kapcsolásnál a feszültségek adódnak össze, az áramot viszont a sorba kötött panelek közül a legkisebb korlátozza. A kérdésben azt az adatot válaszd, amelyiket keresik: Uoc, Isc vagy teljesítmény.';
+    if(/terhelo aram es kismegszakito/.test(topic)||/kismegszakito/.test(text)&&/fogyaszto|aramkore/.test(text))return 'Számítsd ki előbb a fogyasztó üzemi áramát a teljesítményből és a feszültségből. A kismegszakító névleges árama legyen az üzemi áram fölött, de a vezeték megengedett terhelhetőségét se lépje túl.';
+    if(/villamos gep|motor/.test(topic)&&/aram|nevleges/.test(text))return 'Motor esetén a felvett villamos teljesítményt használd, ne a tengelyen leadottat: a hatásfokkal is számolni kell. Háromfázisú áramnál √3·U·cosφ kerül a nevezőbe.';
+    if(/szerszam|meromuszer/.test(text)&&/szereles|vedocso|fal/.test(text))return 'A műveletekhez rendelj szerszámcsoportot: kijelöléshez mérő- és jelölőeszköz, dobozhelyhez fúró/maró, horonyhoz vésőeszköz, bekötéshez szerelőszerszám, ellenőrzéshez mérőműszer. A felsorolásból csak az adott munkafázishoz tartozókat vedd.';
+    if(/rajzjel|jelkepek|jelmagyarazat/.test(text))return 'Az ábrán a jel alakját és a környező bekötéseket együtt vizsgáld. Hasonlítsd össze a rajzjelet a jelmagyarázatban szereplő kapcsoló-, tekercs- és védelmi készülékjelekkel; ne csak a forma alapján találgass.';
+    if(/tuzeseti kapcsolo|tuzeseti/.test(text))return 'A feladat a tűzoltás biztonságát szolgáló lekapcsolási funkciót kérdezi. Vedd figyelembe, hogy egyes tűzvédelmi vagy életvédelmi rendszereknek tűz közben is működniük kell.';
+    if(/csillarkapcsol|ket aramkort|ket fen(y|yforras)|ket helyrol|valtokapcsol/.test(text))return 'Különítsd el a két helyről vezérelt egy fénykört a két külön fénykörtől: előbbinél a kapcsolási helyek, utóbbinál az egymástól független kapcsolt kimenetek száma dönt.';
+    if(/hamis allitas|valassza ki.*(hamis|nem igaz)/.test(text))return 'Itt a hamis állítást kell megjelölni. Minden lehetőségnél keresd meg a feltételt vagy kivételt; a „mindig”, „csak” és „minden” szavak különösen fontosak.';
+    if(/kep|fenykep|rajzon|abra|metszet/.test(text))return 'Olvasd le az ábrán látható szerkezeti részletet: keresd a kapcsok, feliratok, vezetőszínek vagy védővezető-jelölés helyét. Ezután válaszd azt az elnevezést, amelyet az ábra ténylegesen alátámaszt.';
+    if(/alapterhelhetoseg|terhelhetosegi tenyezo|terhelesi tenyezo/.test(text))return 'Az alapterhelhetőség táblázati kiinduló érték. A tényleges terhelhetőséget csökkenti például a környezeti hőmérséklet, a hőszigetelésben vezetés és az együtt terhelt kábelek csoportosítása; válaszd ki, melyik tényező szerepel a feladat feltételei között.';
+    if(/tulajdonsag.*vezet|vezetek.*(keresztmetszet|belogas)/.test(text)&&/feszultseg aszimmetria/.test(text))return 'A három fázis feszültsége akkor marad közel azonos, ha a fázisterhelés kiegyenlített és a nulla-/PEN-vezető ép. A válaszok között azt keresd, amely ezt az egyensúlyt bontja meg.';
+    if(/feszultseg aszimmetria/.test(text))return 'A három fázis eltérő feszültsége gyakran az egyfázisú terhelések egyenlőtlen elosztásával vagy a nulla/PEN vezető hibájával függ össze. Válaszd szét az okot és az aszimmetria következményét.';
+    if(/vedelmi mod|t apalas onmukodo lekapcsolasa|tapalas onmukodo lekapcsolasa/.test(text))return 'Az önműködő lekapcsolás a hibavédelmi mód; a PE-vezetőn kialakuló hibaáramnak kell működtetnie a védelmi készüléket. Keresd azokat a megoldásokat, amelyek a testet a földelt rendszerponthoz kötik és lekapcsolást biztosítanak.';
+    if(/pe folytonossag|vedovezeto.*folytonossag/.test(text))return 'Hiba esetén a PE-nek kis ellenállású, folytonos utat kell adnia a hibaáramnak. Gondold végig, milyen veszély maradna, ha egy készülék fémháza és a védelmi lekapcsolást indító vezető között megszakadás lenne.';
+    if(/hibafeszultseg/.test(text))return 'Hibafeszültségnél nem a táplálás névleges feszültségét keresed, hanem a hiba miatt feszültség alá kerülő test és a földpotenciálú referencia közötti értéket.';
+    if(/alapvedelem/.test(text))return 'Az alapvédelem normál üzemben akadályozza meg az aktív részek közvetlen megérintését. Válaszd külön a burkolat/szigetelés feladatát a testzárlat utáni hibavédelemtől.';
+    if(/villamos keszulek teste|villamos szerkezet teste|keszulek testet/.test(text))return 'A „test” a készülék megérinthető, vezetőképes részeire vonatkozik, amelyek normál üzemben nem aktívak, de szigetelési hiba miatt feszültség alá kerülhetnek. Ne keverd össze az aktív részekkel vagy a burkolat szigetelő anyagával.';
+    if(/kisfeszultseg|nagyfeszultseg/.test(text))return 'A feszültségszint besorolásánál a feladatlap határértékét használd: váltakozó és egyenfeszültségre eltérő kisfeszültségi határ szerepel. Előbb olvasd le a feszültség fajtáját, csak utána hasonlítsd a számot a határhoz.';
+    if(/homokagy|foldkabel/.test(text))return 'A földkábel homokágyának szerepét a kábel mechanikai védelmével és a környező talaj egyenletes felfekvésével kapcsold össze. A homok kiszűri az éles köveket és csökkenti a köpeny sérülésének esélyét.';
+    if(/lepes.?feszultseg/.test(text))return 'A lépésfeszültség a talaj két, egymástól lépéstávolságra lévő pontja közötti potenciálkülönbség. Olyan megoldást keress, amely csökkenti a talajfelszín potenciálkülönbségeit vagy a két láb közötti távolságot.';
+    if(/tulfeszultseg forras|tulfeszultseg.*ered/.test(text))return 'A túlfeszültség eredhet légköri villámhatásból és kapcsolási eseményből is. A lehetőségeket aszerint vizsgáld, hogy hirtelen energiát juttathatnak-e a hálózatba.';
+    if(/meddo.*mertekegyseg|meddo teljesitmeny/.test(text))return 'A teljesítményháromszögben P a hatásos, Q a meddő, S a látszólagos teljesítmény. A Q mértékegysége var; a W a hatásos teljesítményé, a VA az S-é.';
+    if(/szelektiv/.test(text)&&/olvadobiztosito|tularam/.test(text))return 'Szelektivitásnál a hibához legközelebbi, kisebb leágazási védelem oldjon le először, a fővédelem pedig maradjon bekapcsolva. Biztosítóknál az áramarány mellett a gyártói idő–áram görbéket is össze kell vetni.';
+    if(/pancelozat/.test(text))return 'A páncélzat a kábel külső mechanikai igénybevétellel szembeni védelmét szolgálja. Különítsd el ezt az érszigetelés és a köpeny villamos/környezeti védelmi feladatától.';
+    if(/kabel.*fektetese elott|fektetes elott/.test(text))return 'Fektetés előtt a nyomvonal járhatóságát és alkalmasságát, a dob és a kábel sértetlenségét, valamint a szükséges hajlítási sugár betarthatóságát ellenőrizd. A kábel behúzása után ezek már nehezen javíthatók.';
+    if(/kabelalagut/.test(text))return 'A kábelalagút zárt, járható vagy ellenőrizhető építmény, amelyben több kábel rendezett nyomvonalon vezethető. Gondold végig, miben különbözik a falba süllyesztett csőtől vagy a nyitott kábeltálcától.';
+    if(/foldelo elektr|talajba helyezett foldelo/.test(text))return 'A földelő elektródának tartósan korrózióállónak kell lennie, és közvetlen talajkapcsolatra alkalmas anyagból kell készülnie. A válaszoknál a korrózióállóságot és az előírt anyaghasználatot ellenőrizd.';
+    if(/a.?m jelleg|olvadobiztosito/.test(text)&&/motor/.test(text))return 'Az aM biztosító motoráramkörhöz való, de a motor nagy indítóárama miatt az alapvető feladata a zárlatvédelem. A túlterhelés elleni védelemről külön készülék gondoskodik.';
+    if(/vastag falu/.test(text))return 'A védőcső helyét a falvastagság, a mechanikai igénybevétel és a gyártói rendeltetés dönti el. A vastag falú cső nagyobb mechanikai védelme miatt elsősorban a felületen vezetett szerelés felé mutat.';
+    if(/vedocso.*falon kivul|falon kivul.*vedocso/.test(text))return 'Falon kívüli szerelésnél a csőnek a helyiség környezeti és mechanikai igénybevételét kell viselnie. A lehetőségeknél különítsd el a vakolat alá szánt vékony falú csövet a merev, felületi vezetésre való típustól.';
+    if(/szabvany/.test(text))return 'A feladat egy konkrét, a feladatlapon megnevezett szabványt kér. Válaszd el a létesítési szabványokat a közcélú hálózatra csatlakozás műszaki feltételeit rögzítő dokumentumtól.';
+    if(/hibakereses|nem vilagit|halvany/.test(text))return 'A tünetek alapján először a két kapcsolt áramkör közös bekötési pontját vizsgáld. Ha egy izzó csak bizonyos kapcsolóállásban halvány, mérd végig, nem került-e sorba olyan fogyasztó, amelynek párhuzamosan kellene működnie.';
+    if(/villamvedelmi felfogo/.test(text))return 'A felfogó a villámvédelmi rendszer tetején álló rész: feladata a becsapási pont kijelölése és az áram továbbvezetése a levezető felé, nem a földelés helyettesítése.';
+    if(/surge|tulfeszultseg-levezeto|finom.*tulfeszultseg/.test(text))return 'A finom, 3. fokozatú túlfeszültség-védelem a védendő végberendezés közelébe kerül. A levezető bekötésénél a rövid, kis impedanciájú PE-út a fontos.';
+    if(/rajzon lathato rendszer|pen szetvalasztas/.test(text))return 'A rendszer betűjelét a táplálás földelési pontja és a fogyasztói testek védővezetős kapcsolata alapján olvasd le. A PEN szétválasztása után figyeld meg, hogy az N és PE külön vezetőként fut-e tovább.';
+    if(/forg asirany|forgasirany|motorindito|motor indito/.test(text))return 'A vezérlőrajzban azonosítsd külön a túlterhelés-védelmet, a leállító/indító nyomógombokat és a mágneskapcsoló tekercsét. Forgásirányváltásnál a két mágneskapcsoló feladata a fázissorrend felcserélése; motorindításnál az öntartó érintkező a nyomógombbal párhuzamos.';
+    if(/hany kismegszakito|tartalek.*aramkor|tartalek.*kismegszakito/.test(text))return 'Számold meg először a tervben ténylegesen kialakítandó fogyasztói áramköröket. A kérdésben kért tartalékot ezután add hozzá; a főkapcsolót és az ÁVK-t ne számold kismegszakítóként.';
+    if(/0,5 mm|4,69|pe vezeto.*keresztmetszet|csatlakozo pe/.test(text))return 'A feladat kifejezetten a mellékelt terhelhetőségi táblázatra hivatkozik: hasonlítsd össze a 4,69 A motoráramot az egyes keresztmetszetek megengedett értékével, és a még elegendő legkisebbet keresd. Ez a feladatlapi táblázat eredménye; valós PE-méretezést ne vezess le pusztán az üzemi áramból.';
+    if(/i\. osztaly|erintesvedelmi osztaly.*i\b|i osztaly/.test(text))return 'Az I. érintésvédelmi osztály jellegzetessége a védőkapoccsal ellátott, megérinthető vezetőképes test. A hiba elleni védelemhez a PE-folytonosság és az önműködő lekapcsolás együtt szükséges.';
+    if(/emberi testen|kez es kez|kozvetlen erintes/.test(text))return 'Az áram nagysága az emberi test ellenállásától és a test két pontja közötti feszültségtől is függ. A válaszok közül olyan megoldást keress, amely csökkenti az érintési feszültséget, az áram útját vagy az áramütés időtartamát.';
+    if(/szelektiv/.test(text))return 'Szelektív működésnél a hibahelyhez legközelebbi védelem old le, a fölérendelt védelem pedig lehetőleg bekapcsolva marad. Biztosítóknál vagy kismegszakítóknál a névleges értékek mellett a kioldási görbéket is össze kell vetni.';
+    if(/sorba|munkafazis|technologiai sorrend/.test(text))return 'A sorrendet a fizikai kivitelezés korlátozza: előbb kijelölés és falmegmunkálás, utána dobozok/csövek rögzítése, majd vezetékbehúzás, bekötés és ellenőrzés. Ne rendezd előre a vakolás után elvégzendő munkát.';
+    if(/eszköz|szerszam|meromuszer/.test(text)&&/szereles|vedocso|vezetekazonositas/.test(text))return 'A szerszámokat a műveletekhez rendeld: jelöléshez mérő/jelölő eszköz, dobozhelyhez fúró vagy maró, horonyhoz vésőgép, bekötéshez szerelőszerszám, ellenőrzéshez villamos mérőműszer.';
+    if(/kismegszakito|c10|4500/.test(text)&&/jelzes|jeloles|230 v/.test(text))return 'A feliratot elemenként olvasd: a C betű a kioldási karakterisztika, az utána álló szám a névleges áram, a 4500 a megszakítóképesség. A 230 V~ a névleges váltakozó feszültségre utal.';
+    if(/nullazott|hiba.*aram|hiba.*vedelmi/.test(text))return 'Nullázott rendszerben a testzárlati hibaáram a fázis és a PEN/PE-visszavezetési út között záródik. A védelmi mód megnevezésénél azt kövesd, hogy a test hogyan kapcsolódik a táplálás földelt pontjához.';
+    if(/uzemi kondenzatoros motor|nem indul.*meglok|kezi.*meglok/.test(text))return 'Ha a motor kézi meglökés után bármelyik irányba tovább forog, a főtekercs létrehozza a forgó működéshez szükséges mezőt, de az indító nyomaték hiányzik. Ellenőrizd az üzemi/segédfázis és a kondenzátor áramkörét.';
+    if(/csatlakozo vezetek|feszultsegeses/.test(text)&&q.type==='number')return 'A feladat megadja az áramot és a vezeték ellenállását, ezért a feszültségeséshez az Ohm-törvényt használd: ΔU=I·R. Ellenőrizd, hogy az ellenállás már az oda-vissza vezetékre vonatkozik-e.';
+    if(q.type==='number'||/szamitsa|mennyi|mekkora az aram|fogyasztasat|eredo ellenallas/.test(text)){
+      if(/haromfazis|3×400|3x400/.test(text))return 'Írd ki külön az adatokat, váltsd a kW-ot W-ra, majd használd a háromfázisú összefüggést. A vonali feszültséghez tartozó √3-at és a megadott cos φ-t is vedd figyelembe.';
+      if(/energia|fogyasztas|perc|uzemido/.test(text))return 'Először az üzemidőt alakítsd órára. Az energiához a teljesítményt és az időt kell összeszorozni; ha több fogyasztó szerepel, a részfogyasztásokat csak ezután add össze.';
+      if(/feszultsegeses|ellenallas|keresztmetszet|hurokimpedancia|zarlati aram/.test(text))return 'Írd fel a keresett mennyiséget és a hozzá tartozó mértékegységet. A vezeték hosszánál ellenőrizd, hogy a feladat oda-vissza hosszt kér-e; csak azután helyettesíts a képletbe.';
+      return `Emeld ki a kérdésben kért mennyiséget (${prompt.split(/[?.!]/u)[0].slice(-85).trim()}). A megadott számok mellé írd oda a jelüket és egységüket, majd csak az ehhez tartozó képletbe helyettesíts.`;
+    }
+    if(/jeloles|adattabla|felirat/.test(text))return 'Haladj végig a jelölésen balról jobbra: különítsd el a gyártót, a névleges értéket, a karakterisztikát és a védettségi vagy megszakítóképességi adatot. Ne következtess olyan tulajdonságra, amit a felirat nem tartalmaz.';
+    if(/\bip\d|ipxx/u.test(text))return 'Az IP-jelölés két számjegyét külön olvasd: az első a szilárd testek és az érintés, a második a víz elleni védelmi fokozat. Az X azt jelenti, hogy arra a helyre nincs megadott fokozat.';
+    if(/h07|h05|nyy|nay|mcu|h07v/u.test(text))return 'A vezeték vagy kábel kódját részekre bontva értelmezd: a névleges feszültség és a szigetelőanyag után nézd meg a hajlékonyságot, az éranyagát, majd az erek számát és keresztmetszetét.';
+    if(/aram-vedokapcsolo|avk|kulonbozeti kioldo|iδn|idelta/u.test(text))return 'Az ÁVK az oda- és visszafolyó áram különbségét figyeli. A névleges áram a terhelhetőségi adat, az IΔn a kioldási érzékenység; egyik sem helyettesíti a másikat.';
+    if(/vedovezeto|pe keresztmetszet|pen vezeto|zold-sarga/u.test(text))return 'A PE/PEN jelölésnél különítsd el a védővezető funkcióját a fázisvezetőétől. Ha keresztmetszetet kér a feladat, a feladatlapon megadott táblázat/tartomány szerint válassz, ne csak a vezetékszín alapján.';
+    if(/tn-c-s|tn-c|tn-s|it rendszer|tt rendszer/u.test(text))return 'A hálózati rendszer betűiből indulj ki: az első betű a táplálás földelését, a második a testek védővezetőhöz való kapcsolását jelzi. A C közös PEN-vezetőt, az S külön PE- és N-vezetőt jelent.';
+    if(/szereloi ellenorzes|szigetelesi ellenallas|vedovezeto folytonossag/u.test(text))return 'Az ellenőrzés célját kösd a munka állapotához: a szerelés után, feszültség alá helyezés előtt a vezetők folytonosságát és a szigetelés állapotát kell igazolni.';
+    if(/csillagkapcsolas|vonali feszultseg|haromfazisu szimmetrikus/u.test(text))return 'Háromfázisú csillagkapcsolásnál a vonali feszültség két fázis között mérhető, a fázisfeszültség pedig egy fázis és a csillagpont között. A két érték aránya √3.';
+    if(/szlip|aszinkronmotor/u.test(text))return 'A szlip a forgó mágneses tér szinkronfordulata és a forgórész fordulata közti különbség aránya. A százalékhoz a különbséget a szinkronfordulattal oszd, ne a motor tényleges fordulatával.';
+    if(/feszultsegmentesites|aramutes|mentes/u.test(text))return 'Biztonsági kérdésnél először azt határozd meg, hogy a berendezés feszültség alatt van-e. A mentést csak az áramütés veszélyének megszüntetése után lehet biztonságosan megkezdeni.';
+    if(/hany.*(?:rajz|szakasz)|abra alapjan|rajz alapjan/.test(text))return 'Először keresd meg az ábrán a kérdésben megnevezett jelölést vagy szakaszt. Kövesd a kapcsolatokat a közvetlen szomszédos elemekig, és csak az ábrán ténylegesen szereplő jeleket számold.';
+    if(/milyen kapcsolo|hany helyrol/.test(text))return 'A kapcsoló típusát az dönti el, hány helyről kell vezérelni ugyanazt a világítási kört, illetve hány kört kell külön kapcsolni. A megfogalmazásban ezt a működési igényt keresd.';
+    if(/sorrend|munkafazis|technologiai/.test(text))return 'A munkamenetet a kész szerelés felől gondold vissza: a vezeték csak rögzített csőbe/csatornába húzható, a nyomvonalat és a dobozhelyeket pedig a fal megmunkálása előtt kell kijelölni.';
+    if(/meres|merni/.test(text))return 'Vedd észre, hogy a feladat feszültség alatti működéspróbáról vagy üzembe helyezés előtti ellenőrzésről kérdez. Az utóbbi esetben a vezetékek és a szigetelés biztonságos állapotát igazoló mérésre gondolj.';
+    if(/melyik allitas|igaz|helyes/.test(text))return 'A válaszlehetőségeket a feladatban szereplő konkrét feltételhez mérd. Az olyan szavakat, mint „csak”, „mindig” és „nem kell”, külön ellenőrizd: egyetlen ellenpélda is cáfolhatja az állítást.';
+    return `A kérdés kulcsszava: „${prompt.split(/\s+/u).slice(0,9).join(' ')}”. Fogalmazd meg, pontosan mit kér, majd a megadott ábrát, jelölést vagy feltételt használd bizonyítékként; ne csak a témakör általános szabályát idézd.`;
+  }
+  function learningRule(q){
+    const text=norm(`${q.prompt} ${q.topic} ${q.explanation}`);
+    if(/szerelvenydoboz/.test(text))return 'A dobozszámot a falba kerülő kapcsoló- és dugaljhelyekből vezesd le; a lámpatest és az elosztó külön tétel.';
+    if(/(?:vezetek|vezeto)szam|hany vezetek/.test(text)&&q.requiresFigure)return 'A keresztmetszeten áthaladó külön ereket számold, ne a nyomvonalak vagy leágazások számát.';
+    if(/\bip\d|ipxx/.test(text))return 'Az IP első számjegye a szilárd testek/érintés, a második a víz elleni védelmi fokozatot jelöli; X esetén arra a tulajdonságra nincs megadott szám.';
+    if(/aram-vedokapcsolo|avk|iδn|idelta/.test(text))return 'Az ÁVK a fázison ki- és a nullán visszafolyó áram eltérésére old le; túlterhelés és zárlat ellen önmagában nem helyettesíti a kismegszakítót.';
+    if(/h07|h05|nyy|nay|mcu/.test(text))return 'A kábeljelölésben a betűk az ér/szigetelés jellemzőit, a számok az erek számát és keresztmetszetét adják meg; a J jel zöld-sárga eret jelent.';
+    if(/tn-c-s|tn-c|tn-s|pen/.test(text))return 'A TN-C szakaszon a PE és N közös PEN, a szétválasztás után pedig PE és N külön vezető marad; a két vezetőt a szétválasztás után nem egyesítjük újra.';
+    if(/vedoosztaly|erintesvedelmi osztaly|ii\. osztaly|iii\. osztaly/.test(text))return 'I. osztály: PE-hez kötött test; II. osztály: kettős/megerősített szigetelés; III. osztály: biztonsági törpefeszültségű táplálás.';
+    if(/kapcsolo|kapcsolas/.test(text)&&/ket helyrol|ket hely|ket aramkor|ket fenyo|ket fenyforras/.test(text))return 'Két helyről ugyanazt a fénykört váltókapcsolókkal vezérlik; két külön fénykör egy helyről kétáramkörös (csillár-) kapcsolóval választható.';
+    if(/szereloi ellenorzes|ellenorzes szuksegessege/.test(text))return 'A szerelés vagy javítás utáni ellenőrzés a megváltozott villamos állapotot vizsgálja; az időszakos felülvizsgálat ettől külön feladat.';
+    if(/olvadobiztosito|kismegszakito|kioldasi karakterisztika/.test(text))return 'A névleges áramot és a kioldási karakterisztikát külön olvasd le: az amperérték a terhelést, a betűjel az idő-áram jelleggörbét írja le.';
+    if(/feszultsegeses|vezetekkere sztmetszet|keresztmetszet/.test(text))return 'A feszültségesésnél a teljes áramköri vezetékhosszal dolgozz; az oda-vissza út kétszeres hossz, hacsak a feladat már hurokhosszt nem ad meg.';
+    if(/milyen kapcsolo|kapcsolot hasznal|lampatestet ket helyrol/.test(text))return 'A vezérlési helyek száma dönti el a kapcsolást: két helyről váltókapcsolás, több helyről közbenső kapcsolókkal kiegészített váltókapcsolás kell.';
+    return '';
+  }
+  function wrongAnswerMarkup(q,response){
+    if(response===undefined||response===null||response===''||Array.isArray(response)&&!response.length)return '';
+    const choice=q.type==='single'||q.type==='multi';
+    if(choice){
+      const selected=Array.isArray(response)?response:[response],correct=getCorrectKeys(q),wrong=selected.filter(key=>!correct.includes(key));
+      const missed=correct.filter(key=>!selected.includes(key));
+      if(!wrong.length&&!missed.length)return '';
+      const correctText=correct.map(key=>{const option=q.options.find(item=>item.key===key);return option?`${option.key}. ${option.text}`:key}).join('; ');
+      const reasons=wrong.map(key=>{const option=q.options.find(item=>item.key===key),reason=q.optionReasons?.[key]||`A helyes állítás: ${correctText}. ${q.explanation||learningRule(q)||questionHint(q)}`;return `<li><b>${esc(option?`${option.key}. ${option.text}`:key)}</b><span>${esc(reason)}</span></li>`}).join('');
+      const missedHtml=missed.length?`<p>A több jó válaszos feladatból ezeket is jelölni kellett volna: ${esc(missed.map(key=>{const option=q.options.find(item=>item.key===key);return option?`${option.key}. ${option.text}`:key}).join('; '))}.</p>`:'';
+      return `<div class="answer-rationale"><strong>A választásodról</strong>${reasons?`<p>Ezt jelölted, de ezek az állítások nem helyesek:</p><ul>${reasons}</ul>`:''}${missedHtml}</div>`;
+    }
+    if(q.type==='number'&&isAuto(q)){
+      const expected=answerFields(q).length?answerFields(q):[{label:'Eredmény',answer:parseNumeric(q.answer),unit:'',tolerance:q.tolerance}],values=Array.isArray(response)?response:[response];
+      const missed=expected.map((field,index)=>!fieldCorrect(field,values[index],q)?field:null).filter(Boolean);
+      if(!missed.length)return '';
+      const expectedFor=field=>field.kind==='choice'?`ezt kellett választani: ${field.answer}`:`az elfogadott érték ${field.answer}${field.unit?` ${field.unit}`:''}`;
+      return `<div class="answer-rationale"><strong>A válaszod javítása</strong><p>${missed.map(field=>`${esc(field.label)}: ${field.kind==='choice'?'a kiválasztott válasz nem megfelelő; '+expectedFor(field):'a beírt szám nem megfelelő; '+expectedFor(field)}.`).join(' ')}</p><p>${esc(q.explanation||'Ellenőrizd az adatokat, a képletbe helyettesítést és a mértékegységek átváltását.')}</p></div>`;
+    }
+    return '';
   }
   function questionBody(q,mode,response,show){
     const auto=isAuto(q),multi=q.type==='multi',choice=q.type==='single'||q.type==='multi';
     const values=Array.isArray(response)?response:[response];
     const right=show&&choice?getCorrectKeys(q):[];
     const opts=q.options.length?(choice?`<div class="options">${q.options.map(o=>`<label class="option ${values.includes(o.key)?'selected':''} ${right.includes(o.key)?'correct-option':''} ${show&&values.includes(o.key)&&!right.includes(o.key)?'incorrect-option':''}"><input type="${multi?'checkbox':'radio'}" name="answer" value="${esc(o.key)}" ${values.includes(o.key)?'checked':''} ${show&&['exam','review'].includes(mode)?'disabled':''}><span><b>${esc(o.key)}.</b> ${esc(o.text)}</span>${right.includes(o.key)?'<span class="option-result" aria-label="Helyes válasz">✓</span>':''}${show&&values.includes(o.key)&&!right.includes(o.key)?'<span class="option-result" aria-label="Nem helyes válasz">×</span>':''}</label>`).join('')}</div>`:`<div class="options">${q.options.map(o=>`<div class="option"><span><b>${esc(o.key)}.</b> ${esc(o.text)}</span></div>`).join('')}</div>`):'';
-    const input=!choice?(mode==='review'||(!auto&&mode!=='exam')?'':q.type==='number'?`<input class="answer-input" id="freeAnswer" inputmode="decimal" type="text" placeholder="Eredmény mértékegységgel" ${show&&['exam','review'].includes(mode)?'disabled':''}>`:`<textarea class="answer-input long" id="freeAnswer" rows="4" placeholder="Írd ide a megoldásod" ${show&&['exam','review'].includes(mode)?'disabled':''}>${esc(response||'')}</textarea>`):'';
+    const input=!choice?(mode==='review'||(!auto&&mode!=='exam')?'':q.type==='number'?answerFields(q).length?`<div class="numeric-answer-list">${answerFields(q).map((field,i)=>`<label class="numeric-answer-row"><span><b>${esc(field.label)}</b><small>${esc(field.unit|| (field.kind==='choice'?'Válassz egy értéket':'Számérték, mértékegység nélkül'))}</small></span>${field.kind==='choice'?`<select class="answer-input answer-field-select" data-numeric-index="${i}" aria-label="${esc(field.label)}" ${show&&['exam','review'].includes(mode)?'disabled':''}><option value="">Válassz…</option>${field.options.map(option=>`<option value="${esc(option)}">${esc(option)}</option>`).join('')}</select>`:`<input class="answer-input numeric-answer" data-numeric-index="${i}" inputmode="decimal" type="text" aria-label="${esc(field.label)} számértéke" placeholder="Számérték" ${show&&['exam','review'].includes(mode)?'disabled':''}>`}</label>`).join('')}</div>`:`<label class="numeric-answer-row numeric-answer-single"><span><b>Válasz</b><small>Számérték, mértékegység nélkül</small></span><input class="answer-input" id="freeAnswer" inputmode="decimal" type="text" placeholder="Írd be a számot" ${show&&['exam','review'].includes(mode)?'disabled':''}></label>`:`<textarea class="answer-input long" id="freeAnswer" rows="4" placeholder="Írd ide a megoldásod" ${show&&['exam','review'].includes(mode)?'disabled':''}>${esc(response||'')}</textarea>`):'';
     const figure=q.figurePaths.length?`<div class="question-figures">${q.figurePaths.map((src,i)=>{const caption=q.figureCaptions[i]||`A feladathoz tartozó ábra${q.figurePaths.length>1?` ${i+1}`:''}`;return `<figure class="question-figure"><a class="figure-open" href="#" data-zoom-asset="${esc(src)}" data-zoom-caption="${esc(caption)}" aria-haspopup="dialog" aria-label="${esc(caption)} nagyítása"><img data-asset-src="${esc(src)}" alt="${esc(sourceLabel(q))}: ${esc(caption)}" loading="lazy" decoding="async"></a><figcaption>${esc(caption)} <a href="#" data-zoom-asset="${esc(src)}" data-zoom-caption="${esc(caption)}" aria-haspopup="dialog">Nagyítás</a></figcaption></figure>`}).join('')}</div>`:'';
     const sourceFigureLink=['bank','practice'].includes(mode)?sourceLink(q):'';
-    const hintOpen=mode==='bank'&&!!questionState?.hints[q.id];
-    const hintText=mode==='bank'?questionHint(q):'';
+    const hintOpen=mode==='bank'?!!questionState?.hints[q.id]:mode==='practice'?!!practice?.hints?.[q.id]:false;
+    const hintText=['bank','practice'].includes(mode)?questionHint(q):'';
     const hint=hintText?`<div class="question-inline-hint"><button id="questionHintToggle" class="question-hint-toggle" type="button" aria-expanded="${hintOpen}" aria-controls="questionHint"><span aria-hidden="true">?</span> ${hintOpen?'Támpont elrejtése':'Támpont kérése'} <span aria-hidden="true">${hintOpen?'−':'+'}</span></button><div id="questionHint" class="question-hint-body" ${hintOpen?'':'hidden'}><strong>Támpont</strong><p>${esc(hintText)}</p></div></div>`:'';
     const title=mode==='bank'?`<div class="question-meta" aria-label="Forrás és feladatszám">${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</div>`:`<div class="question-meta">${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</div>`;
     const prompt=mode==='bank'?`<h1 id="questionTitle" class="question-title question-prompt" tabindex="-1">${esc(q.prompt)}</h1>`:`<h2 class="question-title question-prompt">${esc(q.prompt)}</h2>`;
-    const mobileActions=mode==='bank'?`<div class="question-mobile-actions">${isAuto(q)?'<button id="questionCheckMobile" class="button primary" type="button">Válasz ellenőrzése</button>':''}<button id="questionShowMobile" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás</button></div><div id="questionFeedbackMobile" role="status" aria-live="polite"></div>`:'';
-    return `<div class="question-top"><div class="tags"><span class="chip">${esc(q.topic)}</span><span class="chip">${esc(TYPE[q.type]||'Feladat')}</span>${q.requiresFigure?'<span class="chip">Ábrás feladat</span>':''}${q.review?'<span class="chip review">Megoldás ellenőrzendő</span>':''}</div><span>${q.points} pont</span></div>${title}${prompt}${figure}${sourceFigureLink}${hint}${opts}${input}${mobileActions}${!auto&&mode==='exam'?'<div class="feedback review">Ezt a feladatot a vizsga végén önellenőrzéssel lehet értékelni.</div>':''}${show&&mode!=='review'?`<div class="explanation"><strong>Megoldás</strong><p>${esc(answerLabel(q))}</p>${q.explanation?`<strong style="margin-top:14px">Miért?</strong>${explanationMarkup(q)}`:''}${q.review?'<p>A forrás vagy a válaszkulcs ellenőrzése szükséges; biztonsági szempontból kétes állítást ne tanulj meg tényként.</p>':''}${sourceLink(q)}</div>`:''}`;
+    const mobileActions=mode==='bank'?`<div class="question-mobile-actions">${isAuto(q)?'<button id="questionCheckMobile" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!show?`<button id="questionShowMobile" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}</div><div id="questionFeedbackMobile" role="status" aria-live="polite"></div>`:'';
+    const rationale=show&&mode!=='review'?wrongAnswerMarkup(q,response):'';
+    return `<div class="question-top"><div class="tags"><span class="chip">${esc(q.topic)}</span><span class="chip">${esc(typeLabel(q))}</span>${q.requiresFigure?'<span class="chip">Ábrás feladat</span>':''}${q.review?'<span class="chip review">Megoldás ellenőrzendő</span>':''}</div><span>${q.points} pont</span></div>${title}${prompt}${figure}${sourceFigureLink}${hint}${opts}${input}${mobileActions}${!auto&&mode==='exam'?'<div class="feedback review">Ezt a feladatot a vizsga végén önellenőrzéssel lehet értékelni.</div>':''}${show&&mode!=='review'?`<div class="explanation"><strong>Megoldás</strong><p>${esc(answerLabel(q))}</p>${rationale}${q.explanation?`<strong style="margin-top:14px">Miért?</strong>${explanationMarkup(q)}`:''}${q.review?'<p>A forrás vagy a válaszkulcs ellenőrzése szükséges; biztonsági szempontból kétes állítást ne tanulj meg tényként.</p>':''}${sourceLink(q)}</div>`:''}`;
   }
-  function selectedFrom(root,q){if(q.type==='single'||q.type==='multi'){const checked=$$('input[name="answer"]:checked',root).map(x=>x.value);return q.type==='multi'?checked:checked[0]||''}return $('#freeAnswer',root)?.value||''}
+  function selectedFrom(root,q){if(q.type==='single'||q.type==='multi'){const checked=$$('input[name="answer"]:checked',root).map(x=>x.value);return q.type==='multi'?checked:checked[0]||''}if(q.type==='number'&&answerFields(q).length)return $$('.numeric-answer, .answer-field-select',root).map(input=>input.value);return $('#freeAnswer',root)?.value||''}
+  function restoreNumericResponse(root,q,response){if(q.type!=='number')return;if(answerFields(q).length){const values=Array.isArray(response)?response:[response];$$('.numeric-answer, .answer-field-select',root).forEach((input,index)=>input.value=values[index]||'')}else if($('#freeAnswer',root))$('#freeAnswer',root).value=response||''}
+  function isEmptyResponse(q,response){return Array.isArray(response)?!response.some(value=>String(value??'').trim()):!String(response??'').trim()}
   function bindOptions(root){$$('.option input',root).forEach(input=>input.addEventListener('change',()=>$$('.option',root).forEach(label=>label.classList.toggle('selected',!!$('input:checked',label)))))}
   function openQuestion(q,{fromRoute=false,origin=view}={}){
     if(!q||exam&&!exam.submitted)return;
@@ -379,9 +505,9 @@
     const next=`<button type="button" class="question-nav-button next" data-question-step="1" ${hasNext?'':'disabled'} aria-label="Következő találat">Következő →</button>`;
     const jumpOptions=state.ids.map((id,i)=>{const item=byId.get(id);return `<option value="${i}" ${i===state.index?'selected':''}>${i+1}. ${esc(sourceLabel(item))} · ${esc(item.number)}. feladat</option>`}).join('');
     const status=attemptStatus(q)==='correct'?'Sikerült':attemptStatus(q)==='retry'?'Újra gyakorlom':'Még nem gyakorolt';
-    root.innerHTML=`<div class="question-workspace"><header class="question-workspace-nav"><button id="questionBack" class="question-back" type="button">← ${state.origin==='exam'?'Vizsga áttekintése':'Feladatbank'}</button><span class="question-workspace-counter">${ordinal}. találat a szűrt ${total} feladatból</span></header><div class="question-workspace-layout"><article class="question-workspace-main">${questionBody(q,'bank',response,shown)}</article><aside class="question-workspace-side" aria-label="Feladat adatai és vezérlés"><div class="question-side-card"><span class="question-side-kicker">FELADAT ADATAI</span><div class="question-side-detail"><span>Téma</span><b>${esc(q.topic)}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</b></div><div class="question-side-detail"><span>Típus · pont</span><b>${esc(TYPE[q.type]||'Feladat')} · ${q.points} pont</b></div><div class="question-side-detail"><span>Gyakorlási állapot</span><b>${status}</b></div></div><div class="question-side-nav"><label for="questionJump">Ugrás a szűrt találatok között</label><select id="questionJump" aria-label="Ugrás egy másik találatra">${jumpOptions}</select><div class="question-side-nav-buttons">${prev}${next}</div></div><div class="question-side-actions">${isAuto(q)?'<button id="questionCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}<button id="questionShow" class="button ${isAuto(q)?'outline':'primary'}" type="button">${shown?'Megoldás megjelenítve':'Megoldás és magyarázat'}</button>${!isAuto(q)&&shown?'<button id="questionGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="questionRetry" class="button outline" type="button">Újra gyakorlom</button></div><div id="questionFeedback" role="status" aria-live="polite">${feedbackHtml}</div></aside></div></div>`;
+    root.innerHTML=`<div class="question-workspace"><header class="question-workspace-nav"><button id="questionBack" class="question-back" type="button">← ${state.origin==='exam'?'Vizsga áttekintése':'Feladatbank'}</button><span class="question-workspace-counter">${ordinal}. találat a szűrt ${total} feladatból</span></header><div class="question-workspace-layout"><article class="question-workspace-main">${questionBody(q,'bank',response,shown)}</article><aside class="question-workspace-side" aria-label="Feladat adatai és vezérlés"><div class="question-side-card"><span class="question-side-kicker">FELADAT ADATAI</span><div class="question-side-detail"><span>Téma</span><b>${esc(q.topic)}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</b></div><div class="question-side-detail"><span>Típus · pont</span><b>${esc(typeLabel(q))} · ${q.points} pont</b></div><div class="question-side-detail"><span>Gyakorlási állapot</span><b>${status}</b></div></div><div class="question-side-nav"><label for="questionJump">Ugrás a szűrt találatok között</label><select id="questionJump" aria-label="Ugrás egy másik találatra">${jumpOptions}</select><div class="question-side-nav-buttons">${prev}${next}</div></div><div class="question-side-actions">${isAuto(q)?'<button id="questionCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="questionShow" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!isAuto(q)&&shown?'<button id="questionGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="questionRetry" class="button outline" type="button">Újra gyakorlom</button></div><div id="questionFeedback" role="status" aria-live="polite">${feedbackHtml}</div></aside></div></div>`;
     $('#questionFeedbackMobile',root).innerHTML=feedbackHtml;
-    if(q.type==='number')$('#freeAnswer',root).value=response;
+    restoreNumericResponse(root,q,response);
     bindOptions(root);
     view='question';
     $$('.view').forEach(e=>e.classList.toggle('active',e.id==='questionView'));
@@ -402,16 +528,16 @@
     });
     $('#questionCheck',root)?.addEventListener('click',()=>{
       captureQuestionResponse();
-      const answer=state.responses[q.id],empty=Array.isArray(answer)?!answer.length:!String(answer).trim();
+      const answer=state.responses[q.id],empty=isEmptyResponse(q,answer);
       if(empty){state.feedback[q.id]={kind:'review',text:'Előbb add meg a válaszodat. Támpontot is kérhetsz.'};const notice='<div class="feedback review">Előbb add meg a válaszodat. Támpontot is kérhetsz.</div>';$('#questionFeedback',root).innerHTML=notice;$('#questionFeedbackMobile',root).innerHTML=notice;return}
       const result=grade(q,answer);mark(q,result);state.shown[q.id]=true;
       state.feedback[q.id]=result===null?{kind:'review',text:'Hasonlítsd össze a válaszodat a megoldással, majd jelöld a feladatot.'}:result?{kind:'',text:'Helyes válasz.'}:{kind:'wrong',text:'Még nem ez a megoldás. Nézd át a magyarázatot, majd próbáld újra.'};
       renderQuestionPage();
       requestAnimationFrame(()=>$('#questionFeedback')?.focus({preventScroll:true}));
     });
-    $('#questionShow',root).addEventListener('click',()=>{captureQuestionResponse();state.shown[q.id]=true;renderQuestionPage();requestAnimationFrame(()=>$('.explanation',$('#questionContent'))?.scrollIntoView({behavior:'smooth',block:'center'}))});
+    $('#questionShow',root)?.addEventListener('click',()=>{captureQuestionResponse();state.shown[q.id]=true;renderQuestionPage();requestAnimationFrame(()=>$('.explanation',$('#questionContent'))?.scrollIntoView({behavior:'smooth',block:'center'}))});
     $('#questionCheckMobile',root)?.addEventListener('click',()=>$('#questionCheck',root).click());
-    $('#questionShowMobile',root).addEventListener('click',()=>$('#questionShow',root).click());
+    $('#questionShowMobile',root)?.addEventListener('click',()=>$('#questionShow',root)?.click());
     $('#questionGotIt',root)?.addEventListener('click',()=>{progress[q.id]={status:'correct',at:Date.now()};save();renderWrongTasks();state.feedback[q.id]={kind:'',text:'Önellenőrzés szerint sikerült.'};renderQuestionPage()});
     $('#questionRetry',root).addEventListener('click',()=>{captureQuestionResponse();progress[q.id]={status:'retry',at:Date.now()};save();renderWrongTasks();state.feedback[q.id]={kind:'review',text:'Felvéve az újragyakorláshoz.'};renderQuestionPage()});
     hydrateAssets(root);
@@ -428,19 +554,20 @@
     const q=practice.list[practice.index],root=$('#practiceSession'),r=practice.responses[q.id]??'',shown=!!practice.shown[q.id],auto=isAuto(q);
     const position=practice.index+1,total=practice.list.length,status=attemptStatus(q)==='correct'?'Sikerült':attemptStatus(q)==='retry'?'Újra gyakorlom':'Még nem értékelt';
     const feedback=practice.feedback?.[q.id];
-    const actions=`${auto?'<button id="practiceCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}<button id="practiceShow" class="button ${auto?'outline':'primary'}" type="button">Megoldás és magyarázat</button>${!auto&&shown?'<button id="practiceGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="practiceHard" class="button outline" type="button">Ezt újra gyakorlom</button>`;
-    root.innerHTML=`<div class="practice-layout"><article class="practice-main"><div class="practice-mobile-head"><span>${position} / ${total} feladat</span><button id="practiceExitMobile" type="button">Kilépés</button></div>${questionBody(q,'practice',r,shown)}<div class="practice-mobile-actions">${auto?'<button id="practiceCheckMobile" class="button primary" type="button">Válasz ellenőrzése</button>':''}<button id="practiceShowMobile" class="button ${auto?'outline':'primary'}" type="button">Megoldás</button>${!auto&&shown?'<button id="practiceGotItMobile" class="button outline" type="button">Megértettem</button>':''}<button id="practiceHardMobile" class="button outline" type="button">Újra gyakorlom</button><div class="practice-mobile-nav"><button id="practicePrevMobile" class="button outline" type="button" ${position===1?'disabled':''}>← Előző</button><button id="practiceNextMobile" class="button dark" type="button">${position===total?'Befejezés':'Következő →'}</button></div></div></article><aside class="practice-rail" aria-label="Gyakorlás vezérlése"><div class="practice-rail-head"><strong>Gyakorlás</strong><button id="practiceExit" type="button">Kilépés</button></div><div class="practice-rail-count">${position} <span>/ ${total} feladat</span></div><div class="progress-track"><div class="progress-fill" style="width:${position/total*100}%"></div></div><div class="question-side-detail"><span>Téma</span><b>${esc(q.topic)}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</b></div><div class="question-side-detail"><span>Állapot</span><b>${status}</b></div><div class="practice-rail-actions">${actions}</div><div id="practiceFeedback" role="status" aria-live="polite">${feedback?`<div class="feedback ${feedback.kind}">${esc(feedback.text)}</div>`:''}</div><div class="practice-rail-nav"><button id="practicePrev" class="button outline" type="button" ${position===1?'disabled':''}>← Előző</button><button id="practiceNext" class="button dark" type="button">${position===total?'Befejezés':'Következő →'}</button></div></aside></div>`;
-    if(q.type==='number')$('#freeAnswer',root).value=r;
+    const actions=`${auto?'<button id="practiceCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="practiceShow" class="button ${auto?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!auto&&shown?'<button id="practiceGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="practiceHard" class="button outline" type="button">Ezt újra gyakorlom</button>`;
+    root.innerHTML=`<div class="practice-layout"><article class="practice-main"><div class="practice-mobile-head"><span>${position} / ${total} feladat</span><button id="practiceExitMobile" type="button">Kilépés</button></div>${questionBody(q,'practice',r,shown)}<div class="practice-mobile-actions">${auto?'<button id="practiceCheckMobile" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="practiceShowMobile" class="button ${auto?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!auto&&shown?'<button id="practiceGotItMobile" class="button outline" type="button">Megértettem</button>':''}<button id="practiceHardMobile" class="button outline" type="button">Újra gyakorlom</button><div class="practice-mobile-nav"><button id="practicePrevMobile" class="button outline" type="button" ${position===1?'disabled':''}>← Előző</button><button id="practiceNextMobile" class="button dark" type="button">${position===total?'Befejezés':'Következő →'}</button></div></div></article><aside class="practice-rail" aria-label="Gyakorlás vezérlése"><div class="practice-rail-head"><strong>Gyakorlás</strong><button id="practiceExit" type="button">Kilépés</button></div><div class="practice-rail-count">${position} <span>/ ${total} feladat</span></div><div class="progress-track"><div class="progress-fill" style="width:${position/total*100}%"></div></div><div class="question-side-detail"><span>Téma</span><b>${esc(q.topic)}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</b></div><div class="question-side-detail"><span>Állapot</span><b>${status}</b></div><div class="practice-rail-actions">${actions}</div><div id="practiceFeedback" role="status" aria-live="polite">${feedback?`<div class="feedback ${feedback.kind}">${esc(feedback.text)}</div>`:''}</div><div class="practice-rail-nav"><button id="practicePrev" class="button outline" type="button" ${position===1?'disabled':''}>← Előző</button><button id="practiceNext" class="button dark" type="button">${position===total?'Befejezés':'Következő →'}</button></div></aside></div>`;
+    restoreNumericResponse(root,q,r);
     bindOptions(root);
     const preserve=()=>{practice.responses[q.id]=selectedFrom(root,q)};
     const setFeedback=(kind,text)=>{practice.feedback??={};practice.feedback[q.id]={kind,text};renderPractice()};
     $('#practiceCheck',root)?.addEventListener('click',()=>{
-      preserve();const answer=practice.responses[q.id],empty=Array.isArray(answer)?!answer.length:!String(answer).trim();
+      preserve();const answer=practice.responses[q.id],empty=isEmptyResponse(q,answer);
       if(empty){setFeedback('review','Előbb válassz vagy adj meg egy választ.');return}
       practice.shown[q.id]=true;const result=grade(q,answer);mark(q,result);
-      setFeedback(result?'':'wrong',result?'Helyes válasz.':'Most nem sikerült. Nézd át a magyarázatot.');
+      setFeedback(result?'':'wrong',result?'Helyes válasz.':'A beírt válasz eltér a megoldástól. A részletes indoklás most megjelenik a feladat alatt.');
     });
-    $('#practiceShow',root).addEventListener('click',()=>{preserve();practice.shown[q.id]=true;renderPractice()});
+    $('#practiceShow',root)?.addEventListener('click',()=>{preserve();practice.shown[q.id]=true;renderPractice()});
+    $('#questionHintToggle',root)?.addEventListener('click',()=>{practice.hints[q.id]=!practice.hints[q.id];renderPractice()});
     $('#practiceGotIt',root)?.addEventListener('click',()=>{progress[q.id]={status:'correct',at:Date.now()};save();renderWrongTasks();setFeedback('','Önellenőrzés szerint sikerült.')});
     $('#practiceHard',root).addEventListener('click',()=>{progress[q.id]={status:'retry',at:Date.now()};save();renderWrongTasks();setFeedback('review','Felvéve az újragyakorláshoz.')});
     $('#practicePrev',root).addEventListener('click',()=>{preserve();practice.index--;renderPractice();window.scrollTo({top:0,behavior:'instant'})});
@@ -459,7 +586,7 @@
       return;
     }
     $('#practicePoolNotice')?.remove();
-    practice={list:shuffle(pool).slice(0,count),index:0,responses:{},shown:{},feedback:{}};$('#practiceSetup').classList.add('hidden');$('#practiceSession').classList.remove('hidden');$('#practiceView').classList.add('practice-running');renderPractice();window.scrollTo({top:0,behavior:'instant'});
+    practice={list:shuffle(pool).slice(0,count),index:0,responses:{},shown:{},hints:{},feedback:{}};$('#practiceSetup').classList.add('hidden');$('#practiceSession').classList.remove('hidden');$('#practiceView').classList.add('practice-running');renderPractice();window.scrollTo({top:0,behavior:'instant'});
   }
   const EXAM_AREAS=[
     {id:'material',label:'Alkatrészek és anyagok',weight:20},
@@ -612,7 +739,7 @@
     const {score,correct,breakdown}=exam.evaluation,root=$('#examSession');
     const reviewMarkup=()=>exam.list.map((q,i)=>{
       const points=earnedPoints(q,exam.responses[q.id]??''),answer=exam.responses[q.id],status=points===q.points?'Jó válasz':points>0?'Részpont':'Nem sikerült';
-      const explanation=q.explanation?`<div class="review-explanation"><strong>Miért ez a megoldás?</strong>${explanationMarkup(q)}</div>`:'<p class="review-explanation-missing">Ehhez a feladathoz nem tartozik külön magyarázat.</p>';
+      const explanation=q.explanation?`<div class="review-explanation">${wrongAnswerMarkup(q,answer)}<strong>Miért ez a megoldás?</strong>${explanationMarkup(q)}</div>`:'<p class="review-explanation-missing">Ehhez a feladathoz nem tartozik külön magyarázat.</p>';
       return `<article class="review-row"><div class="review-heading"><strong>${i+1}. feladat</strong><span class="review-status ${points===q.points?'is-correct':points>0?'is-partial':'is-wrong'}">${status}</span><small class="review-points">${Number(points.toFixed(1))} / ${q.points} pont</small></div><div class="review-question">${questionBody(q,'review',answer,true)}</div><div class="review-answer-grid"><div class="${points===q.points?'is-correct':'is-wrong'}"><span>Válaszod</span><p>${esc(answerForReview(q,answer))}</p></div><div class="is-correct"><span>Helyes válasz</span><p>${esc(answerLabel(q))}</p></div></div>${explanation}</article>`;
     }).join('');
     root.innerHTML=`<div class="exam-szev-results"><div class="kicker">TANULÁSI KIÉRTÉKELÉS</div><h2 class="question-title">A mintavizsga eredménye</h2><div class="exam-summary"><strong>${score} / 100 pont</strong><p>${correct} teljes pontszámú feladat ${exam.list.length} közül. A 40%-os KKK-küszöböt ez a gyakorló eredmény ${score>=40?'eléri':'nem éri el'}. Ez nem hivatalos vizsgaeredmény.</p></div><div class="exam-area-breakdown">${breakdown.map(area=>`<div><span>${esc(area.label)}</span><strong>${Math.round(area.points*10)/10} / ${area.weight} pont</strong><small>${area.count} mintafeladat</small></div>`).join('')}</div><p class="exam-score-note">A négy KKK-témakör pontjait 20 / 20 / 20 / 40 arányra súlyoztuk. A kérdések száma és válogatása saját gyakorló összeállítás.</p><div class="question-actions"><button id="newExam" class="button outline" type="button">Új mintavizsga</button></div><section id="examReview" class="exam-review"><h3>Válaszaid és a helyes megoldások</h3>${reviewMarkup()}</section></div>`;
@@ -620,12 +747,77 @@
   }
   function setupWorkedAnimations(root){
     if(!root)return;
-    const examples=$$('.worked-steps',root);
-    if(!('IntersectionObserver' in window)){examples.forEach(example=>example.classList.add('is-visible'));return}
-    const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{
-      if(entry.isIntersecting){entry.target.classList.add('is-visible');observer.unobserve(entry.target)}
-    }),{threshold:.12});
-    examples.forEach(example=>observer.observe(example));
+    const meaningMap={pn:'Névleges teljesítmény',u:'Feszültség',i:'Áram',eta:'Hatásfok',cosphi:'Teljesítménytényező',n:'Fordulatszám',f:'Frekvencia',rho:'Fajlagos ellenállás',l:'Vezeték hossza',lh:'Oda-vissza vezetékhossz',a:'Vezető-keresztmetszet',e:'Villamos energia',t:'Üzemidő',c:'Egységár',r:'Ellenállás',re:'Eredő ellenállás',s:'Látszólagos teljesítmény',p:'Hatásos teljesítmény',q:'Meddő teljesítmény',uoc:'Üresjárási feszültség',isc:'Rövidzárási áram',in:'Névleges áram',iw:'Terhelőáram',u0:'Fázisfeszültség',z:'Impedancia',zs:'Hurokimpedancia',epsilon:'Relatív feszültségesés'};
+    const symbolKey=value=>{
+      const raw=String(value).trim().toLocaleLowerCase('hu').replace(/[₀₁₂₃₄₅₆₇₈₉]/gu,'').replace(/ₙ/gu,'n');
+      if(/^p\s*n?$/u.test(raw))return raw.includes('n')?'pn':'p';
+      if(/^i\s*n?$/u.test(raw))return raw.includes('n')?'in':'i';
+      return norm(raw).replace(/ρ/gu,'rho').replace(/η/gu,'eta').replace(/ε/gu,'epsilon').replace(/φ/gu,'phi').replace(/[^a-z0-9]/gu,'');
+    };
+    const unitMatch=value=>value.match(/\s*(Ω\s*[·.]?\s*mm²\s*\/\s*m|A\s*\/\s*mm²|Ft\s*\/\s*kWh|kWh|Wh|kVA|kW|W|kvar|var|mA|A|V|Ω|mm²|mm|m²|m|h|min|Hz|1\/min|Ft|%|VA)\s*$/u);
+    const escapeHtml=value=>String(value).replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    const decorateNumbers=element=>{const value=element.textContent||'';element.innerHTML=escapeHtml(value).replace(/(\d+(?:[.,]\d+)?)/gu,'<span class="calc-number-token" data-value="$1">$1</span>')};
+    const splitInputRows=example=>{
+      const first=$('.worked-steps__panel',example),math=$('.worked-step-math',first),heading=$('.worked-steps__body > strong',first);
+      if(!first||!math||!heading||!/^adat/u.test(norm(heading.textContent)))return;
+      const entries=math.textContent.split(/\s*;\s*/u).map(value=>value.trim()).filter(Boolean).map(value=>value.match(/^(.+?)\s*=\s*(.+)$/u)).filter(Boolean);
+      if(entries.length<2)return;
+      const lesson=example.closest('.lesson'),legend=[...(lesson?.querySelectorAll('.formula-legend div')||[])].map(row=>({symbol:row.querySelector('dt')?.textContent||'',meaning:row.querySelector('dd')?.textContent||''}));
+      const list=document.createElement('div');list.className='worked-input-list';list.setAttribute('aria-label','A feladat megadott adatai');
+      for(const [,rawSymbol,rawValue] of entries){
+        const symbol=rawSymbol.trim(),value=rawValue.trim(),key=symbolKey(symbol),unit=unitMatch(value),unitText=unit?.[1]||'',valueOnly=unit?value.slice(0,unit.index).trim():value;
+        const legendItem=legend.find(item=>symbolKey(item.symbol)===key),meaning=meaningMap[key]||legendItem?.meaning?.split(/[·;]/u)[0]?.trim()||'A feladatban megadott érték';
+        const row=document.createElement('div');row.className='worked-input-row';
+        const symbolNode=document.createElement('span');symbolNode.className='worked-input-symbol';symbolNode.textContent=symbol;
+        const valueNode=document.createElement('strong');valueNode.className='worked-input-value';valueNode.textContent=valueOnly;decorateNumbers(valueNode);
+        const meaningNode=document.createElement('small');meaningNode.textContent=`${meaning}${unitText?` · mértékegység: ${unitText}`:' · mértékegység nélküli arányszám'}`;
+        row.append(symbolNode,valueNode,meaningNode);list.append(row);
+      }
+      math.replaceWith(list);
+    };
+    const tokenValue=token=>String(token.dataset.value||token.textContent||'').replace(/\s/g,'').replace(',','.');
+    const flyValues=(from,to)=>{
+      const sources=$$('.calc-number-token',from),targets=$$('.calc-number-token',to),available=new Map();
+      for(const token of sources){const value=tokenValue(token);if(!available.has(value))available.set(value,[]);available.get(value).push(token)}
+      const flights=[];
+      for(const target of targets){const value=tokenValue(target),source=available.get(value)?.shift();if(!source)continue;flights.push({from:source.getBoundingClientRect(),to:target.getBoundingClientRect(),text:source.textContent,target})}
+      for(const item of flights){
+        item.target.classList.add('calc-number-carried');
+        if(matchMedia('(prefers-reduced-motion: reduce)').matches||!Element.prototype.animate)continue;
+        const chip=document.createElement('span');chip.className='calc-fly-token';chip.textContent=item.text;chip.setAttribute('aria-hidden','true');chip.style.left=`${item.from.left}px`;chip.style.top=`${item.from.top}px`;document.body.append(chip);
+        const animation=chip.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${item.to.left-item.from.left}px,${item.to.top-item.from.top}px) scale(.92)`,opacity:.2}],{duration:620,easing:'cubic-bezier(.22,.75,.23,1)'});
+        animation.finished.catch(()=>{}).finally(()=>chip.remove());
+      }
+    };
+    $$('.worked-steps',root).forEach(example=>{
+      if(example.dataset.stepperReady)return;
+      const panels=$$('.worked-steps__panels .worked-steps__panel',example);
+      if(!panels.length)return;
+      example.dataset.stepperReady='true';
+      panels.forEach((panel,index)=>{const math=$('.worked-step-math',panel);if(math)decorateNumbers(math);panel.hidden=index!==0;panel.classList.toggle('is-current',index===0)});
+      splitInputRows(example);
+      const controls=document.createElement('div');controls.className='worked-stepper-controls';
+      const previous=document.createElement('button');previous.type='button';previous.className='button outline';previous.textContent='← Előző';
+      const status=document.createElement('div');status.className='worked-stepper-status';status.setAttribute('aria-live','polite');
+      const meter=document.createElement('span');meter.className='worked-stepper-meter';
+      const label=document.createElement('strong');
+      status.append(label,meter);
+      const next=document.createElement('button');next.type='button';next.className='button primary';
+      controls.append(previous,status,next);example.append(controls);
+      let active=0;
+      const update=(targetIndex,animate=true)=>{
+        const old=panels[active],target=panels[targetIndex];
+        const oldWasHidden=old.hidden;target.hidden=false;
+        if(animate&&!oldWasHidden)flyValues(old,target);
+        old.hidden=targetIndex===active?false:true;old.classList.remove('is-current');active=targetIndex;target.hidden=false;target.classList.add('is-current');
+        label.textContent=`${active+1}. lépés / ${panels.length}`;meter.style.setProperty('--step-progress',`${(active+1)/panels.length*100}%`);
+        previous.disabled=active===0;next.textContent=active===panels.length-1?'Példa újrakezdése':'Folytatás →';
+        if(animate){target.classList.remove('step-arrive');void target.offsetWidth;target.classList.add('step-arrive')}
+      };
+      previous.addEventListener('click',()=>{if(active>0)update(active-1)});
+      next.addEventListener('click',()=>update(active===panels.length-1?0:active+1));
+      update(0,false);
+    });
   }
   function init(){
     setupFilters();renderHome();setupProgressReset();renderWrongTasks();setupWorkedAnimations($('#guideView'));
