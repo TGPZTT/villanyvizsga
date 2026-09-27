@@ -1147,6 +1147,17 @@ body.question-open main {
 .question-workspace-main .question-prompt { font-size: 19px; line-height: 1.6; }
 .practice-main .question-title { font-size: clamp(29px, 2.5vw, 38px); }
 .practice-main .question-prompt { font-size: 18px; }
+.exam-review { margin-top: 26px; }
+.exam-review h3 { margin: 0 0 12px; color: #174b56; font-size: 22px; }
+.review-row { margin: 10px 0; padding: 16px; border: 1px solid #d8e7e1; border-radius: 12px; background: #fff; }
+.review-row > strong { display: block; color: #204b55; font-size: 16px; line-height: 1.45; }
+.review-answer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.review-answer-grid > div { padding: 10px 12px; border-radius: 8px; background: #f3f8f5; }
+.review-answer-grid > div:last-child { background: #e7f5ed; }
+.review-answer-grid span { color: #617a7d; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.review-answer-grid p { margin: 5px 0 0; color: #244c55; font-size: 15px; line-height: 1.45; white-space: pre-line; }
+.review-points { display: inline-block; margin-right: 12px; color: #617a7d; font-size: 13px; }
+@media (max-width: 600px) { .review-answer-grid { grid-template-columns: 1fr; } }
 @media (max-width: 520px) {
   .question-title, .question-workspace-main .question-title, .practice-main .question-title, .question-title.question-prompt { font-size: 25px; }
   .question-prompt, .question-workspace-main .question-prompt, .practice-main .question-prompt { font-size: 16px; }

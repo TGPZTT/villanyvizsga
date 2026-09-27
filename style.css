@@ -60,7 +60,7 @@ main{max-width:1570px;min-height:calc(100vh - 127px);padding:36px clamp(24px,4vw
 .question-figures{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));align-items:start;gap:13px;margin:20px 0}
 .question-figures .question-figure{margin:0}
 .option.correct-option:after,.option.incorrect-option:after{content:none}
-.option-result{flex:none;display:grid;place-items:center;min-width:23px;height:23px;margin-left:auto;border-radius:50%;font:800 14px var(--mono)}
+.option-result{display:grid;place-items:center;flex:0 0 26px;width:26px;min-width:26px;height:26px;margin-left:auto;border-radius:50%;overflow:visible;font:800 16px/1 var(--mono)}
 .correct-option .option-result{color:#fff;background:#3d936c}
 .incorrect-option .option-result{color:#fff;background:#b9654f}
 .option,.question-prompt,.calculation-note p{font-variant-numeric:tabular-nums}
