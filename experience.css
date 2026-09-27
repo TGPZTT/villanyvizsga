@@ -1135,6 +1135,9 @@ body.question-open main {
 .exam-banner-icon { flex: 0 0 47px; display: grid; place-items: center; line-height: 1; }
 .exam-banner-icon svg { display: block; width: 27px; height: 27px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .self-check-note { margin: 15px 0; padding: 13px 16px; border: 1px solid #d3e6df; border-radius: 9px; color: #315963; background: #f2f9f5; font-size: 15px; line-height: 1.6; }
+.explanation-subtitle { display: block; margin-top: 16px; color: #164e59; font-size: 15px; }
+.explanation-steps { margin: 8px 0 0 20px; padding: 0; color: #315963; font-size: 15px; line-height: 1.6; }
+.explanation-steps li { padding-left: 4px; margin: 3px 0; }
 #practiceView.practice-running > .page-intro { display: none; }
 #practiceSession.session { max-width: none; min-height: 0; margin-top: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
 .practice-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(265px, 310px); align-items: start; gap: clamp(15px, 2vw, 25px); }

@@ -229,25 +229,33 @@
   function explanationMarkup(q){
     if(!q.explanation)return '';
     const equation=/[=≈≤≥]/.test(q.explanation)&&/\d|[Δ√Ωφρη]/u.test(q.explanation);
-    return equation?`<div class="calculation-note"><span class="calculation-note-label">Levezetés</span><p>${esc(q.explanation)}</p></div>`:`<p>${esc(q.explanation)}</p>`;
+    const steps=q.type==='number'
+      ? '<strong class="explanation-subtitle">Ellenőrzési menet</strong><ol class="explanation-steps"><li>Írd ki külön a megadott adatokat, a mértékegységekkel együtt.</li><li>Nevezd meg a keresett mennyiséget, majd válaszd ki a hozzá tartozó összefüggést.</li><li>Rendezd át a képletet, helyettesíts be, végül ellenőrizd a mértékegységet és a nagyságrendet.</li></ol>'
+      : q.type==='multi'
+        ? '<strong class="explanation-subtitle">Ellenőrzési menet</strong><ol class="explanation-steps"><li>Olvasd el az állításokat külön-külön.</li><li>Minden állítást a jelölés, a névleges adat vagy a védelmi funkció alapján ellenőrizz.</li><li>Csak azt jelöld, amelyik teljes egészében igaz; egyetlen hibás rész miatt az állítás nem jó.</li></ol>'
+        : q.figurePaths.length
+          ? '<strong class="explanation-subtitle">Ellenőrzési menet</strong><ol class="explanation-steps"><li>Először azonosítsd az ábra jelmagyarázatát és a kérdésben keresett jelet.</li><li>Haladj következetesen ugyanabban az irányban, és minden elemet csak egyszer vegyél figyelembe.</li><li>A végén hasonlítsd össze a leolvasott adatot a válaszlehetőségekkel.</li></ol>'
+          : '<strong class="explanation-subtitle">Ellenőrzési menet</strong><ol class="explanation-steps"><li>Húzd alá a kérdés feltételét és a kulcsszót.</li><li>Idézd fel az ehhez tartozó fogalmat vagy szabályt, majd hasonlítsd össze a válaszokkal.</li><li>A végső választ rövid indoklással is tudd megfogalmazni.</li></ol>';
+    const body=equation?`<div class="calculation-note"><span class="calculation-note-label">Levezetés</span><p>${esc(q.explanation)}</p>${steps}</div>`:`<p>${esc(q.explanation)}</p>${steps}`;
+    return body;
   }
   function questionHint(q){
     const words=norm(`${q.topic} ${q.prompt}`);
     if(q.figurePaths.length){
-      if(/hany|darab|db|szamol|mennyi/.test(words))return 'Az ábrán csak a kérdésben megnevezett jelet vagy szerelvényt keresd. Haladj helyiségről helyiségre, és minden előfordulást egyszer számolj meg.';
-      if(/muszer|meres|mereshatar|skala|mutato/.test(words))return 'A műszernél először a kiválasztott méréshatárt és a skála beosztását azonosítsd. Ezután olvasd le a mutató helyét.';
-      return 'Nézd meg külön az ábra jelöléseit és a szövegben megadott feltételeket. Csak azokat a részleteket használd, amelyek a keresett mennyiséghez tartoznak.';
+      if(/hany|darab|db|szamol|mennyi/.test(words))return '1. Karikázd be az ábrán a kérdésben megnevezett jeleket. 2. Haladj helyiségről helyiségre, és minden jelet csak egyszer számolj. 3. A részösszegeket add össze, majd ellenőrizd, hogy nem számoltál-e tartalék vagy más típusú elemet.';
+      if(/muszer|meres|mereshatar|skala|mutato/.test(words))return '1. Olvasd le a méréshatárt és a skála tartományát. 2. Keresd meg a mutató pontos helyét, ne csak a legközelebbi számot. 3. A skálaértéket váltsd át a méréshatár szerint, majd ellenőrizd a mértékegységet.';
+      return '1. Olvasd el a jelmagyarázatot. 2. Keresd meg az ábrán pontosan azt a jelet, amelyre a kérdés rákérdez. 3. Csak a megadott feltételekhez tartozó részeket vedd figyelembe, és a válasz előtt ellenőrizd a darabszámot vagy irányt.';
     }
     if(q.type==='number'){
-      if(/haromfazis|3 fazis|harom fazis/.test(words))return 'Először döntsd el, hogy a megadott feszültség vonali vagy fázisfeszültség. Háromfázisú képletnél ellenőrizd a √3 tényezőt is.';
-      if(/feszultsegeses|vezetek hossza|keresztmetszet/.test(words))return 'Írd fel a vezeték hosszát, keresztmetszetét és anyagát. Nézd meg, hogy a feladat egy vagy két vezető útjával számol-e.';
-      if(/teljesitmeny|fogyasztas|energia|hatasfok/.test(words))return 'Válaszd szét a teljesítményt és az energiát: az idő csak az energia kiszámításához kell. A mértékegységeket egyeztesd a behelyettesítés előtt.';
-      if(/ellenallas|aram|feszultseg/.test(words))return 'Jelöld ki a keresett mennyiséget, és rendezd át az U = R · I összefüggést. Csak ezután helyettesítsd be a számokat.';
-      return 'Írd ki külön az adatokat és a keresett mennyiséget. Válassz egy összefüggést, majd az eredményt a mértékegységével együtt ellenőrizd.';
+      if(/haromfazis|3 fazis|harom fazis/.test(words))return '1. Döntsd el, hogy vonali vagy fázisfeszültséget kaptál. 2. Válaszd ki a csillag- vagy háromszögkapcsolásnak megfelelő összefüggést. 3. A √3 tényezőt csak akkor használd, ha az adott képlet indokolja, majd ellenőrizd a végeredmény nagyságrendjét.';
+      if(/feszultsegeses|vezetek hossza|keresztmetszet/.test(words))return '1. Írd ki a vezeték anyagát, hosszát és keresztmetszetét. 2. Ellenőrizd, hogy az áram útja egy vagy két vezetőt jelent-e. 3. A végén hasonlítsd össze a kapott feszültségesést a megengedett értékkel.';
+      if(/teljesitmeny|fogyasztas|energia|hatasfok/.test(words))return '1. Döntsd el, teljesítményt (W) vagy energiát (Wh/kWh) keres a feladat. 2. Az időt csak energiafeladatnál vond be. 3. A százalékos hatásfokot tizedes tört alakban helyettesítsd be, és a mértékegységet írd ki.';
+      if(/ellenallas|aram|feszultseg/.test(words))return '1. Nevezd meg, hogy U, I vagy R a keresett mennyiség. 2. Rendezd át az U = R · I összefüggést. 3. Helyettesítsd be az azonos mértékegységű adatokat, majd becsüld meg, reális-e az eredmény.';
+      return '1. Írd ki külön az adatokat és a keresett mennyiséget. 2. Válassz egyetlen, a feladat feltételéhez illő összefüggést. 3. A behelyettesítés után mindig írd ki a mértékegységet, és végezz nagyságrendi ellenőrzést.';
     }
-    if(q.type==='multi')return 'Több állítás is helyes lehet. Mindegyiket önállóan ellenőrizd; a bizonytalan állításokat ne jelöld csak azért, mert a többi jónak tűnik.';
-    if(q.type==='single')return 'Keresd meg a kérdés kulcsszavát és a megadott feltételt. Először zárd ki azokat a válaszokat, amelyek biztosan ellentmondanak neki.';
-    return 'Írj fel 2–3 fontos szakkifejezést, majd ezekből fogalmazz meg rövid, indokolt választ. Az ábrán szereplő adatokat is vedd figyelembe.';
+    if(q.type==='multi')return '1. Bontsd fel az állítást kisebb részekre. 2. Ellenőrizd külön a névleges adatot, a működési feltételt és a védelmi szerepet. 3. Csak akkor jelöld, ha az állítás minden része igaz.';
+    if(q.type==='single')return '1. Keresd meg a kérdés kulcsszavát és feltételét. 2. Zárd ki a biztosan ellentmondó válaszokat. 3. A maradó válaszokat hasonlítsd össze a szakkifejezés pontos jelentésével, ne csak a hasonlóan hangzó szavakkal.';
+    return '1. Írj fel 2–3 kulcsszót a kérdésből. 2. Kapcsold őket a tanult szabályhoz vagy fogalomhoz. 3. Fogalmazz rövid, indokolt választ, és használd a feladat saját adatait.';
   }
   function questionBody(q,mode,response,show){
     const auto=isAuto(q),multi=q.type==='multi',choice=q.type==='single'||q.type==='multi';
