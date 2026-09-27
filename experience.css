@@ -1138,6 +1138,20 @@ body.question-open main {
 .explanation-subtitle { display: block; margin-top: 16px; color: #164e59; font-size: 15px; }
 .explanation-steps { margin: 8px 0 0 20px; padding: 0; color: #315963; font-size: 15px; line-height: 1.6; }
 .explanation-steps li { padding-left: 4px; margin: 3px 0; }
+.question-meta { margin: 5px 0 10px; color: #6b8286; font: 700 13px/1.4 var(--mono); letter-spacing: .03em; }
+.question-title { max-width: 34ch; margin: 0 0 12px; font-size: clamp(28px, 2.5vw, 40px); line-height: 1.18; letter-spacing: -.035em; }
+.question-prompt { font-size: 18px; line-height: 1.62; }
+.question-title.question-prompt { max-width: 42ch; font-size: clamp(28px, 2.7vw, 40px); line-height: 1.2; }
+.question-workspace-main .question-meta, .practice-main .question-meta { font-size: 13px; }
+.question-workspace-main .question-title { font-size: clamp(30px, 3vw, 42px); }
+.question-workspace-main .question-prompt { font-size: 19px; line-height: 1.6; }
+.practice-main .question-title { font-size: clamp(29px, 2.5vw, 38px); }
+.practice-main .question-prompt { font-size: 18px; }
+@media (max-width: 520px) {
+  .question-title, .question-workspace-main .question-title, .practice-main .question-title, .question-title.question-prompt { font-size: 25px; }
+  .question-prompt, .question-workspace-main .question-prompt, .practice-main .question-prompt { font-size: 16px; }
+  .question-meta { font-size: 12px; }
+}
 #practiceView.practice-running > .page-intro { display: none; }
 #practiceSession.session { max-width: none; min-height: 0; margin-top: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
 .practice-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(265px, 310px); align-items: start; gap: clamp(15px, 2vw, 25px); }
