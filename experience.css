@@ -1131,3 +1131,70 @@ body.question-open main {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+/* Readable desktop typography and a focused practice workspace. */
+.exam-banner-icon { flex: 0 0 47px; display: grid; place-items: center; line-height: 1; }
+.exam-banner-icon svg { display: block; width: 27px; height: 27px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.self-check-note { margin: 15px 0; padding: 13px 16px; border: 1px solid #d3e6df; border-radius: 9px; color: #315963; background: #f2f9f5; font-size: 15px; line-height: 1.6; }
+#practiceView.practice-running > .page-intro { display: none; }
+#practiceSession.session { max-width: none; min-height: 0; margin-top: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.practice-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(265px, 310px); align-items: start; gap: clamp(15px, 2vw, 25px); }
+.practice-main { min-width: 0; padding: clamp(20px, 2.4vw, 34px); border: 1px solid #d3e3de; border-top: 5px solid #e6b76d; border-radius: 16px; background: #fff; box-shadow: 0 23px 48px rgba(10, 50, 56, .1); }
+.practice-main .question-top { margin-bottom: 9px; }
+.practice-main .question-title { margin: 0 0 9px; font-size: clamp(25px, 2.1vw, 32px); line-height: 1.25; }
+.practice-main .question-prompt { max-width: 80ch; margin-bottom: 13px; font-size: 17px; line-height: 1.58; }
+.practice-main .options { gap: 8px; margin: 12px 0; }
+.practice-main .option { padding: 11px 13px; font-size: 16px; line-height: 1.48; }
+.practice-main .question-figures { margin: 12px 0; }
+.practice-main .figure-open img { max-height: min(31dvh, 360px); }
+.practice-rail { position: sticky; top: 15px; min-width: 0; padding: 17px; border: 1px solid rgba(136, 215, 203, .32); border-radius: 16px; color: #eaf8f2; background: linear-gradient(155deg, #174753, #0b303e 90%); box-shadow: 0 23px 42px rgba(7, 48, 56, .18); }
+.practice-rail-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.practice-rail-head strong { color: #f5fff9; font: 800 19px Manrope, sans-serif; }
+.practice-rail-head button, .practice-mobile-head button { min-height: 36px; padding: 6px 10px; border: 1px solid rgba(255, 213, 184, .55); border-radius: 8px; color: #ffdcc9; background: rgba(255, 200, 172, .08); font-size: 13px; font-weight: 700; }
+.practice-rail-head button:hover { background: rgba(255, 200, 172, .18); }
+.practice-rail-count { margin: 13px 0 8px; color: #f5fff9; font: 800 29px Manrope, sans-serif; }
+.practice-rail-count span { color: #b7d9d4; font: 600 14px var(--mono); }
+.practice-rail .progress-track { height: 8px; margin-bottom: 17px; background: rgba(200, 249, 230, .18); }
+.practice-rail .progress-fill { background: linear-gradient(90deg, #eed09a, #64d3bd); }
+.practice-rail .question-side-detail { margin-top: 10px; }
+.practice-rail .question-side-detail span { color: #abd3cf; font-size: 12px; }
+.practice-rail .question-side-detail b { color: #f0fbf5; font-size: 14px; }
+.practice-rail-actions { display: grid; gap: 8px; margin-top: 17px; padding-top: 15px; border-top: 1px solid rgba(198, 244, 231, .19); }
+.practice-rail-actions .button { width: 100%; min-height: 43px; padding: 9px 12px; font-size: 14px; }
+.practice-rail-actions .button.outline, .practice-rail-nav .button.outline { border-color: rgba(183, 230, 218, .34); color: #e8f8ef; background: rgba(213, 252, 234, .08); }
+.practice-rail-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 16px; padding-top: 15px; border-top: 1px solid rgba(198, 244, 231, .19); }
+.practice-rail-nav .button { min-height: 42px; padding: 8px 6px; font-size: 13px; }
+.practice-rail #practiceFeedback .feedback { margin-top: 11px; padding: 11px 12px; font-size: 13px; }
+.practice-mobile-head, .practice-mobile-actions { display: none; }
+
+@media (min-width: 951px) {
+  body { font-size: 17px; }
+  .nav-link, .hero p, .page-intro p, .question-prompt, .explanation p, .lesson p { font-size: 16px; }
+  .button, .setup-grid select, .filters select, .filters input { font-size: 14px; }
+  .route-text, .metric span, .source-tile span, .bank-main small, .bank-meta, .chip, .tutorial-toc a { font-size: 13px; }
+  .bank-main strong, .source-tile strong, .option, .exam-szev-main .option, .question-workspace-main .option { font-size: 16px; }
+  .question-workspace-main .question-prompt, .exam-szev-main .question-prompt { font-size: 17px; }
+  .question-side-detail span, .exam-szev-rail-card > span, .question-side-nav label { font-size: 12px; }
+  .question-side-detail b, .exam-szev-rail-card > small, .question-side-nav select { font-size: 14px; }
+  .question-side-actions .button, .question-side-nav-buttons button, .exam-szev-actions .button { min-height: 43px; font-size: 14px; }
+  .formula-legend dd, .worked-steps__panel p, .worked-details > summary { font-size: 14px; }
+}
+@media (max-width: 950px) {
+  .practice-layout { grid-template-columns: minmax(0, 1fr); }
+  .practice-rail { display: none; }
+  .practice-main { padding: 20px; }
+  .practice-mobile-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 15px; color: #4a6a70; font-weight: 800; }
+  .practice-mobile-head button { border-color: #e4c3b2; color: #995947; background: #fff8f4; }
+  .practice-mobile-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+  .practice-mobile-actions .button { min-height: 43px; padding: 8px 10px; font-size: 13px; }
+  .practice-mobile-nav { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 4px; }
+  .practice-mobile-nav .button { width: 100%; }
+}
+@media (max-width: 520px) {
+  .practice-main { padding: 17px 14px; }
+  .practice-main .question-title { font-size: 23px; }
+  .practice-main .question-prompt { font-size: 15px; }
+  .practice-main .option { font-size: 14px; }
+  .practice-main .figure-open img { max-height: min(27dvh, 260px); }
+  .practice-mobile-actions { grid-template-columns: 1fr; }
+  .practice-mobile-nav { grid-column: 1; }
+}
