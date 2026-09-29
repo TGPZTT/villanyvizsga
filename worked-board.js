@@ -2,9 +2,17 @@
   'use strict';
   const colors = ['#087985', '#a65b08', '#7551a5', '#26764e', '#b34666', '#365bc0', '#855a32'];
   const sub = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9','ₙ':'n','ₕ':'h','ₑ':'e','ₘ':'m','ₗ':'l'};
-  const key = text => text.replace(/[₀-₉ₙₕₑₘₗ]/gu, c => sub[c] || c).replace(/\s/g, '');
+  const key = text => text.replace(/[₀-₉ₙₕₑₘₗ]/gu, c => sub[c] || c).replace(/[\s_]/g, '');
   const meanings = {P:'Hatásos teljesítmény',Pn:'Névleges leadott teljesítmény',U:'Feszültség',I:'Áramerősség',η:'Hatásfok','cosφ':'Teljesítménytényező','sinφ':'A fázisszög szinusza',ρ:'Fajlagos ellenállás',l:'Egyirányú vezetékhossz',lh:'Hurokhossz',A:'Vezető-keresztmetszet',E:'Villamos energia',t:'Üzemidő',c:'Egységár',C:'Költség',R:'Ellenállás',S:'Látszólagos teljesítmény',Sn:'Névleges látszólagos teljesítmény',f:'Hálózati frekvencia',p:'Póluspárok száma',nn:'Névleges fordulatszám',U0:'Fázisfeszültség',Z:'Hurokimpedancia',In:'Névleges áram',IW:'Hatásos áramösszetevő',ε:'Megengedett feszültségesés',Un:'Névleges feszültség',IΔn:'Névleges különbözeti kioldóáram',Ueleje:'Feszültség a vezeték elején',Uvége:'Feszültség a vezeték végén',Umax:'Méréshatár',N:'A teljes skála osztásainak száma',n:'Leolvasott osztások száma'};
   const make = (tag, cls, text) => {const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el};
+  const mathText = text => {
+    const fragment=document.createDocumentFragment();let at=0;
+    for(const match of text.matchAll(/([\p{L}]+)_([\p{L}\d]+)/gu)){
+      fragment.append(document.createTextNode(text.slice(at,match.index)+match[1]),make('sub','',match[2]));
+      at=match.index+match[0].length;
+    }
+    fragment.append(document.createTextNode(text.slice(at)));return fragment;
+  };
   const numberKey = text => String(Number(text.replace(',', '.')));
   const numbers = text => [...text.matchAll(/\d+(?:[.,]\d+)?/gu)].filter(m => !/[\p{L}\d_√]/u.test(text[m.index-1] || '') && !/^\s*\/\s*min/u.test(text.slice(m.index+m[0].length)));
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -28,7 +36,7 @@
       const details=example.closest('.worked-details');
       let formula=details?.previousElementSibling;
       while(formula && !formula.classList.contains('formula-card'))formula=formula.previousElementSibling;
-      const legend=new Map([...(formula?.querySelectorAll('.formula-legend > div') || [])].map(row=>[key(row.querySelector('dt').textContent),row.querySelector('dd').textContent]));
+      const legend=new Map([...(formula?.querySelectorAll('.formula-legend > div') || [])].flatMap(row=>{const meaning=row.querySelector('dd').cloneNode(true);meaning.querySelectorAll('.unit-chip').forEach(unit=>unit.remove());return row.querySelector('dt').textContent.split(',').map(symbol=>[key(symbol),meaning.textContent.trim()])}));
       const values=new Map(),symbols=new Map();let flowCount=0;
       const flowFor=symbol=>{const name=key(symbol);if(name&&symbols.has(name))return symbols.get(name);const flow={id:`value-${flowCount}`,color:colors[flowCount++%colors.length]};if(name)symbols.set(name,flow);return flow};
       const token=(raw, flow)=>{const el=make('span','calc-number-token',raw);el.dataset.value=numberKey(raw);if(flow){el.dataset.flow=flow.id;el.style.setProperty('--value-color',flow.color);values.set(numberKey(raw),flow)}return el};
@@ -42,7 +50,7 @@
           eq.forEach((segment,index)=>{
             let at=0;
             for(const m of numbers(segment)){
-              fragment.append(document.createTextNode(segment.slice(at,m.index)));
+              fragment.append(mathText(segment.slice(at,m.index)));
               const value=numberKey(m[0]),known=values.get(value);
               const simpleResult=index>0 && numbers(segment).length===1 && !/[+−*/]/u.test(segment.replace(m[0],''));
               // A new intermediate result gets its own identity. A unit conversion
@@ -56,7 +64,7 @@
               let flow=suppliedFlow || known || (simpleResult?outputFlow:null);
               fragment.append(token(m[0],flow));seen.add(value);at=m.index+m[0].length;
             }
-            fragment.append(document.createTextNode(segment.slice(at)));
+            fragment.append(mathText(segment.slice(at)));
           });
         }
         return fragment;
@@ -72,7 +80,7 @@
           const symbol=match[1].trim(),value=match[2].trim(),primary=symbol.split('=')[0].trim(),symbolKey=key(primary);
           const rawMeaning=legend.get(symbolKey)||meanings[symbolKey]||(/^[UI][12]n?$/u.test(symbolKey)?`${symbolKey[0]==='U'?'Feszültség':'Áramerősség'} a ${symbolKey[1]==='1'?'primer':'szekunder'} oldalon`:/^R[12]$/u.test(symbolKey)?'A két ellenállás azonos értéke':/^A[ln]$/u.test(symbolKey)?'A fázis- és nullavezető keresztmetszete':symbol);
           const row=make('div','worked-input-row');
-          const name=make('span','worked-input-symbol',symbol+' =');const val=make('strong','worked-input-value');val.append(expression(value,flowFor(primary)));
+          const name=make('span','worked-input-symbol');name.append(mathText(symbol.length>12?'':symbol+' ='));const val=make('strong','worked-input-value');val.append(expression(value,flowFor(primary)));
           const meaning=make('span','worked-input-meaning',rawMeaning);
           row.append(name,val,meaning);list.append(row);
         }
