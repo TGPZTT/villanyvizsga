@@ -71,15 +71,7 @@
         anchor.dataset.go = target;
       }
     });
-    guide.querySelectorAll('.tutorial-toc a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', event => {
-        const id = anchor.getAttribute('href').slice(1);
-        const target = document.getElementById(id);
-        if (!target) return;
-        event.preventDefault();
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    });
+    window.VV_GUIDE?.setup(guide);
   }
 
   function showError(message) {
@@ -120,7 +112,7 @@
     document.querySelector('.shell').hidden = false;
     document.querySelector('.skip').hidden = false;
     const script = document.createElement('script');
-    script.src = 'app.js?v=20260929';
+    script.src = 'app.js?v=20260929b';
     script.onerror = () => {
       document.querySelector('.shell').hidden = true;
       screen.hidden = false;

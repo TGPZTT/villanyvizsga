@@ -29,6 +29,11 @@
     return CATEGORY.foundations;
   }
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const optionText=(key,value)=>{
+    const text=String(value??'').trim();
+    const prefix=text.match(/^([A-Z])\s*[.)]\s+/iu);
+    return prefix&&prefix[1].toUpperCase()===key.toUpperCase()?text.slice(prefix[0].length).trim():text;
+  };
   const seed=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return {}}};
   const progress=seed();
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(progress))}catch{}};
@@ -38,7 +43,7 @@
     const src=sources.find(s=>s.id===q.sourceId||s.file===file||s.originalFile===file);
     let options=q.options||[];
     if(!Array.isArray(options))options=Object.entries(options).map(([key,value])=>({key,text:value}));
-    options=options.map((o,j)=>typeof o==='string'?{key:String.fromCharCode(65+j),text:o}:{key:String(o.key||o.id||String.fromCharCode(65+j)).toUpperCase(),text:o.text||o.label||o.value||''});
+    options=options.map((o,j)=>{const key=String(typeof o==='string'?String.fromCharCode(65+j):o.key||o.id||String.fromCharCode(65+j)).toUpperCase();return {key,text:optionText(key,typeof o==='string'?o:o.text||o.label||o.value||'')}});
     let answer=q.answer??q.correctAnswer??null;
     if(typeof answer==='object'&&answer!==null&&!Array.isArray(answer))answer=answer.text??answer.value??null;
     const type=q.type||q.kind||(options.length?'single':'open');
@@ -101,6 +106,7 @@
   };
   const attemptStatus=q=>progress[q.id]?.status||'new';
   let view='home',bankPage=0,practice=null,exam=null,timerId=null,questionState=null;
+  const progressManager={open:false,selected:new Set(),pending:null,returnView:'bank'};
 
   function routeTo(route,replace=false){
     const next=route?`#${route}`:'';
@@ -146,18 +152,105 @@
     setText('#wrongTaskCount',wrong.length);setText('#wrongTaskDescription',wrong.length?`${wrong.length} feladat van az újragyakorlási listán.`:'Most nincs elrontottként megjelölt feladat.');
     root.innerHTML=wrong.map(q=>`<button class="wrong-task-item" type="button" data-wrong-task="${esc(q.id)}"><strong>${esc(q.prompt)}</strong><small>${esc(q.topic)} · ${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</small></button>`).join('');
     $$('#wrongTaskList [data-wrong-task]').forEach(button=>button.addEventListener('click',()=>openQuestion(byId.get(button.dataset.wrongTask))));
-    const clear=$('#clearWrongTasks');if(clear)clear.disabled=!wrong.length;
+    const clear=$('#clearWrongTasks');if(clear)clear.disabled=false;
+    updateProgressManagerCount();
   }
-  function clearWrongTasks(){
-    const wrong=qlist.filter(q=>attemptStatus(q)==='retry');if(!wrong.length)return;
-    if(!window.confirm(`Törlöd az újragyakorlási jelölést ${wrong.length} feladatnál? A többi mentett eredmény megmarad.`))return;
-    wrong.forEach(q=>delete progress[q.id]);save();renderWrongTasks();renderHome();renderBank();
+  const labelledQuestions=()=>qlist.filter(q=>['correct','retry'].includes(attemptStatus(q)));
+  function updateProgressManagerCount(){
+    setText('#manageProgressCount',labelledQuestions().length);
+  }
+  function progressManagerQuestions(){
+    const query=norm($('#progressSearch')?.value),status=$('#progressStatusFilter')?.value||'',scope=$('#progressScopeFilter')?.value||'';
+    return labelledQuestions().filter(q=>(!status||attemptStatus(q)===status)&&(!scope||(scope==='papers'?isExamPaper(q):isContest(q)))&&(!query||norm(`${q.prompt} ${sourceLabel(q)} ${q.number} ${q.topic}`).includes(query))).sort((a,b)=>(progress[b.id]?.at||0)-(progress[a.id]?.at||0)||a.id.localeCompare(b.id));
+  }
+  function cancelProgressRemoval({focus=false}={}){
+    progressManager.pending=null;
+    const box=$('#progressRemoveConfirm');if(box)box.hidden=true;
+    if(focus)$('#progressClearSelected')?.focus();
+  }
+  function updateProgressSelection(){
+    const visible=progressManagerQuestions(),ids=new Set(visible.map(q=>q.id));
+    progressManager.selected.forEach(id=>{if(!ids.has(id))progressManager.selected.delete(id)});
+    const count=progressManager.selected.size,all=$('#progressSelectAll');
+    setText('#progressSelectedCount',`${count} kijelölve`);
+    if(all){all.checked=!!visible.length&&count===visible.length;all.indeterminate=count>0&&count<visible.length;all.disabled=!visible.length}
+    ['#progressMarkCorrect','#progressMarkRetry','#progressClearSelected','#progressDeselect'].forEach(id=>{const button=$(id);if(button)button.disabled=!count});
+    const clearAll=$('#progressClearAll');if(clearAll)clearAll.disabled=!labelledQuestions().length;
+    $$('#progressManagerList [data-progress-select]').forEach(input=>input.checked=progressManager.selected.has(input.dataset.progressSelect));
+  }
+  function renderProgressManager(){
+    updateProgressManagerCount();
+    if(!progressManager.open)return;
+    const list=progressManagerQuestions(),all=labelledQuestions(),correct=all.filter(q=>attemptStatus(q)==='correct').length;
+    setText('#progressManagerSummary',`${all.length} megjelölt feladat: ${correct} sikerült, ${all.length-correct} újragyakorlandó.`);
+    setText('#progressVisibleCount',`${list.length} találat`);
+    $('#progressManagerList').innerHTML=list.length?list.map(q=>{
+      const status=attemptStatus(q),label=status==='correct'?'Sikerült':'Újragyakorlás';
+      return `<li class="progress-manager-row"><label class="progress-row-select"><input type="checkbox" data-progress-select="${esc(q.id)}" aria-label="Kijelölés: ${esc(sourceLabel(q))}, ${esc(q.number)}. feladat"><span class="sr-only">Kijelölés</span></label><div class="progress-row-copy"><button class="progress-question-link" type="button" data-progress-question="${esc(q.id)}">${esc(q.prompt)}</button><small>${esc(sourceLabel(q))} · ${esc(q.number)}. feladat<br>${esc(q.topic)}</small></div><div class="progress-row-actions"><span class="progress-status-label ${status}">${label}</span><label class="sr-only" for="progress-status-${esc(q.id)}">${esc(sourceLabel(q))}, ${esc(q.number)}. feladat jelölése</label><select id="progress-status-${esc(q.id)}" data-progress-status="${esc(q.id)}"><option value="correct" ${status==='correct'?'selected':''}>Sikerült</option><option value="retry" ${status==='retry'?'selected':''}>Újragyakorlás</option></select><button class="text-button progress-row-remove" type="button" data-progress-remove="${esc(q.id)}" aria-label="Jelölés törlése: ${esc(sourceLabel(q))}, ${esc(q.number)}. feladat">Jelölés törlése</button></div></li>`;
+    }).join(''):`<li class="progress-manager-empty">${all.length?'Ezekkel a szűrőkkel nincs megjelölt feladat. Válassz másik jelölést vagy forrást, illetve töröld a keresést.':'Még nincs mentett jelölés. A gyakorlás során sikerültnek vagy újragyakorlandónak jelölt feladatok itt jelennek meg.'}</li>`;
+    updateProgressSelection();
+  }
+  function openProgressManager(status='',returnView='bank'){
+    if(exam&&!exam.submitted){navigate('bank');return}
+    progressManager.open=true;progressManager.returnView=returnView;progressManager.selected.clear();
+    $('#progressStatusFilter').value=status;$('#progressScopeFilter').value='';$('#progressSearch').value='';
+    $('#progressManagerPanel').hidden=false;$('#bankCatalog').hidden=true;$('#bankManagerEntry').hidden=true;
+    $('#manageProgress').setAttribute('aria-expanded','true');
+    setText('#progressClose',returnView==='practice'?'← Vissza a gyakorláshoz':'← Vissza a feladatbankhoz');
+    setText('#progressManagerNotice','');cancelProgressRemoval();navigate('bank');
+    $('#progressManagerTitle').focus({preventScroll:true});
+  }
+  function closeProgressManager(){
+    progressManager.open=false;progressManager.selected.clear();cancelProgressRemoval();
+    $('#progressManagerPanel').hidden=true;$('#bankCatalog').hidden=false;$('#bankManagerEntry').hidden=false;
+    $('#manageProgress').setAttribute('aria-expanded','false');
+    const target=progressManager.returnView;navigate(target);
+    (target==='practice'?$('#clearWrongTasks'):$('#manageProgress'))?.focus({preventScroll:true});
+  }
+  function setProgressLabels(ids,status){
+    const known=ids.filter(id=>byId.has(id));
+    known.forEach(id=>progress[id]={...progress[id],status,at:Date.now()});save();cancelProgressRemoval();
+    renderWrongTasks();renderHome();renderBank();
+    setText('#progressManagerNotice',`${known.length} feladat jelölése: ${status==='correct'?'Sikerült':'Újragyakorlás'}.`);
+  }
+  function requestProgressRemoval(ids,all=false){
+    ids=ids.filter(id=>byId.has(id)&&progress[id]);if(!ids.length)return;
+    progressManager.pending=[...ids];
+    setText('#progressRemoveText',all?`Mind a ${ids.length} feladat jelölését törlöd? Ez az összes forrásra és jelölésre vonatkozik, a szűrőktől függetlenül.`:`Törlöd ${ids.length} feladat jelölését? Ezután újra jelölés nélküli feladatként jelennek meg.`);
+    $('#progressRemoveConfirm').hidden=false;$('#progressRemoveCancel').focus();
+  }
+  function setupProgressManager(){
+    $('#manageProgress')?.addEventListener('click',()=>openProgressManager());
+    $('#clearWrongTasks')?.addEventListener('click',()=>openProgressManager('retry','practice'));
+    $('#progressClose')?.addEventListener('click',closeProgressManager);
+    ['#progressStatusFilter','#progressScopeFilter','#progressSearch'].forEach(id=>$(id)?.addEventListener(id==='#progressSearch'?'input':'change',()=>{progressManager.selected.clear();cancelProgressRemoval();renderProgressManager()}));
+    $('#progressSelectAll')?.addEventListener('change',event=>{progressManager.selected=new Set(event.target.checked?progressManagerQuestions().map(q=>q.id):[]);cancelProgressRemoval();updateProgressSelection()});
+    $('#progressDeselect')?.addEventListener('click',()=>{progressManager.selected.clear();cancelProgressRemoval();updateProgressSelection()});
+    $('#progressMarkCorrect')?.addEventListener('click',()=>setProgressLabels([...progressManager.selected],'correct'));
+    $('#progressMarkRetry')?.addEventListener('click',()=>setProgressLabels([...progressManager.selected],'retry'));
+    $('#progressClearSelected')?.addEventListener('click',()=>requestProgressRemoval([...progressManager.selected]));
+    $('#progressClearAll')?.addEventListener('click',()=>requestProgressRemoval(labelledQuestions().map(q=>q.id),true));
+    $('#progressRemoveCancel')?.addEventListener('click',()=>cancelProgressRemoval({focus:true}));
+    $('#progressRemoveYes')?.addEventListener('click',()=>{
+      const ids=progressManager.pending||[];ids.forEach(id=>delete progress[id]);save();cancelProgressRemoval();progressManager.selected.clear();
+      renderWrongTasks();renderHome();renderBank();setText('#progressManagerNotice',`${ids.length} feladat jelölését töröltük.`);$('#progressManagerTitle').focus({preventScroll:true});
+    });
+    $('#progressManagerList')?.addEventListener('change',event=>{
+      const check=event.target.closest('[data-progress-select]'),select=event.target.closest('[data-progress-status]');
+      if(check){if(check.checked)progressManager.selected.add(check.dataset.progressSelect);else progressManager.selected.delete(check.dataset.progressSelect);cancelProgressRemoval();updateProgressSelection()}
+      if(select){const id=select.dataset.progressStatus;setProgressLabels([id],select.value);($(`[data-progress-status="${CSS.escape(id)}"]`)||$('#progressManagerTitle')).focus({preventScroll:true})}
+    });
+    $('#progressManagerList')?.addEventListener('click',event=>{
+      const remove=event.target.closest('[data-progress-remove]'),question=event.target.closest('[data-progress-question]');
+      if(remove)requestProgressRemoval([remove.dataset.progressRemove]);
+      if(question)openQuestion(byId.get(question.dataset.progressQuestion));
+    });
   }
   function setupProgressReset(){
     const button=$('#reset-progress-btn'),confirm=$('#reset-progress-confirm');
     if(!button||!confirm)return;
     const close=()=>{confirm.hidden=true;button.setAttribute('aria-expanded','false')};
-    $('#clearWrongTasks')?.addEventListener('click',clearWrongTasks);
+    setupProgressManager();
     button.addEventListener('click',()=>{const open=confirm.hidden;confirm.hidden=!open;button.setAttribute('aria-expanded',String(open));if(open)$('#reset-progress-cancel')?.focus()});
     $('#reset-progress-cancel')?.addEventListener('click',()=>{close();button.focus()});
     $('#reset-progress-yes')?.addEventListener('click',()=>{
@@ -250,6 +343,7 @@
     return list;
   }
   function renderBank(){
+    renderProgressManager();
     const list=filteredBankQuestions();
     setText('#resultCount',`${list.length} feladat található`);
     const size=40,pages=Math.max(1,Math.ceil(list.length/size));bankPage=Math.min(bankPage,pages-1);
@@ -378,7 +472,7 @@
     if(!q||exam&&!exam.submitted)return;
     if(!questionState||view!=='question'||!questionState.ids.includes(q.id)){
       const homeView=origin==='exam'?'exam':'bank';
-      const list=homeView==='exam'&&exam?.list?exam.list:filteredBankQuestions();
+      const list=homeView==='exam'&&exam?.list?exam.list:progressManager.open?progressManagerQuestions():filteredBankQuestions();
       const ids=list.map(item=>item.id);
       if(!ids.includes(q.id))ids.unshift(q.id);
       questionState={ids,index:ids.indexOf(q.id),origin:homeView,originId:q.id,returnScroll:fromRoute?0:window.scrollY,returnPage:bankPage,responses:{},shown:{},hints:{},feedback:{}};
@@ -405,7 +499,7 @@
     navigate(origin,{replaceHash:true,scroll:false});
     requestAnimationFrame(()=>{
       window.scrollTo({top:returnScroll,behavior:'instant'});
-      if(origin==='bank')$(`#bankList .bank-item[data-id="${CSS.escape(stateReturnId)}"]`)?.focus({preventScroll:true});
+      if(origin==='bank')(progressManager.open?$(`[data-progress-question="${CSS.escape(stateReturnId)}"]`):$(`#bankList .bank-item[data-id="${CSS.escape(stateReturnId)}"]`))?.focus({preventScroll:true});
     });
   }
   function renderQuestionPage(routeMode='none',resetScroll=false){
@@ -661,7 +755,7 @@
     root.innerHTML=`<div class="exam-szev-results"><div class="kicker">TANULÁSI KIÉRTÉKELÉS</div><h2 class="question-title">A mintavizsga eredménye</h2><div class="exam-summary"><strong>${score} / 100 pont</strong><p>${correct} teljes pontszámú feladat ${exam.list.length} közül. A 40%-os KKK-küszöböt ez a gyakorló eredmény ${score>=40?'eléri':'nem éri el'}. Ez nem hivatalos vizsgaeredmény.</p></div><div class="exam-area-breakdown">${breakdown.map(area=>`<div><span>${esc(area.label)}</span><strong>${Math.round(area.points*10)/10} / ${area.weight} pont</strong><small>${area.count} mintafeladat</small></div>`).join('')}</div><p class="exam-score-note">A négy KKK-témakör pontjait 20 / 20 / 20 / 40 arányra súlyoztuk. A kérdések száma és válogatása saját gyakorló összeállítás.</p><div class="question-actions"><button id="newExam" class="button outline" type="button">Új mintavizsga</button></div><section id="examReview" class="exam-review"><h3>Válaszaid és a helyes megoldások</h3>${reviewMarkup()}</section></div>`;
     $('#newExam',root).addEventListener('click',resetExam);hydrateAssets(root);
   }
-  function setupWorkedAnimations(root){if(root)window.VV_WORKED?.setup(root)}
+  function setupWorkedAnimations(root){if(root){window.VV_WORKED?.setup(root);window.VV_GUIDE?.setup(root)}}
   function init(){
     setupFilters();renderHome();setupProgressReset();renderWrongTasks();setupWorkedAnimations($('#guideView'));
     $('#startPractice').addEventListener('click',startPractice);$('#startExam').addEventListener('click',startExam);
@@ -699,7 +793,7 @@
         const q=byId.get(id);
         if(q){if(view!=='question'||questionState?.ids[questionState.index]!==id)openQuestion(q,{fromRoute:true,origin:questionState?.origin||'bank'});return}
       }
-      const target=['home','bank','practice','exam','guide'].includes(route)?route:'home';
+      const target=route.startsWith('guide/')?'guide':['home','bank','practice','exam','guide'].includes(route)?route:'home';
       if(view!==target)navigate(target,{updateHash:false});
     };
     window.addEventListener('hashchange',followHash);
