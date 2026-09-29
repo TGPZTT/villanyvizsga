@@ -16,6 +16,13 @@
   const numberKey = text => String(Number(text.replace(',', '.')));
   const numbers = text => [...text.matchAll(/\d+(?:[.,]\d+)?/gu)].filter(m => !/[\p{L}\d_√]/u.test(text[m.index-1] || '') && !/^\s*\/\s*min/u.test(text.slice(m.index+m[0].length)));
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const convertedSameQuantity = (source,target) => {
+    const unit = {kVA:['VA',1000],VA:['VA',1],kW:['W',1000],W:['W',1],kvar:['var',1000],var:['var',1],kWh:['Wh',1000],Wh:['Wh',1],kV:['V',1000],V:['V',1],mA:['A',.001],A:['A',1]};
+    const a=unit[source.dataset.unit],b=unit[target.dataset.unit];
+    if(!a||!b||a[0]!==b[0]||a[1]===b[1])return false;
+    const left=Number(source.dataset.value)*a[1],right=Number(target.dataset.value)*b[1];
+    return Math.abs(left-right)<=Math.max(.5,Math.max(Math.abs(left),Math.abs(right))*.001);
+  };
 
   function setup(root=document) {
     root.querySelectorAll('.worked-steps').forEach(example => {
@@ -38,15 +45,15 @@
       while(formula && !formula.classList.contains('formula-card'))formula=formula.previousElementSibling;
       const legend=new Map([...(formula?.querySelectorAll('.formula-legend > div') || [])].flatMap(row=>{const meaning=row.querySelector('dd').cloneNode(true);meaning.querySelectorAll('.unit-chip').forEach(unit=>unit.remove());return row.querySelector('dt').textContent.split(',').map(symbol=>[key(symbol),meaning.textContent.trim()])}));
       const values=new Map(),symbols=new Map();let flowCount=0,currentStep='';
-      const flowFor=(symbol,meaning)=>{const name=key(symbol);if(name&&symbols.has(name))return symbols.get(name);const flow={id:`value-${flowCount}`,color:colors[flowCount++%colors.length],label:meaning||meanings[name]||legend.get(name)||currentStep||'Számított érték'};if(name)symbols.set(name,flow);return flow};
-      const token=(raw, unit, flow)=>{const el=make('span','calc-number-token',raw+unit);el.dataset.value=numberKey(raw);if(flow){el.dataset.flow=flow.id;el.style.setProperty('--value-color',flow.color);el.dataset.tooltip=flow.label+(unit?` (${unit.trim()})`:'');el.setAttribute('aria-label',`${raw}${unit}: ${el.dataset.tooltip}`);el.tabIndex=0;values.set(numberKey(raw),flow)}return el};
+      const flowFor=(symbol,meaning)=>{const name=key(symbol);if(name&&symbols.has(name))return symbols.get(name);const flow={id:`value-${flowCount}`,color:colors[flowCount++%colors.length],label:meaning||legend.get(name)||meanings[name]||currentStep||'Számított érték'};if(name)symbols.set(name,flow);return flow};
+      const token=(raw, unit, flow)=>{const el=make('span','calc-number-token',raw+unit);el.dataset.value=numberKey(raw);el.dataset.unit=unit.trim();if(flow){el.dataset.flow=flow.id;el.style.setProperty('--value-color',flow.color);el.dataset.tooltip=flow.label+(unit?` (${unit.trim()})`:'');el.setAttribute('aria-label',`${raw}${unit}: ${el.dataset.tooltip}`);el.tabIndex=0;values.set(numberKey(raw),flow)}return el};
       function expression(text, suppliedFlow) {
         const fragment=document.createDocumentFragment();
         const pieces=text.split(/(;\s*)/u);
         for(const piece of pieces){
           const eq=piece.split(/([=≈])/u),seen=new Set();
           const variable=/^\s*([\p{L}₀-₉_Δφ\s,]+)\s*$/u.test(eq[0]) && !/\b(?:W|V|A|VA|kWh)\b/u.test(eq[0]) ? eq[0].trim() : '';
-          let outputFlow=suppliedFlow || (variable?flowFor(variable):null);
+          let outputFlow=variable?flowFor(variable):suppliedFlow;
           eq.forEach((segment,index)=>{
             let at=0;
             for(const m of numbers(segment)){
@@ -62,7 +69,7 @@
                 outputFlow=conversion&&first?values.get(numberKey(first[0])):null;
                 outputFlow ||= flowFor('',currentStep);
               }
-              let flow=suppliedFlow || known || (simpleResult?outputFlow:null);
+              let flow=known || (simpleResult?outputFlow:null) || suppliedFlow;
               const tail=segment.slice(m.index+m[0].length);
               const unit=tail.match(/^\s*(?:kWh|Wh|kW|W|kVA|VA|kvar|var|kV|V|mA|A|Ω|mm²|m²|Hz|Ft|%)(?![\p{L}])/u)?.[0]||'';
               fragment.append(token(m[0],unit,flow));seen.add(value);at=m.index+m[0].length+unit.length;
@@ -103,7 +110,7 @@
           const match=step.math.match(/^(.*)([=≈])\s*([^=≈]+)$/u);
           const split=match&&numbers(match[1]).length&&numbers(match[3]).length;
           const prefix=make('span','board-math-prefix');prefix.append(expression(split?match[1]:step.math));math.append(prefix);
-          if(split){const result=make('span','board-math-result');result.append(document.createTextNode(` ${match[2]} `),expression(match[3]));math.append(result);line.classList.add('has-result-phase')}
+          if(split){const result=make('span','board-math-result');const symbol=step.math.match(/^\s*([\p{L}₀-₉_Δφ]+)\s*[=≈]/u)?.[1]||'';result.append(document.createTextNode(` ${match[2]} `),expression(match[3],symbol?flowFor(symbol):null));math.append(result);line.classList.add('has-result-phase')}
           writing.append(math);
         }
         line.append(make('span','board-line-number',String(index+1).padStart(2,'0')),note,writing);paper.append(line);return line;
@@ -112,7 +119,12 @@
       lines.at(-1).classList.add('board-result');
       const toolbar=make('div','worked-stepper-controls'),previous=make('button','button outline','← Előző'),next=make('button','button primary','Következő lépés →');
       const status=make('div','worked-stepper-status'),label=make('strong'),meter=make('span','worked-stepper-meter');status.setAttribute('aria-live','polite');status.append(label,meter);toolbar.append(previous,status,next);
-      previous.type=next.type='button';example.append(head);if(source)example.append(source);example.append(toolbar,paper);
+      previous.type=next.type='button';example.append(head);
+      const questionId=source?.querySelector('[data-question-ref]')?.dataset.questionRef;
+      const question=questionId&&window.VV_DATA?.questions?.find(item=>String(item.id)===questionId);
+      const problem=make('div','board-problem');problem.append(make('strong','','Feladat'),make('p','',question?.prompt||`${title}. Az alábbi adatokból vezesd le a keresett értéket.`));
+      if(source)example.append(source);
+      example.append(problem,paper,toolbar);
       const stages=lines.flatMap((line,index)=>[
         {index,phase:'instruction'}, {index,phase:'writing'},
         ...(line.classList.contains('has-result-phase')?[{index,phase:'result'}]:[])
@@ -127,21 +139,22 @@
         });
         let delay=0;
         targetPart.querySelectorAll('[data-flow]').forEach(target=>{
-          const source=earlier.findLast(item=>item.dataset.flow===target.dataset.flow&&item.dataset.value===target.dataset.value);
+          const source=earlier.findLast(item=>item.dataset.flow===target.dataset.flow&&item.dataset.value===target.dataset.value)
+            || earlier.findLast(item=>item.dataset.flow===target.dataset.flow&&convertedSameQuantity(item,target));
           if(!source)return;
           const a=source.getBoundingClientRect(),b=target.getBoundingClientRect();
           if(!a.width || !b.width)return;
           const style=getComputedStyle(target),ghost=make('span','board-ghost',target.textContent);
           ghost.setAttribute('aria-hidden','true');
-          Object.assign(ghost.style,{left:`${b.left}px`,top:`${b.top}px`,width:`${b.width}px`,height:`${b.height}px`,font:style.font,letterSpacing:style.letterSpacing,lineHeight:style.lineHeight,color:style.color,borderBottom:style.borderBottom});
+          Object.assign(ghost.style,{left:`${b.left}px`,top:`${b.top}px`,fontFamily:style.fontFamily,fontSize:style.fontSize,fontWeight:style.fontWeight,fontStyle:style.fontStyle,letterSpacing:style.letterSpacing,lineHeight:style.lineHeight,color:style.color,borderBottom:style.borderBottom});
           document.body.append(ghost);ghosts.add(ghost);target.classList.add('is-arriving');
-          const dx=a.left-b.left,dy=a.top-b.top,sx=a.width/b.width,sy=a.height/b.height;
+          const dx=a.left-b.left,dy=a.top-b.top;
           const animation=ghost.animate([
-            {transform:`translate(${dx}px,${dy}px) scale(${sx},${sy})`,opacity:.96},
-            {transform:`translate(${dx*.38}px,${dy*.38-9}px) scale(${1+(sx-1)*.38},${1+(sy-1)*.38})`,opacity:1,offset:.62},
-            {transform:'translate(0,0) scale(1,1)',opacity:1}
-          ],{duration:720,delay,easing:'cubic-bezier(.22,.72,.19,1)',fill:'both'});
-          delay+=48;flights.add(animation);
+            {transform:`translate(${dx}px,${dy}px)`,opacity:.75},
+            {transform:`translate(${dx*.46}px,${dy*.46-14}px)`,opacity:1,offset:.52},
+            {transform:'translate(0,0)',opacity:1}
+          ],{duration:1250,delay,easing:'cubic-bezier(.2,.76,.2,1)',fill:'both'});
+          delay+=85;flights.add(animation);
           animation.finished.catch(()=>{}).finally(()=>{ghost.remove();ghosts.delete(ghost);target.classList.remove('is-arriving');flights.delete(animation)});
         });
       }
@@ -171,7 +184,13 @@
         }
       }
       previous.addEventListener('click',()=>{if(active>0)show(active-1)});
-      next.addEventListener('click',()=>{if(busy)return;busy=true;show(active===stages.length-1?0:active+1,true);setTimeout(()=>busy=false,reduced()?0:160)});
+      next.addEventListener('click',()=>{
+        if(busy)return;
+        busy=true;show(active===stages.length-1?0:active+1,true);
+        const pause=reduced()?0:flights.size?1350:180;
+        if(flights.size)next.disabled=true;
+        setTimeout(()=>{busy=false;next.disabled=false},pause);
+      });
       details?.addEventListener('toggle',()=>{if(!details.open)cancelFlights()});
       show(0);
     });

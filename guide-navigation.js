@@ -8,6 +8,115 @@
     return node;
   };
 
+  function setupTooltips() {
+    if (document.body.dataset.guideTooltipsReady) return;
+    document.body.dataset.guideTooltipsReady = 'true';
+    const tip = make('div', 'guide-floating-tooltip');
+    tip.id = 'guideFloatingTooltip';
+    tip.setAttribute('role', 'tooltip');
+    tip.hidden = true;
+    document.body.append(tip);
+    let current = null;
+    const show = element => {
+      if (!element?.dataset.tooltip) return;
+      current = element;
+      tip.textContent = element.dataset.tooltip;
+      tip.hidden = false;
+      const box = element.getBoundingClientRect();
+      const width = tip.offsetWidth, height = tip.offsetHeight;
+      tip.style.left = `${Math.max(12, Math.min(innerWidth - width - 12, box.left + box.width / 2 - width / 2))}px`;
+      tip.style.top = `${box.top >= height + 14 ? box.top - height - 8 : Math.min(innerHeight - height - 12, box.bottom + 8)}px`;
+    };
+    const hide = () => { current = null; tip.hidden = true; };
+    document.addEventListener('pointerover', event => {
+      const target = event.target.closest?.('.calculation-board [data-tooltip], .formula-symbol[data-tooltip]');
+      if (target && target !== current) show(target);
+    });
+    document.addEventListener('pointerout', event => {
+      if (current && current.contains(event.target) && !current.contains(event.relatedTarget)) hide();
+    });
+    document.addEventListener('focusin', event => {
+      const target = event.target.closest?.('.calculation-board [data-tooltip], .formula-symbol[data-tooltip]');
+      if (target) show(target);
+    });
+    document.addEventListener('focusout', event => { if (current === event.target) hide(); });
+    window.addEventListener('scroll', hide, true);
+    window.addEventListener('resize', hide);
+  }
+
+  function prepareFormula(card) {
+    const legend = card.querySelector('.formula-legend');
+    const expression = card.querySelector('.formula-card__expression');
+    if (!legend || !expression) return;
+    const terms = new Map();
+    legend.querySelectorAll('div').forEach(row => {
+      const meaning = row.querySelector('dd')?.textContent.replace(/\s+/gu, ' ').trim();
+      row.querySelector('dt')?.textContent.split(',').forEach(symbol => terms.set(symbol.replace(/\s+/gu, '').trim(), meaning));
+    });
+    const lookup = (symbol, node, atEnd = false) => {
+      const clean = symbol.replace(/\s+/gu, '');
+      const next = atEnd && node.nextSibling?.nodeName === 'SUB' ? node.nextSibling.textContent : '';
+      return terms.get(clean + next) || terms.get(clean) || terms.get(clean + 'φ')
+        || [...terms].find(([name]) => name.startsWith(clean))?.[1];
+    };
+    const walker = document.createTreeWalker(expression, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    const symbolPattern = /(?<![\p{L}\d])(?:cos\s*φ|sin\s*φ|cos|sin|[A-ZηρφΔεlnctfpk])(?!(?:[\p{L}]))/gu;
+    nodes.forEach(node => {
+      const value = node.textContent;
+      const matches = [...value.matchAll(symbolPattern)].filter(match => lookup(match[0], node, match.index + match[0].length === value.length));
+      if (!matches.length) return;
+      const fragment = document.createDocumentFragment();
+      let at = 0;
+      matches.forEach(match => {
+        fragment.append(document.createTextNode(value.slice(at, match.index)));
+        const symbol = make('span', 'formula-symbol', match[0]);
+        symbol.dataset.tooltip = lookup(match[0], node, match.index + match[0].length === value.length);
+        symbol.setAttribute('aria-label', `${match[0]}: ${symbol.dataset.tooltip}`);
+        symbol.tabIndex = 0;
+        fragment.append(symbol);
+        at = match.index + match[0].length;
+      });
+      fragment.append(document.createTextNode(value.slice(at)));
+      node.replaceWith(fragment);
+    });
+    const details = make('details', 'formula-legend-details');
+    details.append(make('summary', '', 'Jelölések és mértékegységek'));
+    legend.replaceWith(details);
+    details.append(legend);
+  }
+
+  function prepareSubtopics(lesson) {
+    const children = [...lesson.children];
+    const starts = children.map((element, index) => element.classList.contains('formula-card') ? index : -1).filter(index => index >= 0);
+    if (starts.length < 2) return;
+    const sections = starts.map((start, index) => children.slice(start, starts[index + 1] ?? children.length));
+    const nav = make('nav', 'guide-subtopic-navigation');
+    nav.setAttribute('aria-label', 'Alfejezetek');
+    const previous = make('button', 'button outline', '← Előző képlet');
+    const next = make('button', 'button outline', 'Következő képlet →');
+    const select = make('select', 'guide-subtopic-select');
+    select.setAttribute('aria-label', 'Képlet kiválasztása');
+    sections.forEach((section, index) => select.append(new Option(`${index + 1}. ${section[0].querySelector('.formula-card__label')?.textContent || 'Képlet'}`, String(index))));
+    previous.type = next.type = 'button';
+    nav.append(previous, select, next);
+    lesson.querySelector('h3')?.after(nav);
+    const show = index => {
+      sections.forEach((section, sectionIndex) => section.forEach(element => {
+        if (sectionIndex !== index && element.matches('details[open]')) element.open = false;
+        element.hidden = sectionIndex !== index;
+      }));
+      select.value = String(index);
+      previous.disabled = index === 0;
+      next.disabled = index === sections.length - 1;
+    };
+    select.addEventListener('change', () => show(Number(select.value)));
+    previous.addEventListener('click', () => show(Math.max(0, Number(select.value) - 1)));
+    next.addEventListener('click', () => show(Math.min(sections.length - 1, Number(select.value) + 1)));
+    show(0);
+  }
+
   function setup(root = document) {
     root.querySelectorAll('.tutorial-layout').forEach(layout => {
       if (layout.dataset.guideNavigationReady) return;
@@ -18,6 +127,9 @@
       if (!content || !toc || !lessons.length) return;
       layout.dataset.guideNavigationReady = 'true';
       layout.classList.add('tutorial-single-topic');
+      setupTooltips();
+      layout.querySelectorAll('.formula-card').forEach(prepareFormula);
+      lessons.forEach(prepareSubtopics);
       const embedded = !!layout.closest('#guideView');
       const details = [...layout.querySelectorAll('.worked-details')];
       let active = null;
