@@ -1691,3 +1691,56 @@ body.question-open main {
   .progress-row-actions { grid-template-columns: 1fr; }
   .progress-row-actions .progress-row-remove { grid-column: 1; justify-self: start; }
 }
+
+/* Calculation guide: short overview, then a full-height writing surface. */
+#guideView .page-intro, main > .page-intro:has(+ .tutorial-layout) { margin: 0 0 8px; }
+#guideView .page-intro h1, main > .page-intro:has(+ .tutorial-layout) h1 { margin: 0; }
+.tutorial-single-topic .guide-topic-navigation { margin-bottom: 8px; padding: 8px 11px; }
+.tutorial-single-topic .tutorial-toc-group:not(.is-selected-source) > a:not(.tutorial-toc-heading) { display: none; }
+.tutorial-single-topic .tutorial-group { margin-top: 0; }
+.tutorial-single-topic .lesson { padding: 14px 17px; }
+.tutorial-single-topic .lesson-no { display: inline-block; margin: 0 8px 0 0; }
+.guide-source-tag { display: inline-block; vertical-align: middle; padding: 3px 7px; border-radius: 100px; color: #386a68; background: #e7f3ef; font: 700 11px/1.3 var(--mono); }
+.guide-source-tag.is-contest { color: #815e2e; background: #fff1db; }
+.tutorial-single-topic .lesson > h3 { margin: 7px 0 10px; }
+.guide-topic-navigation, .tutorial-single-topic .formula-card { position: relative; overflow: hidden; }
+.guide-topic-navigation::after, .tutorial-single-topic .formula-card::after { content: ''; position: absolute; right: -37px; top: -48px; width: 92px; height: 92px; border: 1px solid #9bcfc2; border-radius: 50%; opacity: .48; pointer-events: none; }
+.tutorial-single-topic .formula-card::after { right: -46px; top: -48px; opacity: .35; }
+.formula-legend-details .formula-legend { grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 7px; }
+.formula-legend > div { display: grid; grid-template-columns: minmax(24px, auto) minmax(0, 1fr); align-items: center; gap: 10px; padding: 7px 10px; }
+.formula-legend dt { min-width: 0; max-width: 100px; overflow-wrap: anywhere; }
+.formula-legend dd { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 14px; }
+.formula-legend-meaning { min-width: 0; }
+.formula-legend dd .unit-chip { display: inline-flex; align-items: center; justify-content: center; margin: 0; min-height: 27px; padding: 3px 7px; white-space: nowrap; font-size: 13px; }
+.board-problem { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px 14px; padding: 10px 16px; }
+.board-problem-text { font-size: 16px !important; line-height: 1.4 !important; }
+.board-problem .worked-source { display: block; padding: 0; margin: 0; background: transparent; font-size: 12px; white-space: nowrap; }
+.tutorial-layout.guide-solving .guide-topic-navigation,
+.tutorial-layout.guide-solving .tutorial-group__heading,
+.tutorial-layout.guide-solving .lesson:not([hidden]) > :not(.worked-details),
+.tutorial-layout.guide-solving .lesson:not([hidden]) > .worked-details:not([open]) { display: none !important; }
+#guideView:has(.guide-solving) .page-intro,
+main:not(:has(#guideView)):has(.guide-solving) > .page-intro { display: none; }
+main:has(#guideView.active .guide-solving),
+main:not(:has(#guideView)):has(.guide-solving) { padding-top: 10px; padding-bottom: 8px; }
+.tutorial-layout.guide-solving .tutorial-group { margin: 0; }
+.tutorial-layout.guide-solving .lesson:not([hidden]) { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.tutorial-layout.guide-solving .worked-details[open] { margin: 0; }
+.tutorial-layout.guide-solving .worked-details[open] > summary { min-height: 43px; padding: 8px 15px; }
+.tutorial-layout.guide-solving .worked-details[open] > summary::after { content: 'Bezárás ×'; float: right; margin-left: 12px; color: #315d62; font-size: 13px; }
+.tutorial-layout.guide-solving .board-paper { padding-top: 5px; padding-bottom: 8px; }
+.tutorial-layout.guide-solving .board-line:not(.is-current) .board-note p { display: none; }
+.tutorial-layout.guide-solving .board-line .board-note p { margin-top: 2px; }
+.tutorial-layout.guide-solving .board-line .board-writing { min-height: 0; padding-top: 0; padding-bottom: 0; }
+.tutorial-layout.guide-solving .worked-input-row { padding-top: 2px; padding-bottom: 2px; }
+@media (min-width: 761px) {
+  .tutorial-layout.guide-solving .board-paper { display: flex; flex-direction: column; min-height: calc(100dvh - 225px); }
+  .tutorial-layout.guide-solving .board-line { flex: 1 1 auto; min-height: 0; padding-top: 4px; padding-bottom: 4px; }
+}
+@media (max-width: 760px) {
+  .board-problem { grid-template-columns: minmax(0, 1fr); padding: 10px 13px; }
+  .board-problem .worked-source { white-space: normal; }
+  .tutorial-layout.guide-solving .tutorial-toc { display: none !important; }
+  .tutorial-layout.guide-solving .tutorial-content { grid-column: 1; grid-row: 1; }
+  .tutorial-layout.guide-solving .board-line { min-height: 0; padding-top: 8px; padding-bottom: 8px; }
+}

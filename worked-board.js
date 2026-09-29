@@ -97,7 +97,6 @@
         return list;
       }
       example.replaceChildren();example.classList.add('calculation-board');
-      const head=make('div','board-heading');head.append(make('strong','',title),make('span','board-mode','Lépésenként'));
       const paper=make('div','board-paper');paper.setAttribute('aria-label',`${title} – megoldási lap`);
       const lines=original.map((step,index)=>{
         currentStep=step.title;
@@ -119,11 +118,11 @@
       lines.at(-1).classList.add('board-result');
       const toolbar=make('div','worked-stepper-controls'),previous=make('button','button outline','← Előző'),next=make('button','button primary','Következő lépés →');
       const status=make('div','worked-stepper-status'),label=make('strong'),meter=make('span','worked-stepper-meter');status.setAttribute('aria-live','polite');status.append(label,meter);toolbar.append(previous,status,next);
-      previous.type=next.type='button';example.append(head);
+      previous.type=next.type='button';
       const questionId=source?.querySelector('[data-question-ref]')?.dataset.questionRef;
       const question=questionId&&window.VV_DATA?.questions?.find(item=>String(item.id)===questionId);
-      const problem=make('div','board-problem');problem.append(make('strong','','Feladat'),make('p','',question?.prompt||`${title}. Az alábbi adatokból vezesd le a keresett értéket.`));
-      if(source)example.append(source);
+      const problem=make('div','board-problem');problem.append(make('p','board-problem-text',question?.prompt||`${title}. Az alábbi adatokból vezesd le a keresett értéket.`));
+      if(source){source.querySelector('span')?.remove();problem.append(source)}
       example.append(problem,paper,toolbar);
       const stages=lines.flatMap((line,index)=>[
         {index,phase:'instruction'}, {index,phase:'writing'},

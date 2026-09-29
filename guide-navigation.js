@@ -29,14 +29,14 @@
     };
     const hide = () => { current = null; tip.hidden = true; };
     document.addEventListener('pointerover', event => {
-      const target = event.target.closest?.('.calculation-board [data-tooltip], .formula-symbol[data-tooltip]');
+      const target = event.target.closest?.('.calculation-board [data-tooltip], .formula-symbol[data-tooltip], .formula-legend .unit-chip[data-tooltip]');
       if (target && target !== current) show(target);
     });
     document.addEventListener('pointerout', event => {
       if (current && current.contains(event.target) && !current.contains(event.relatedTarget)) hide();
     });
     document.addEventListener('focusin', event => {
-      const target = event.target.closest?.('.calculation-board [data-tooltip], .formula-symbol[data-tooltip]');
+      const target = event.target.closest?.('.calculation-board [data-tooltip], .formula-symbol[data-tooltip], .formula-legend .unit-chip[data-tooltip]');
       if (target) show(target);
     });
     document.addEventListener('focusout', event => { if (current === event.target) hide(); });
@@ -50,8 +50,24 @@
     if (!legend || !expression) return;
     const terms = new Map();
     legend.querySelectorAll('div').forEach(row => {
-      const meaning = row.querySelector('dd')?.textContent.replace(/\s+/gu, ' ').trim();
+      const dd = row.querySelector('dd');
+      const meaning = dd?.textContent.replace(/\s+/gu, ' ').trim();
       row.querySelector('dt')?.textContent.split(',').forEach(symbol => terms.set(symbol.replace(/\s+/gu, '').trim(), meaning));
+      if (dd) {
+        const unit = dd.querySelector('.unit-chip');
+        const description = [...dd.childNodes].filter(node => node !== unit).map(node => node.textContent).join(' ').replace(/\s+/gu, ' ').trim();
+        dd.replaceChildren(make('span', 'formula-legend-meaning', description));
+        if (unit) {
+          if (/^(?:mértékegység nélkül|nincs mértékegység(?:e|ük))$/u.test(unit.textContent.trim())) {
+            const description = unit.textContent.trim();
+            unit.textContent = '—';
+            unit.dataset.tooltip = description;
+            unit.setAttribute('aria-label', description);
+            unit.tabIndex = 0;
+          }
+          dd.append(unit);
+        }
+      }
     });
     const lookup = (symbol, node, atEnd = false) => {
       const clean = symbol.replace(/\s+/gu, '');
@@ -129,6 +145,11 @@
       layout.classList.add('tutorial-single-topic');
       setupTooltips();
       layout.querySelectorAll('.formula-card').forEach(prepareFormula);
+      lessons.forEach(lesson => {
+        const scope = lesson.closest('.tutorial-group')?.dataset.sourceScope;
+        const tag = make('span', `guide-source-tag ${scope === 'contest' ? 'is-contest' : 'is-exam'}`, scope === 'contest' ? 'Csak versenyen talált' : 'Vizsgában előfordult');
+        (lesson.querySelector('.lesson-no') || lesson.querySelector('h3'))?.after(tag);
+      });
       lessons.forEach(prepareSubtopics);
       const embedded = !!layout.closest('#guideView');
       const details = [...layout.querySelectorAll('.worked-details')];
@@ -174,6 +195,10 @@
         details.forEach(example => { if (example !== except && example.open) example.open = false; });
       }
 
+      function updateSolving() {
+        layout.classList.toggle('guide-solving', details.some(example => example.open && !example.hidden && example.closest('.lesson') === active));
+      }
+
       function select(lesson, {historyEntry = false, focus = false} = {}) {
         if (!lesson) return;
         const changed = active !== lesson;
@@ -182,6 +207,7 @@
         const activeGroup = lesson.closest('.tutorial-group');
         lessons.forEach(item => { item.hidden = item !== lesson; });
         groups.forEach(group => { group.hidden = group !== activeGroup; });
+        toc.querySelectorAll('.tutorial-toc-group').forEach(group => group.classList.toggle('is-selected-source', group.dataset.sourceScope === activeGroup?.dataset.sourceScope));
         links.forEach(({link, id}) => {
           const selected = id === lesson.id;
           link.classList.toggle('is-selected-topic', selected);
@@ -205,6 +231,7 @@
           heading?.focus({preventScroll: true});
           navigation.scrollIntoView({block: 'start', behavior: 'instant'});
         }
+        updateSolving();
       }
 
       // Capture avoids legacy anchor scrolling to a now hidden lesson.
@@ -238,6 +265,8 @@
         });
         example.addEventListener('toggle', () => {
           if (example.open) closeExamples(example);
+          updateSolving();
+          if (example.open && example.closest('.lesson') === active) requestAnimationFrame(() => layout.scrollIntoView({block: 'start', behavior: 'instant'}));
         });
       });
       window.addEventListener('hashchange', () => {
