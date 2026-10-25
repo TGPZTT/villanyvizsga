@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const raw=window.VV_DATA||{questions:[],sources:[]};
+  const raw=window.VV_READABLE.payload(window.VV_DATA||{questions:[],sources:[]});
   const TYPE={single:'Egy jó válasz',multi:'Több jó válasz',number:'Számolás',open:'Kifejtés'};
   const KEY='villanyvizsga-progress-v1';
   const norm=s=>String(s??'').toLocaleLowerCase('hu').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();

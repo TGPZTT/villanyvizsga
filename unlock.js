@@ -64,6 +64,7 @@
   function prepareGuide(html) {
     const guide = document.getElementById('guideView');
     guide.innerHTML = html;
+    window.VV_READABLE?.element(guide);
     guide.querySelectorAll('a[href^="index.html#"]').forEach(anchor => {
       const target = anchor.getAttribute('href').split('#')[1];
       if (['home', 'bank', 'practice', 'exam', 'guide'].includes(target)) {
@@ -114,7 +115,7 @@
     document.querySelector('.shell').hidden = false;
     document.querySelector('.skip').hidden = false;
     const script = document.createElement('script');
-    script.src = 'app.js?v=20261025';
+    script.src = 'app.js?v=20261025r5';
     script.onerror = () => {
       document.querySelector('.shell').hidden = true;
       screen.hidden = false;

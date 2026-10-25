@@ -639,3 +639,125 @@ body:not(:has(#learnView.active)) .learn-question-links a { border-color:#cae1d4
   #learnView .learn-figure-legend { grid-template-columns:1fr; }
   #learnView .learn-figure-legend > div { grid-template-columns:1fr; gap:3px; }
 }
+
+/* A cable page is one reference card, without a second copy of its material. */
+#learnView .learn-catalog-reading { gap:14px; }
+#learnView .has-cable-catalog .learn-section-nav a { padding:9px 11px; }
+#learnView .has-cable-catalog .learn-section-nav a small { display:none; }
+#learnView .learn-cable-catalog { gap:14px; }
+#learnView .learn-cable-picker { padding-bottom:11px; }
+#learnView .learn-cable-picker > p { margin-bottom:7px!important; }
+#learnView .learn-cable-picker a { padding:8px 11px; }
+#learnView .learn-cable-card.is-compact > header { padding:12px 15px; gap:9px 18px; }
+#learnView .learn-cable-card.is-compact .learn-cable-aliases { display:inline; margin:3px 0 0!important; }
+#learnView .learn-cable-card.is-compact .learn-cable-body { padding:13px 15px; gap:13px; }
+#learnView .learn-cable-card.is-compact .learn-cable-figure > a { padding:8px; }
+#learnView .learn-cable-card.is-compact .learn-cable-figure figcaption { padding:8px 10px; }
+#learnView .learn-cable-card.is-compact .learn-cable-description { margin:0; gap:11px; }
+#learnView .learn-cable-card.is-compact .learn-cable-description > div { min-width:0; }
+#learnView .learn-cable-card.is-compact .learn-cable-description dt { margin:0 0 4px; color:#734b2d; font-size:15px; line-height:1.4; font-weight:700; }
+#learnView .learn-cable-card.is-compact .learn-cable-description dd { margin:0; color:#493c31; font-size:17px; line-height:1.5; }
+#learnView .learn-cable-card.is-compact .learn-cable-limits { padding:8px 10px; }
+#learnView .learn-cable-card.is-compact .learn-cable-codes { padding:11px 15px 13px; }
+#learnView .learn-cable-card.is-compact .learn-cable-codes h4 { margin:0; }
+#learnView .learn-cable-card.is-compact .learn-cable-code-list { grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr)); margin-top:8px; gap:9px 18px; }
+#learnView .learn-cable-card.is-compact .learn-cable-code-list > div { display:block; }
+#learnView .learn-cable-card.is-compact .learn-cable-code-list dt { display:inline; margin-right:7px; }
+#learnView .learn-cable-card.is-compact .learn-cable-code-list dd { display:inline; }
+#learnView .learn-catalog-note { max-width:78ch; margin:0!important; padding:9px 12px; border-left:2px solid #c58b61; color:#664b34; font-size:17px; line-height:1.5; }
+@container (min-width:700px) {
+  #learnView .learn-cable-card.is-compact .learn-cable-body.has-picture { grid-template-columns:minmax(220px,.85fr) minmax(0,1.2fr); }
+  #learnView .learn-cable-card.is-compact .learn-cable-body.has-wide-picture { grid-template-columns:1fr; }
+}
+@media (max-width:760px) {
+  #learnView .learn-cable-card.is-compact .learn-cable-body { padding:12px; }
+  #learnView .learn-cable-card.is-compact .learn-cable-codes { padding:11px 12px 13px; }
+  #learnView .learn-cable-card.is-compact .learn-cable-code-list { grid-template-columns:1fr; gap:9px; }
+}
+
+/* White reading sheets, dark prose and restrained spacing are local to Tananyag. */
+body:has(#learnView.active),body:has(#learnView.active) .main-column { background:#f5f7f8; }
+body:has(#learnView.active) .topbar { background:#fff; border-color:#dfe5e8; }
+#learnView { --learn-ink:#202730; --learn-muted:#505b66; --learn-line:#dde3e7; color:#202730; }
+#learnView .learn-lesson,#learnView .learn-panel,#learnView .learn-lesson-head { background:#fff; }
+#learnView :is(h1,h2,h3) { color:#202730; }
+#learnView :is(.learn-text,.learn-intro,.learn-points,.learn-catalog-note,.learn-cable-description dd,.learn-cable-code-list dd,.learn-figure-legend dd,.learn-figure-caption > span,.learn-takeaway p,.learn-common-mistake p,.learn-check-explanation p,.learn-option-note,.learn-hint,.learn-formula > p,.learn-formula-legend dd,.learn-model-reason) {
+  font-family:Georgia,'Times New Roman',serif;
+  font-size:16px;
+  line-height:1.5;
+  color:#202730;
+}
+#learnView .learn-cable-card.is-compact :is(.learn-cable-description dd,.learn-cable-code-list dd),
+#learnView .learn-cable-figure .learn-figure-legend dd {
+  font-family:Georgia,'Times New Roman',serif; font-size:16px; line-height:1.5; color:#202730;
+}
+#learnView :is(.learn-text,.learn-intro,.learn-points,.learn-catalog-note,.learn-cable-description,.learn-cable-code-list,.learn-figure-legend,.learn-figure-caption,.learn-takeaway,.learn-common-mistake,.learn-check-explanation) :is(strong,em) { color:inherit; }
+#learnView em { font-style:italic; }
+#learnView strong { font-weight:700; }
+#learnView :is(button,input,select,.learn-rail,.learn-tabs,.learn-section-nav,.learn-cable-picker,.learn-cable-rating,.learn-related-lessons,.learn-cable-description dt,.learn-cable-code-list dt,.learn-figure-legend dt,.learn-figure-credit) { font-family:'Segoe UI',Arial,sans-serif; }
+#learnView .learn-text :is(p,ul,ol) + :is(p,ul,ol) { margin-top:8px; }
+#learnView .learn-points { gap:7px; }
+#learnView :is(.learn-reading-layout,.learn-reading-layout.has-media) { gap:14px; }
+#learnView .learn-text { max-width:78ch; }
+#learnView .learn-text .learn-table-wrap { margin-top:14px; }
+#learnView .learn-code-guide .learn-table-wrap { margin-top:0; }
+#learnView .learn-code-examples h3 { margin:0 0 8px; font-size:18px; }
+#learnView .learn-table-wrap :is(td,tbody th) { font:400 16px/1.5 Georgia,'Times New Roman',serif; color:#202730; }
+#learnView .learn-table-wrap tbody th { font-weight:700; }
+#learnView .learn-table-wrap thead th { background:#f2f5f7; color:#344451; font-family:'Segoe UI',Arial,sans-serif; }
+#learnView :is(.learn-table-wrap,.learn-figure,.learn-cable-card) { border-color:#dce3e7; }
+#learnView :is(.learn-figure,.learn-figure > a,.learn-cable-card,.learn-cable-figure > a) { background:#fff; }
+#learnView :is(.learn-figure figcaption,.learn-cable-card > header,.learn-cable-codes,.learn-cable-limits,.learn-catalog-note,.learn-common-mistake,.learn-hint,.learn-check-explanation) { background:#f7f9fa; }
+#learnView .learn-cable-card.is-compact :is(.learn-cable-rating dd,.learn-cable-description dt,.learn-cable-code-list dt) { color:#273640; }
+#learnView :is(.learn-takeaway,.learn-formula) { background:#f7f9fa; }
+#learnView .learn-formula > p { margin-top:7px!important; }
+#learnView .learn-takeaway { padding:12px 15px; }
+#learnView .learn-common-mistake { padding:9px 14px; }
+#learnView .learn-topic-section + .learn-topic-section { margin-top:18px; padding-top:18px; }
+#learnView .lv-workbench { --lv-ink:#202730; background:#f8fafb; border-color:#dce3e7; }
+#learnView .lv-workbench p { font:400 16px/1.5 Georgia,'Times New Roman',serif; color:#202730; }
+#learnView .lv-observation { background:#fff; }
+#learnView .lv-observation strong { color:#202730; }
+#learnView .learn-lesson-footer { background:#f8fafb; border-color:#dce3e7; }
+#learnView ::selection { background:#cfe1f2; color:#17232c; }
+
+/* Each equation has its own line and shares one symbol legend. */
+#learnView .learn-formula-equations { display:grid; gap:7px; min-width:0; }
+#learnView .learn-formula-equations .learn-formula-expression { margin:0; min-width:0; }
+/* Both bars retain the same per-channel scale across all selected states. */
+#learnView .learn-model-channels > .learn-numeric-channel { gap:10px; }
+#learnView .learn-numeric-channel .learn-channel-track { position:relative; height:18px; border-radius:3px; background:#eef1f4; overflow:hidden; }
+#learnView .learn-numeric-channel .learn-channel-track i { position:absolute; left:0; border-radius:2px; }
+#learnView .learn-numeric-channel .learn-channel-track .learn-channel-baseline { top:2px; height:3px; min-width:2px; background:#6d7782; transition:none; }
+#learnView .learn-numeric-channel .learn-channel-track .learn-channel-current { bottom:2px; height:8px; background:var(--learn-chapter-accent,#a9541b); }
+#learnView .learn-channel-values { display:grid; gap:1px; white-space:nowrap; text-align:right; }
+#learnView .learn-channel-values small { font-size:14px; font-weight:400; color:#505b66; }
+#learnView .learn-channel-values small .learn-unit { font-size:inherit; }
+#learnView .learn-channel-legend { margin:8px 0 10px; font:400 14px/1.45 'Segoe UI',Arial,sans-serif; color:#505b66; }
+@media (min-width:1100px) {
+  #learnView .learn-intro,
+  #learnView .learn-text > p,
+  #learnView .learn-text .learn-points > li { text-align:justify; text-justify:inter-word; hyphens:auto; }
+}
+@media (max-width:560px) {
+  #learnView .learn-model-channels > .learn-numeric-channel { grid-template-columns:minmax(0,1fr) minmax(65px,1fr) auto; gap:8px; }
+}
+
+#learnView .learn-definition-opening { max-width:78ch; margin:0; font:400 16px/1.5 Georgia,'Times New Roman',serif; color:#202730; }
+@media (min-width:1100px) {
+  #learnView .learn-definition-opening { text-align:justify; text-justify:inter-word; hyphens:auto; }
+}
+
+/* A long label always leaves a complete reading line for its explanation. */
+#learnView .learn-figure-legend > div { display:block; min-width:0; }
+#learnView .learn-figure-legend dt { margin:0 0 3px; overflow-wrap:break-word; word-break:normal; hyphens:auto; }
+#learnView .learn-figure-legend dd { margin:0; width:auto; overflow-wrap:break-word; word-break:normal; hyphens:auto; }
+/* Source figures supplement the models without occupying a full screen. */
+#learnView .learn-media { width:100%; max-width:700px; justify-self:start; gap:14px; }
+#learnView .learn-media .learn-figure { min-width:0; width:100%; }
+#learnView .learn-media .learn-figure > a { min-height:0; max-height:none; padding:8px; }
+#learnView .learn-media .learn-figure img { width:auto; height:auto; max-width:100%; max-height:330px; object-fit:contain; }
+@media (min-width:1100px) {
+  #learnView .learn-media.is-plant-pair { max-width:none; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
+  #learnView .learn-media.is-plant-pair .learn-figure img { max-height:320px; }
+}

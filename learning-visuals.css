@@ -139,3 +139,46 @@
 .lv-technical>svg,.lv-circuit>svg{min-width:650px}
 
 #learnView .lv-technical:focus-visible,#learnView .lv-circuit:focus-visible{outline:3px solid #b85c1a;outline-offset:3px}
+
+/* Two illustrations share one reading surface; model state stays independent. */
+.lv-visuals{gap:12px;margin:10px 0}
+#learnView .learn-reading-layout>.lv-visuals{margin:0}
+.lv-tabbed{gap:0;grid-template-columns:minmax(0,1fr);border:1px solid #e6ccb1;border-radius:9px;background:#fffaf0}
+.lv-illustration-tabs{display:grid;min-width:0;max-width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:5px;border-bottom:1px solid #e6ccb1;background:#f5eadb;border-radius:8px 8px 0 0}
+.lv-illustration-tabs [role=tab]{min-width:0;min-height:44px;padding:8px 12px;border:1px solid transparent;border-radius:5px;background:transparent;color:#70543c;font:600 17px/1.35 'Segoe UI',Arial,sans-serif;text-align:left;cursor:pointer;overflow-wrap:anywhere}
+.lv-illustration-tabs [role=tab][aria-selected=true]{color:#6e3817;border-color:#e1bf98;background:#fffaf0;box-shadow:inset 0 -2px #b87739}
+.lv-illustration-tabs [role=tab]:focus-visible{outline:3px solid #855126;outline-offset:1px}
+.lv-illustration-panel[hidden]{display:none!important}
+.lv-illustration-panel{min-width:0;max-width:100%}
+.lv-tabbed .lv-workbench{border:0;border-radius:0;background:transparent;padding:12px 14px}
+.lv-workbench .lv-state-controls{gap:6px;margin:8px 0}
+.lv-workbench .lv-observation{padding:10px 12px;gap:8px}
+.lv-workbench .lv-play{margin-top:8px;padding:8px 12px}
+.lv-diagram.lv-text-only{gap:7px;padding:0 0 8px}
+.lv-node.lv-text-node{min-height:44px;padding:8px 10px}
+@media(max-width:650px){.lv-illustration-tabs{gap:3px;padding:4px}.lv-illustration-tabs [role=tab]{padding:7px 8px}.lv-tabbed .lv-workbench{padding:10px}.lv-workbench .lv-observation{padding:10px}.lv-visuals{margin:8px 0}}
+
+.lv-ohm-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.lv-ohm-control{min-width:0;padding:8px 10px;border:1px solid #e4cfb5;border-radius:6px;background:#fff}
+.lv-ohm-control>label{display:block;margin-bottom:5px;font-weight:650}
+.lv-ohm-control-row{display:flex;align-items:center;gap:8px}
+.lv-ohm-control-row input[type=range]{min-width:0;width:100%;accent-color:#a75d29}
+.lv-ohm-control-row input[type=number]{width:68px;min-height:40px;padding:5px 7px;border:1px solid #cdb99f;border-radius:4px;background:#fff;color:#493427;font:inherit}
+.lv-ohm-unit{display:inline-block;padding:1px 5px;border:1px solid #d9c8b4;border-radius:3px;background:#f8f2e9;white-space:nowrap;font-family:'Segoe UI',Arial,sans-serif}
+.lv-ohm-symbol{display:inline-block;border-bottom:1px dotted #98704d;cursor:help;font-weight:650}
+.lv-ohm-circuit{margin:4px 0}
+.lv-ohm-circuit .lv-ohm-narrow{display:none}
+.lv-ohm-answer{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px 12px;padding:10px 12px;border:1px solid #e4cfb5;border-radius:6px;background:#fff}
+.lv-ohm-equation{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px;font:600 18px/1.6 'Segoe UI',Arial,sans-serif}
+.lv-ohm-equation output{color:#8b4319;font-size:21px;font-weight:750;white-space:nowrap}
+.lv-ohm-answer p{grid-column:1;margin:0!important}
+.lv-ohm-answer button{grid-column:2;grid-row:1/3;min-height:44px;padding:7px 10px;border:1px solid #cfb99c;border-radius:5px;background:#fff9ef;color:#69472d}
+.lv-ohm-answer .lv-ohm-baseline{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,max-content);gap:5px 11px;align-items:baseline;border-top:1px solid #e8ded1;padding-top:7px}
+#learnView .lv-ohm-answer .lv-ohm-baseline{font-family:'Segoe UI',Arial,sans-serif}
+.lv-ohm-baseline b{font-weight:600;white-space:nowrap}
+@media(max-width:650px){.lv-ohm-controls{gap:8px}.lv-ohm-control{padding:7px}.lv-ohm-control-row{flex-wrap:wrap;gap:6px}.lv-ohm-control-row input[type=range]{flex-basis:100%}.lv-ohm-control-row input[type=number]{width:65px}.lv-ohm-answer{padding:9px}.lv-ohm-answer button{grid-row:2}.lv-ohm-equation{grid-column:1/-1}}
+@media(max-width:650px){.lv-ohm-circuit .lv-ohm-wide{display:none}.lv-technical.lv-ohm-circuit>svg.lv-ohm-narrow{display:block;min-width:0}}
+@media(max-width:650px){.lv-ohm-answer .lv-ohm-baseline{grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 7px}.lv-ohm-baseline>span{grid-column:1/-1}}
+
+#learnView .lv-workbench .lv-observation p{font:400 16px/1.5 Georgia,'Times New Roman',serif;color:#202730;margin:4px 0 0}
+#learnView .lv-workbench .lv-observation strong,#learnView .lv-ohm-control>label{color:#202730}

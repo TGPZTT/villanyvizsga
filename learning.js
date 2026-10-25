@@ -9,9 +9,10 @@
   const shuffle = values => { const result = [...values]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; };
   const readProgress = () => { try { const value = JSON.parse(localStorage.getItem(KEY)); return value && typeof value === 'object' ? {read: value.read || {}, checks: value.checks || {}, lastLesson: value.lastLesson || ''} : {read:{}, checks:{}, lastLesson:''}; } catch { return {read:{}, checks:{}, lastLesson:''}; } };
   let progress = readProgress();
-  let host, data, chapters = [], lessons = [], lessonMap = new Map(), questionMap = new Map(), reverseMap = new Map(), figureMeta = new Map(), loading;
+  let host, data, chapters = [], lessons = [], lessonMap = new Map(), questionMap = new Map(), reverseMap = new Map(), figureMeta = new Map(), commonFigureFirstUse = new Map(), loading;
   let current = null, lastRoute = 'learn', day = 0, query = '', tab = 'read', figureIndex = 0, scope = 'papers', questionPage = 0, resetOpen = false;
   const sessions = new Map(), models = new Map(), cableSelections = new Map();
+  const definitionOpenings = new Map([["energy-feszultseg",["fundamentals-mennyisegek","bullets",0]],["energy-csillag-delta",["energy-csillag-delta","bullets",0]],["energy-ho-atom",["energy-ho-atom","bullets",0]],["energy-napelem",["energy-napelem","bullets",0]],["wires-tipusok",["wires-tipusok","bullets",0]],["wires-szinek",["protection-tn","bullets",0]],["switchgear-kapcsolok",["switchgear-kapcsolok","bullets",0]],["switchgear-tularam",["switchgear-tularam","bullets",0]],["switchgear-biztosito",["switchgear-biztosito","bullets",0]],["switchgear-szelektiv",["switchgear-szelektiv","bullets",0]],["switchgear-ontartas",["switchgear-ontartas","bullets",2]],["switchgear-motorvedelem",["switchgear-motorvedelem","bullets",0]],["switchgear-relek",["switchgear-relek","bullets",0]],["connection-vezerelt-fovezetek",["connection-vezerelt-fovezetek","bullets",1]],["protection-basic",["protection-basic","bullets",0]],["protection-tn",["protection-tn","bullets",0]],["protection-tt-it",["protection-tt-it","bullets",0]],["protection-rcd-label",["protection-rcd-label","bullets",0]],["protection-eph",["protection-eph","bullets",0]],["protection-measurements",["protection-measurements","bullets",0]],["auxiliary-bus",["auxiliary-bus","bullets",0]],["lighting-quantities",["lighting-quantities","bullets",0]],["lighting-distance",["lighting-distance","bullets",2]],["lighting-emergency",["lighting-emergency","bullets",1]],["lightning-aramut",["lightning-aramut","bullets",0]],["lightning-spd",["lightning-eszkozok","intro",0]],["lightning-spd-adatok",["lightning-eszkozok","intro",0]],["lightning-eszkozok",["lightning-eszkozok","bullets",0]],["machines-motor-types",["machines-motor-types","bullets",0]],["machines-slip",["machines-slip","bullets",2]],["machines-contactor",["switchgear-magneskapcsolo","intro",0]],["machines-reversing",["switchgear-ontartas","bullets",4]],["fundamentals-mennyisegek",["fundamentals-mennyisegek","bullets",0]],["fundamentals-hatasfok",["fundamentals-hatasfok","bullets",0]],["fundamentals-valtakozo",["fundamentals-valtakozo","bullets",0]],["fundamentals-meter",["fundamentals-meter","bullets",0]]]);
   let searchTimer;
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch {} };
   const lessonRoute = lesson => `learn/${encodeURIComponent(lesson.chapter.id)}/${encodeURIComponent(lesson.id)}`;
@@ -38,6 +39,7 @@
   };
 
   function ingest(source) {
+    source = window.VV_READABLE?.payload(source) || source;
     if (!source || !Array.isArray(source.chapters)) throw new Error('Invalid learning chapters');
     data = source;
     figureMeta = new Map();
@@ -55,6 +57,13 @@
     chapters = source.chapters.map((chapter, index) => ({...chapter, index, lessons: chapter.lessons || []}));
     lessons = chapters.flatMap(chapter => chapter.lessons.map((lesson, index) => ({...lesson, chapter, index})));
     lessonMap = new Map(lessons.map(lesson => [lesson.id, lesson]));
+    commonFigureFirstUse = new Map();
+    for (const lesson of lessons) for (const figure of lessonFigures(lesson)) {
+      for (const term of figure.legend || figure.parts || []) {
+        const key = commonLegendKey(term);
+        if (key && !commonFigureFirstUse.has(key)) commonFigureFirstUse.set(key,`${lesson.id}::${figure.path}`);
+      }
+    }
     reverseMap = new Map();
     for (const lesson of lessons) for (const id of lesson.questionIds || []) {
       if (!reverseMap.has(String(id))) reverseMap.set(String(id), []);
@@ -83,11 +92,14 @@
     if (value && typeof value === 'object') return Object.entries(value).filter(([key]) => !['id','type','path','figurePath','icon','glyph','color','target','guideTarget','source','attribution','author','license','licenseUrl','url','originalUrl','localPath','sourceSvg','reviewPng','evidenceId','evidenceIds'].includes(key)).flatMap(([,item]) => collectSearchText(item));
     return [];
   };
-  const searchable = lesson => collectSearchText([lesson.chapter.title,groupTitle(lesson),lesson.title,lesson.intro,lesson.bullets,lesson.facts,lesson.table,lesson.formulas,lesson.recap,lesson.takeaway,lesson.commonMistake,lesson.keywords,lesson.interaction,lesson.visualSpec,lesson.secondaryVisual,cableTypesForLesson(lesson)]);
+  const searchable = lesson => {
+    const types = cableTypesForLesson(lesson);
+    return collectSearchText(types.length ? [lesson.chapter.title,groupTitle(lesson),lesson.title,lesson.intro,cableLessonNote(lesson),types.map(cableVisibleData)] : [lesson.chapter.title,groupTitle(lesson),lesson.title,lesson.intro,lesson.bullets,lesson.facts,lesson.table,lesson.formulas,lesson.recap,lesson.takeaway,lesson.commonMistake,lesson.keywords,lesson.interaction,lesson.visualSpec,lesson.secondaryVisual]);
+  };
   const cableRoute = (lesson,id) => `${lessonRoute(lesson)}/cable/${encodeURIComponent(id)}`;
   const searchHref = lesson => {
     const needle = norm(query);
-    const matches = cableTypesForLesson(lesson).map(type => ({type,score:(norm(type.name).includes(needle)?3:0)+((type.aliases || []).some(alias=>norm(alias).includes(needle))?2:0)+(collectSearchText(type).some(text=>norm(text).includes(needle))?1:0)})).filter(item=>item.score).sort((a,b)=>b.score-a.score);
+    const matches = cableTypesForLesson(lesson).map(type => ({type,score:(norm(type.name).includes(needle)?3:0)+((type.aliases || []).some(alias=>norm(alias).includes(needle))?2:0)+(collectSearchText(cableVisibleData(type)).some(text=>norm(text).includes(needle))?1:0)})).filter(item=>item.score).sort((a,b)=>b.score-a.score);
     return matches[0] ? `#${cableRoute(lesson,matches[0].type.id)}` : href(lesson);
   };
   const searchMatches = lesson => norm(query).length >= 2 && searchable(lesson).some(text => norm(text).includes(norm(query)));
@@ -148,17 +160,22 @@
 
   function formulaMarkup(formula) {
     const legendTerms=(formula.symbols || []).filter(term=>term.symbol);
-    const terms=legendTerms.flatMap(term=>String(term.symbol).split(',').map((symbol,index)=>({...term,symbol:symbol.trim(),meaning:String(term.meaning||'').replace(/^primer és szekunder /u,index===0?'primer ':'szekunder ')}))).filter(term=>term.symbol).sort((a,b)=>b.symbol.length-a.symbol.length), expression = String(formula.expression || '');
-    let math = '', pos = 0;
-    while (pos < expression.length) {
-      const term = terms.find(term => expression.startsWith(term.symbol, pos) && !(pos > 0 && /[A-Za-zÀ-ž]/u.test(expression[pos - 1]) && /[A-Za-zÀ-ž]/u.test(term.symbol[0])) && !(/[A-Za-zÀ-ž]/u.test(expression[pos + term.symbol.length] || '') && /[A-Za-zÀ-ž]/u.test(term.symbol.at(-1))));
-      if (term) { math += `<span tabindex="0" class="learn-formula-symbol" data-learn-symbol="${esc(term.symbol)}" data-learn-tooltip="${esc(`${term.meaning}${physicalUnit(term.unit) ? `; mértékegysége: ${physicalUnit(term.unit)}` : '; mértékegység nélkül'}`)}">${mathText(term.symbol)}</span>`; pos += term.symbol.length; }
-      else { math += esc(expression[pos]); pos++; }
-    }
-    return `<div class="learn-formula"><div class="learn-formula-expression">${math}</div>${formula.note ? `<p>${esc(formula.note)}</p>` : ''}<div class="learn-formula-legend"><h4>Jelölések és mértékegységek</h4><dl>${legendTerms.map(term => `<div><dt>${mathText(term.symbol)}</dt><dd>${esc(term.meaning)} ${unit(term.unit) || '<span class="learn-unitless">mértékegység nélkül</span>'}</dd></div>`).join('')}</dl></div></div>`;
+    const terms=legendTerms.flatMap(term=>String(term.symbol).split(',').map((symbol,index)=>({...term,symbol:symbol.trim(),meaning:String(term.meaning||'').replace(/^primer és szekunder /u,index===0?'primer ':'szekunder ')}))).filter(term=>term.symbol).sort((a,b)=>b.symbol.length-a.symbol.length);
+    const equationMarkup = expression => {
+      let math = '', pos = 0;
+      while (pos < expression.length) {
+        const term = terms.find(term => expression.startsWith(term.symbol, pos) && !(pos > 0 && /[A-Za-zÀ-ž]/u.test(expression[pos - 1]) && /[A-Za-zÀ-ž]/u.test(term.symbol[0])) && !(/[A-Za-zÀ-ž]/u.test(expression[pos + term.symbol.length] || '') && /[A-Za-zÀ-ž]/u.test(term.symbol.at(-1))));
+        if (term) { math += `<span tabindex="0" class="learn-formula-symbol" data-learn-symbol="${esc(term.symbol)}" data-learn-tooltip="${esc(`${String(term.meaning || '').replace(/[.;:\s]+$/u,'')}${physicalUnit(term.unit) ? `. Mértékegysége: ${physicalUnit(term.unit)}.` : '. Mértékegység nélkül.'}`)}">${mathText(term.symbol)}</span>`; pos += term.symbol.length; }
+        else { math += esc(expression[pos]); pos++; }
+      }
+      return `<div class="learn-formula-expression">${math}</div>`;
+    };
+    const equations = String(formula.expression || '').split(';').map(expression => expression.trim()).filter(Boolean);
+    return `<div class="learn-formula"><div class="learn-formula-equations">${equations.map(equationMarkup).join('')}</div>${formula.note ? `<p>${esc(formula.note)}</p>` : ''}<div class="learn-formula-legend"><h4>Jelölések és mértékegységek</h4><dl>${legendTerms.map(term => `<div><dt>${mathText(term.symbol)}</dt><dd>${esc(term.meaning)} ${unit(term.unit) || '<span class="learn-unitless">mértékegység nélkül</span>'}</dd></div>`).join('')}</dl></div></div>`;
   }
 
   function cableTypesForLesson(lesson) {
+    if (!['wires-tipusok','wires-hajlekony','wires-energiakabelek','wires-vezerlokabelek'].includes(lesson.id)) return [];
     const catalog = data?.cableTypes || {};
     const seen = new Set();
     return (lesson.cableTypeIds || []).map(id => {
@@ -197,26 +214,92 @@
     return `<p class="learn-figure-credit">${info.author ? link(info.sourceUrl || figure.url,info.author) : ''}${info.author && info.license ? ' — ' : ''}${info.license ? link(info.licenseUrl,info.license) : ''}${info.changes ? `<span>${esc(info.changes)}</span>` : ''}</p>`;
   }
 
-  function singleFigureMarkup(source, extraClass = '') {
+  function singleFigureMarkup(source, extraClass = '', {showLegend = true, lesson = null} = {}) {
     const figure = figureData(source);
     if (!figure) return '';
     const caption = figure.caption || figure.alt || '';
     const alt = figure.alt || caption;
     const dimensions = Number(figure.width) > 0 && Number(figure.height) > 0 ? `width="${Number(figure.width)}" height="${Number(figure.height)}"` : '';
-    const legend = legendMarkup(figure.legend || figure.parts);
+    const terms = (figure.legend || figure.parts || []).filter(term => !lesson || !commonLegendKey(term) || commonFigureFirstUse.get(commonLegendKey(term)) === `${lesson.id}::${figure.path}`);
+    const legend = showLegend ? legendMarkup(terms) : '';
     return `<figure class="learn-figure ${extraClass}"><a href="#" data-zoom-asset="${esc(figure.path)}" data-zoom-caption="${esc(caption)}" aria-label="${esc(alt)} nagyítása" aria-haspopup="dialog"><img data-asset-src="${esc(figure.path)}" alt="${esc(alt)}" ${dimensions} loading="lazy" decoding="async"></a><figcaption><div class="learn-figure-caption"><span>${richText(caption)}</span><button type="button" data-zoom-asset="${esc(figure.path)}" data-zoom-caption="${esc(caption)}" aria-haspopup="dialog">Nagyítás ↗</button></div>${legend ? `<div class="learn-figure-notes"><h4>Jelmagyarázat</h4>${legend}</div>` : ''}${attributionMarkup(figure)}</figcaption></figure>`;
   }
 
-  function figureMarkup(lesson, excluded = new Set()) {
+  function firstCableValue(value) {
+    return lineText(Array.isArray(value) ? value.find(item => lineText(item).trim()) : value);
+  }
+
+  function cableLessonNote(lesson) {
+    return lesson.catalogNote || (lesson.id === 'wires-tipusok' ? firstCableValue(lesson.bullets) : '');
+  }
+
+  function cableLegendTerms(type) {
+    const figure = figureData(type.figure);
+    const terms = [...(type.codeParts || []),...(figure?.legend || figure?.parts || [])];
+    const merged = new Map();
+    const plain = value => norm(value).replace(/[.;,:]/g,'').trim();
+    for (const term of terms) {
+      const label = term.code || term.symbol || term.label || '';
+      const meaning = term.meaning || term.description || term.detail || '';
+      if (!label || !meaning) continue;
+      const key = norm(label), previous = merged.get(key);
+      if (!previous) { merged.set(key,{label,meaning,unit:term.unit}); continue; }
+      const before = plain(previous.meaning), next = plain(meaning);
+      if (before.includes(next)) continue;
+      if (next.includes(before)) previous.meaning = meaning;
+      else if (!previous.meaning.includes(meaning)) previous.meaning += ` ${meaning}`;
+    }
+    return [...merged.values()];
+  }
+
+  function cableVisibleData(type) {
+    const figure = figureData(type.figure);
+    return {name:type.name,aliases:type.aliases,conductorMaterial:type.conductorMaterial,nominalVoltage:type.nominalVoltage,
+      structure:type.structure,application:firstCableValue(type.application),limitations:firstCableValue(type.limitations),
+      legend:cableLegendTerms(type),caption:figure?.caption};
+  }
+
+  function commonLegendKey(term) {
+    const label = String(term.symbol || term.label || term.code || '').trim();
+    const meaning = norm(term.meaning || term.description || term.detail || '');
+    if (label === 'G' && /^(?:villamos )?generator[.]?$/.test(meaning)) return 'generator-G';
+    if (label === '3~' && /haromfazisu.*valtakozo/.test(meaning)) return 'three-phase-AC';
+    if (label === 'N' && /nullavezeto/.test(meaning) && !/kapocs|keszulek|helyi|meresi/.test(meaning)) return 'neutral-N';
+    if (label === 'PE' && /vedovezeto/.test(meaning) && !/helyi|kapocs|szonda/.test(meaning)) return 'protective-PE';
+    if (label === 'PEN' && /vedo.*nullavezeto/.test(meaning)) return 'combined-PEN';
+    return '';
+  }
+
+  function lessonFigures(lesson, excluded = new Set()) {
+    // The interactive network already shows these complete topologies. The IT
+    // capacitance diagram and loop-measurement diagram remain complementary.
+    const replaced = {
+      'protection-tn':['abrak/tananyag/b-tn-c.webp','abrak/tananyag/b-tn-c-s.webp'],
+      'protection-tt-it':['abrak/tananyag/b-tt.webp'],
+      'protection-eph':['abrak/tananyag/b-eph.webp']
+    };
+    const tableReplaced = {
+      'protection-ip-solid':['abrak/tananyag/b-ip.webp'],
+      'protection-ip-water':['abrak/tananyag/b-ip.webp'],
+      'protection-insulation':['abrak/tananyag/b-insulation.webp']
+    };
+    const taughtElsewhere = {
+      'connection-vezerelt-fovezetek':['abrak/tananyag/a-fogyasztasmero.webp'],
+      'machines-transformer':['abrak/szs-2024-28_1.png']
+    };
+    const networkReady = !!window.VVLearningNetworks;
     const candidates = lesson.figures?.length ? lesson.figures : lesson.interaction?.figurePath ? [{path:lesson.interaction.figurePath,alt:lesson.interaction.title || lesson.title,caption:lesson.interaction.caption || ''}] : [];
     const seen = new Set(excluded);
-    const figures = candidates.filter(source => {
-      const figure = figureData(source);
-      if (!figure || seen.has(figure.path)) return false;
+    return candidates.map(figureData).filter(figure => {
+      if (!figure || seen.has(figure.path) || networkReady && replaced[lesson.id]?.includes(figure.path) || lesson.table?.rows?.length && tableReplaced[lesson.id]?.includes(figure.path) || taughtElsewhere[lesson.id]?.includes(figure.path)) return false;
       seen.add(figure.path); return true;
     });
+  }
+
+  function figureMarkup(lesson, excluded = new Set()) {
+    const figures = lessonFigures(lesson,excluded);
     if (!figures.length) return '';
-    return `<div class="learn-media" data-figure-count="${figures.length}">${figures.map(figure => singleFigureMarkup(figure)).join('')}</div>`;
+    return `<div class="learn-media${lesson.id === 'energy-ho-atom' && figures.length === 2 ? ' is-plant-pair' : ''}" data-figure-count="${figures.length}">${figures.map(figure => singleFigureMarkup(figure,'',{lesson})).join('')}</div>`;
   }
 
   function cableTypesMarkup(lesson) {
@@ -224,16 +307,14 @@
     if (!types.length) return '';
     const selected = selectedCableType(lesson);
     const picker = `<nav class="learn-cable-picker" aria-label="Vezeték- és kábeltípus kiválasztása"><p>Válassz típust</p><ul>${types.map(type => `<li><a href="#${cableRoute(lesson,type.id)}" data-learn-cable-select="${esc(type.id)}" ${type.id === selected.id ? 'aria-current="true"' : ''}>${esc(type.name)}</a></li>`).join('')}</ul></nav>`;
-    const list = (values,className) => {
-      const rows = (Array.isArray(values) ? values : values ? [values] : []).filter(Boolean);
-      return rows.length ? `<ul class="${className}">${rows.map(value => `<li>${richText(lineText(value))}</li>`).join('')}</ul>` : '';
-    };
     return `<section class="learn-cable-catalog" aria-label="Vezeték- és kábeltípusok" data-learn-cable-selected="${esc(selected.id)}">${picker}${[selected].map(type => {
       const figure = figureData(type.figure);
       const widePicture = figure && Number(figure.width) >= 900 && Number(figure.width) / Number(figure.height) > 1.7;
-      const picture = singleFigureMarkup(figure,`learn-cable-figure${widePicture ? ' is-wide' : ''}`);
+      const picture = singleFigureMarkup(figure,`learn-cable-figure${widePicture ? ' is-wide' : ''}`,{showLegend:false});
       const aliases = Array.isArray(type.aliases) ? type.aliases.filter(Boolean) : [];
-      return `<article class="learn-cable-card" data-learn-cable-type="${esc(type.id || type.name)}"><header><div><h3>${esc(type.name)}</h3>${aliases.length ? `<p class="learn-cable-aliases">Más elnevezés: ${aliases.map(esc).join(', ')}</p>` : ''}</div><dl class="learn-cable-rating">${type.conductorMaterial ? `<div><dt>Vezetőanyag</dt><dd>${esc(type.conductorMaterial)}</dd></div>` : ''}${type.nominalVoltage ? `<div><dt>Névleges feszültség${/\d/.test(type.nominalVoltage) ? ' (U₀/U)' : ''}</dt><dd>${esc(type.nominalVoltage)}</dd></div>` : ''}</dl></header><div class="learn-cable-body ${picture ? 'has-picture' : ''}${widePicture ? ' has-wide-picture' : ''}">${picture}<div class="learn-cable-description">${type.structure ? `<section><h4>Felépítés</h4><p>${richText(type.structure)}</p></section>` : ''}${type.application?.length ? `<section><h4>Alkalmazás</h4>${list(type.application,'learn-cable-uses')}</section>` : ''}${type.limitations?.length ? `<section class="learn-cable-limits"><h4>Alkalmazási határok</h4>${list(type.limitations,'learn-cable-uses')}</section>` : ''}</div></div>${type.codeParts?.length ? `<section class="learn-cable-codes"><h4>A típusjel jelentése</h4>${legendMarkup(type.codeParts,'learn-cable-code-list')}</section>` : ''}</article>`;
+      const fields = [['Felépítés',type.structure],['Alkalmazás',firstCableValue(type.application)],['Korlát',firstCableValue(type.limitations)]];
+      const terms = cableLegendTerms(type);
+      return `<article class="learn-cable-card is-compact" data-learn-cable-type="${esc(type.id || type.name)}"><header><div><h3>${esc(type.name)}</h3>${aliases.length ? `<p class="learn-cable-aliases">${aliases.map(esc).join(', ')}</p>` : ''}</div><dl class="learn-cable-rating">${type.conductorMaterial ? `<div><dt>Vezetőanyag</dt><dd>${esc(type.conductorMaterial)}</dd></div>` : ''}${type.nominalVoltage ? `<div><dt>Névleges feszültség${/\d/.test(type.nominalVoltage) ? ' (U₀/U)' : ''}</dt><dd>${esc(type.nominalVoltage)}</dd></div>` : ''}</dl></header><div class="learn-cable-body ${picture ? 'has-picture' : ''}${widePicture ? ' has-wide-picture' : ''}">${picture}<dl class="learn-cable-description">${fields.filter(([,value])=>value).map(([label,value])=>`<div${label === 'Korlát' ? ' class="learn-cable-limits"' : ''}><dt>${label}</dt><dd>${richText(value)}</dd></div>`).join('')}</dl></div>${terms.length ? `<section class="learn-cable-codes"><h4>Jelölések</h4>${legendMarkup(terms,'learn-cable-code-list')}</section>` : ''}</article>`;
     }).join('')}</section>`;
   }
 
@@ -246,15 +327,36 @@
     return related.length ? `<nav class="learn-related-lessons" aria-label="Kapcsolódó tananyag"><h3>Kapcsolódó részek</h3><ul>${related.map(item => `<li><a href="${href(item)}">${esc(item.title)} <span aria-hidden="true">→</span></a></li>`).join('')}</ul></nav>` : '';
   }
 
+  function definitionOpening(lesson) {
+    if (lesson.definitionIntro) return null;
+    const reference = definitionOpenings.get(lesson.id);
+    if (!reference) return null;
+    const [sourceId,field,index] = reference, source = lessonMap.get(sourceId);
+    if (sourceId !== lesson.id && source && lessons.indexOf(source) < lessons.indexOf(lesson)) return null;
+    const text = field === 'bullets' ? source?.bullets?.[index] : source?.intro;
+    return text ? {text:lineText(text),sourceId,field,index} : null;
+  }
+
   function readMarkup(lesson) {
     const cableTypes = cableTypesForLesson(lesson);
-    const cablePictures = new Set(cableTypes.map(type => figureData(type.figure)?.path).filter(Boolean));
+    if (cableTypes.length) {
+      const note = cableLessonNote(lesson);
+      return `<div class="learn-reading-layout learn-catalog-reading"><p class="learn-intro">${richText(lesson.intro || '')}</p>${note ? `<p class="learn-catalog-note">${richText(note)}</p>` : ''}${cableTypesMarkup(lesson)}${relatedLessonsMarkup(lesson)}</div>`;
+    }
     const headers = lesson.table?.headers || lesson.table?.columns || [];
     const formulas = (lesson.formulas || []).map(formulaMarkup).join('');
     const table = headers.length ? `<div class="learn-table-wrap"><table><thead><tr>${headers.map(header => `<th scope="col">${esc(header)}</th>`).join('')}</tr></thead><tbody>${(lesson.table.rows || []).map(row => `<tr>${row.map((cell,index) => `<${index === 0 ? 'th scope="row"' : 'td'}>${richText(cell)}</${index === 0 ? 'th' : 'td'}>`).join('')}</tr>`).join('')}</tbody></table></div>` : '';
     const tableMarkup = table;
-    const explanation = `<div class="learn-text">${lesson.bullets?.length ? `<ul class="learn-points">${lesson.bullets.map(text => `<li>${richText(text)}</li>`).join('')}</ul>` : ''}${lesson.facts?.length ? `<dl class="learn-facts">${lesson.facts.map(fact => `<div><dt>${richText(fact.label)}</dt><dd>${esc(fact.value)} ${unit(fact.unit)}</dd></div>`).join('')}</dl>` : ''}${tableMarkup}</div>`;
-    return `<div class="learn-reading-layout"><p class="learn-intro">${richText(lesson.intro || '')}</p>${cableTypes.length ? '' : window.VVLearningVisuals?.render(lesson) || ''}${lesson.interaction ? interactionMarkup(lesson) : ''}${cableTypes.length ? `${cableTypesMarkup(lesson)}${explanation}${figureMarkup(lesson,cablePictures)}` : `${figureMarkup(lesson)}${explanation}`}${formulas ? `<section class="learn-formulas-inline">${formulas}</section>` : ''}${lesson.takeaway ? `<aside class="learn-takeaway"><span aria-hidden="true">!</span><div><strong>Ezt jegyezd meg</strong><p>${richText(lesson.takeaway)}</p></div></aside>` : ''}${lesson.commonMistake ? `<aside class="learn-common-mistake"><strong>Gyakori tévedés</strong><p>${richText(lesson.commonMistake)}</p></aside>` : ''}${lesson.guideTarget ? `<a class="learn-guide-link" href="#guide/${encodeURIComponent(lesson.guideTarget)}">Kidolgozott számítás az útmutatóban →</a>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
+    if (lesson.id === 'wires-jelolesrendszerek') {
+      const examples = (lesson.bullets || []).filter((_,index) => [2,3,5].includes(index));
+      return `<div class="learn-reading-layout learn-code-guide"><p class="learn-intro">${richText(lesson.intro || '')}</p>${lesson.bullets?.[0] ? `<p class="learn-catalog-note">${richText(lesson.bullets[0])}</p>` : ''}${tableMarkup}${examples.length ? `<section class="learn-code-examples"><h3>Jelölési példák</h3><ul class="learn-points">${examples.map(text=>`<li>${richText(text)}</li>`).join('')}</ul></section>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
+    }
+    const opening = definitionOpening(lesson);
+    const bullets = (lesson.bullets || []).filter((_,index) => !(opening?.sourceId === lesson.id && opening.field === 'bullets' && opening.index === index));
+    const openingMarkup = opening && norm(opening.text) !== norm(lesson.intro) ? `<p class="learn-definition-opening" data-learn-definition-source="${esc(opening.sourceId)}">${richText(opening.text)}</p>` : '';
+    const explanation = `<div class="learn-text">${bullets.length ? `<ul class="learn-points">${bullets.map(text => `<li>${richText(text)}</li>`).join('')}</ul>` : ''}${lesson.facts?.length ? `<dl class="learn-facts">${lesson.facts.map(fact => `<div><dt>${richText(fact.label)}</dt><dd>${esc(fact.value)} ${unit(fact.unit)}</dd></div>`).join('')}</dl>` : ''}${tableMarkup}</div>`;
+    const workbench = window.VVLearningVisuals?.render(lesson) || '';
+    return `<div class="learn-reading-layout"><p class="learn-intro">${richText(lesson.intro || '')}</p>${openingMarkup}${workbench}${!workbench && lesson.interaction ? interactionMarkup(lesson) : ''}${figureMarkup(lesson)}${explanation}${formulas ? `<section class="learn-formulas-inline">${formulas}</section>` : ''}${lesson.takeaway ? `<aside class="learn-takeaway"><span aria-hidden="true">!</span><div><strong>Ezt jegyezd meg</strong><p>${richText(lesson.takeaway)}</p></div></aside>` : ''}${lesson.commonMistake ? `<aside class="learn-common-mistake"><strong>Gyakori tévedés</strong><p>${richText(lesson.commonMistake)}</p></aside>` : ''}${lesson.guideTarget ? `<a class="learn-guide-link" href="#guide/${encodeURIComponent(lesson.guideTarget)}">Kidolgozott számítás az útmutatóban →</a>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
   }
 
   function sessionFor(lesson) {
@@ -299,7 +401,16 @@
     const state = model.states[Math.min(saved.index, model.states.length - 1)];
     const channelNumber=value=>Number(String(value??'').replace(',','.'));
     const channelMax = label => Math.max(1, ...model.states.flatMap(item => (item.channels || []).filter(channel => channel.label === label).map(channel => channelNumber(channel.value) || 0)));
-    return `<section class="learn-model" aria-label="${esc(model.title || 'Működésmodell')}">${modelHeading}<div class="learn-model-states" role="group" aria-label="Állapotválasztó">${model.states.map((item,index) => `<button type="button" data-learn-state="${index}" aria-pressed="${saved.index === index}">${esc(item.title || `${index + 1}. állapot`)}</button>`).join('')}</div>${state.channels?.length ? `<div class="learn-model-channels ${state.channels.every(channel => channel.value === undefined || channel.value === null) ? 'is-sequence' : ''}">${state.channels.map(channel => channel.value === undefined || channel.value === null ? `<div class="learn-state-segment ${channel.active ? 'is-active' : ''}"><span>${esc(channel.label)}</span><b aria-label="${channel.active ? 'Aktív szerep' : 'További szerep'}">${channel.active ? '●' : '○'}</b></div>` : !Number.isFinite(channelNumber(channel.value)) || !physicalUnit(channel.unit) ? `<div class="learn-channel-state ${channel.active ? 'is-active' : ''}"><span>${esc(channel.label)}</span><strong>${esc(channel.value)} ${unit(channel.unit)}</strong></div>` : `<div class="${channel.active ? 'is-active' : ''}"><span>${esc(channel.label)}</span><div class="learn-channel-track"><i data-learn-channel="${esc(channel.label)}" style="width:${Math.max(0,Math.min(100,(channelNumber(channel.value) || 0) / channelMax(channel.label) * 100))}%"></i></div><strong>${esc(channel.value)} ${unit(channel.unit)}</strong></div>`).join('')}</div>` : ''}<p class="learn-model-reason" role="status">${esc(state.text || state.reason || '')}</p>${model.caption ? `<p class="learn-model-caption">${esc(model.caption)}</p>` : ''}</section>`;
+    const numericChannel = channel => channel.value !== undefined && channel.value !== null && String(channel.value).trim() !== '' && Number.isFinite(channelNumber(channel.value));
+    const percent = channel => Math.max(0,Math.min(100,channelNumber(channel.value) / channelMax(channel.label) * 100));
+    const channelMarkup = channel => {
+      if (channel.value === undefined || channel.value === null) return `<div class="learn-state-segment ${channel.active ? 'is-active' : ''}"><span>${esc(channel.label)}</span><b aria-label="${channel.active ? 'Aktív szerep' : 'További szerep'}">${channel.active ? '●' : '○'}</b></div>`;
+      if (!numericChannel(channel)) return `<div class="learn-channel-state ${channel.active ? 'is-active' : ''}"><span>${esc(channel.label)}</span><strong>${esc(channel.value)} ${unit(channel.unit)}</strong></div>`;
+      const baseline = model.states[0].channels?.find(item => item.label === channel.label && numericChannel(item));
+      return `<div class="learn-numeric-channel ${channel.active ? 'is-active' : ''}"><span>${esc(channel.label)}</span><div class="learn-channel-track">${baseline ? `<i class="learn-channel-baseline" data-learn-baseline="${esc(channel.label)}" style="width:${percent(baseline)}%" aria-hidden="true"></i>` : ''}<i class="learn-channel-current" data-learn-channel="${esc(channel.label)}" style="width:${percent(channel)}%" aria-hidden="true"></i></div><strong class="learn-channel-values"><span>${esc(channel.value)} ${unit(channel.unit)}</span>${baseline ? `<small>Alapérték: ${esc(baseline.value)} ${unit(baseline.unit)}</small>` : ''}</strong></div>`;
+    };
+    const hasNumericChannels = state.channels?.some(numericChannel);
+    return `<section class="learn-model" aria-label="${esc(model.title || 'Működésmodell')}">${modelHeading}<div class="learn-model-states" role="group" aria-label="Állapotválasztó">${model.states.map((item,index) => `<button type="button" data-learn-state="${index}" aria-pressed="${saved.index === index}">${esc(item.title || `${index + 1}. állapot`)}</button>`).join('')}</div>${state.channels?.length ? `<div class="learn-model-channels ${state.channels.every(channel => channel.value === undefined || channel.value === null) ? 'is-sequence' : ''}">${state.channels.map(channelMarkup).join('')}</div>${hasNumericChannels ? '<p class="learn-channel-legend">A vékony szürke sáv az első állapot alapértékét, a vastag színes sáv az aktuális értéket mutatja. Egy soron belül azonos a lépték.</p>' : ''}` : ''}<p class="learn-model-reason" role="status">${esc(state.text || state.reason || '')}</p>${model.caption ? `<p class="learn-model-caption">${esc(model.caption)}</p>` : ''}</section>`;
   }
 
   function relatedQuestions(lesson) {
@@ -326,7 +437,7 @@
     host.style.setProperty('--learn-chapter-soft',validColor(lesson.chapter.accent?.soft,'#fff0d8'));
     const chapterGroups = groupsFor(lesson.chapter), globalIndex = lessons.indexOf(lesson), previous = lessons[globalIndex - 1], next = lessons[globalIndex + 1], related = relatedQuestions(lesson), groupIndex = chapterGroups.findIndex(items => items.includes(lesson));
     const detailSelect = group.length > 1 && ['check','model'].includes(tab) ? `<label class="learn-detail-select">${tab === 'check' ? 'Olyan részletet ellenőrizz, amelyet már átolvastál' : 'Működésmodell'}<select id="learnDetailSelect" name="learning-detail">${group.filter(item => tab !== 'model' || item.interaction).map(item => `<option value="${esc(item.id)}" ${item.id === lesson.id ? 'selected' : ''}>${esc(item.title)} ${tab === 'check' && progress.checks[item.id]?.correct ? '✓' : ''}</option>`).join('')}</select></label>` : '';
-    host.innerHTML = `<div class="learn-workspace"><aside class="learn-rail" aria-label="Tananyag navigáció"><div class="learn-rail-inner"><a class="learn-overview-link" href="#learn">← Tananyag áttekintése</a><button type="button" class="learn-open-search" data-learn-action="search-open"><span aria-hidden="true">⌕</span> Keresés a tananyagban</button><label class="learn-chapter-select">Témakör<select id="learnChapterSelect" name="learning-chapter">${chapters.map(chapter => `<option value="${esc(chapter.id)}" ${chapter.id === lesson.chapter.id ? 'selected' : ''}>${chapter.index + 1}. ${esc(chapter.title)}</option>`).join('')}</select></label><label class="learn-chapter-select learn-topic-select">Téma<select id="learnGroupSelect" name="learning-topic">${chapterGroups.map((items,index)=>`<option value="${href(items[0])}" ${items.includes(lesson) ? 'selected' : ''}>${index+1}. ${esc(groupTitle(items[0]))}</option>`).join('')}</select></label><div class="learn-rail-progress"><span>${chapterGroups.filter(items => items.every(item => progress.read[item.id])).length} / ${chapterGroups.length} átolvasott téma</span><progress value="${chapterGroups.filter(items => items.every(item => progress.read[item.id])).length}" max="${chapterGroups.length || 1}" aria-label="Fejezet haladása"></progress></div><nav aria-label="Tananyag témái"><ol>${chapterGroups.map((items,index) => `<li><a href="${href(items[0])}" ${items.includes(lesson) ? 'aria-current="page"' : ''}><span class="learn-rail-index">${items.every(item => progress.read[item.id]) ? '✓' : String(index + 1).padStart(2,'0')}</span><span>${esc(groupTitle(items[0]))}</span>${items.every(item => progress.checks[item.id]?.correct) ? '<span class="learn-rail-check" aria-label="Minden mini feladat sikerült">●</span>' : ''}</a></li>`).join('')}</ol></nav></div></aside><article class="learn-lesson"><header class="learn-lesson-head"><div class="learn-lesson-breadcrumb"><a href="#learn">Tananyag</a><span aria-hidden="true">/</span><span>${esc(lesson.chapter.title)}</span><span class="learn-lesson-position">${groupIndex + 1} / ${chapterGroups.length} téma</span><button type="button" class="learn-header-search" data-learn-action="search-open"><span aria-hidden="true">⌕</span> Keresés</button></div><div class="learn-title-row"><h1 id="learnLessonTitle" tabindex="-1">${esc(groupTitle(lesson))}</h1></div>${group.length > 1 ? `<nav class="learn-section-nav" aria-label="A téma részletei">${group.map((item,index) => `<a href="${href(item)}" ${item.id === lesson.id ? 'aria-current="page"' : ''}><span>${index + 1}</span><span><strong>${esc(item.title)}</strong><small>${esc(item.takeaway || (Array.isArray(item.recap) ? item.recap[0] : item.recap) || item.intro || '')}</small></span></a>`).join('')}</nav>` : ''}<div class="learn-tabs" role="tablist" aria-label="A tananyag részei"><button type="button" id="learnTab-read" role="tab" aria-selected="${tab === 'read'}" aria-controls="learnPanel" tabindex="${tab === 'read' ? '0' : '-1'}" data-learn-tab="read">Lényeg</button>${group.some(item => item.interaction) ? `<button type="button" id="learnTab-model" role="tab" aria-selected="${tab === 'model'}" aria-controls="learnPanel" tabindex="${tab === 'model' ? '0' : '-1'}" data-learn-tab="model">Működésmodell</button>` : ''}${group.some(item => item.check) ? `<button type="button" id="learnTab-check" role="tab" aria-selected="${tab === 'check'}" aria-controls="learnPanel" tabindex="${tab === 'check' ? '0' : '-1'}" data-learn-tab="check">Ellenőrzöm <span>${group.filter(item => progress.checks[item.id]?.correct).length}/${group.filter(item => item.check).length}</span></button>` : ''}<button type="button" id="learnTab-questions" role="tab" aria-selected="${tab === 'questions'}" aria-controls="learnPanel" tabindex="${tab === 'questions' ? '0' : '-1'}" data-learn-tab="questions">Feladatok <span>${related.length}</span></button></div></header><div id="learnPanel" class="learn-panel" role="tabpanel" aria-labelledby="learnTab-${tab}">${detailSelect}${tab === 'read' ? [lesson].map((item) => `<section class="learn-topic-section" id="learn-section-${esc(item.id)}" data-learn-section-root="${esc(item.id)}">${group.length > 1 && norm(item.title) !== norm(groupTitle(lesson)) ? `<header class="learn-section-heading"><span>${String(group.indexOf(item) + 1).padStart(2,'0')}</span><h2>${esc(item.title)}</h2></header>` : ''}${readMarkup(item)}${item.check ? `<button type="button" class="learn-inline-check" data-learn-open-check="${esc(item.id)}">${progress.checks[item.id]?.correct ? '✓ Ellenőrző feladat újra' : 'Ellenőrző feladat'} <span aria-hidden="true">→</span></button>` : ''}</section>`).join('') : tab === 'model' ? interactionMarkup(lesson) : tab === 'check' ? checkMarkup(lesson) : questionMarkup(lesson)}</div><footer class="learn-lesson-footer">${previous ? `<a class="button outline" href="${href(previous)}" aria-label="Előző rész: ${esc(previous.title)}">← ${previous.chapter.id === lesson.chapter.id && groupId(previous) === groupId(lesson) ? 'Előző rész' : 'Előző téma'}</a>` : '<span></span>'}<button type="button" class="learn-mark ${progress.read[lesson.id] ? 'is-marked' : ''}" data-learn-action="mark" aria-pressed="${!!progress.read[lesson.id]}">${progress.read[lesson.id] ? '✓ Átolvasva' : 'Átolvastam ezt a részt'}</button>${next ? `<a class="button dark" href="${href(next)}" aria-label="Következő rész: ${esc(next.title)}">${next.chapter.id === lesson.chapter.id && groupId(next) === groupId(lesson) ? 'Következő rész' : 'Következő téma'} →</a>` : '<a class="button dark" href="#learn">Áttekintés →</a>'}</footer></article></div>`;
+    host.innerHTML = `<div class="learn-workspace"><aside class="learn-rail" aria-label="Tananyag navigáció"><div class="learn-rail-inner"><a class="learn-overview-link" href="#learn">← Tananyag áttekintése</a><button type="button" class="learn-open-search" data-learn-action="search-open"><span aria-hidden="true">⌕</span> Keresés a tananyagban</button><label class="learn-chapter-select">Témakör<select id="learnChapterSelect" name="learning-chapter">${chapters.map(chapter => `<option value="${esc(chapter.id)}" ${chapter.id === lesson.chapter.id ? 'selected' : ''}>${chapter.index + 1}. ${esc(chapter.title)}</option>`).join('')}</select></label><label class="learn-chapter-select learn-topic-select">Téma<select id="learnGroupSelect" name="learning-topic">${chapterGroups.map((items,index)=>`<option value="${href(items[0])}" ${items.includes(lesson) ? 'selected' : ''}>${index+1}. ${esc(groupTitle(items[0]))}</option>`).join('')}</select></label><div class="learn-rail-progress"><span>${chapterGroups.filter(items => items.every(item => progress.read[item.id])).length} / ${chapterGroups.length} átolvasott téma</span><progress value="${chapterGroups.filter(items => items.every(item => progress.read[item.id])).length}" max="${chapterGroups.length || 1}" aria-label="Fejezet haladása"></progress></div><nav aria-label="Tananyag témái"><ol>${chapterGroups.map((items,index) => `<li><a href="${href(items[0])}" ${items.includes(lesson) ? 'aria-current="page"' : ''}><span class="learn-rail-index">${items.every(item => progress.read[item.id]) ? '✓' : String(index + 1).padStart(2,'0')}</span><span>${esc(groupTitle(items[0]))}</span>${items.every(item => progress.checks[item.id]?.correct) ? '<span class="learn-rail-check" aria-label="Minden mini feladat sikerült">●</span>' : ''}</a></li>`).join('')}</ol></nav></div></aside><article class="learn-lesson${cableTypesForLesson(lesson).length ? ' has-cable-catalog' : ''}"><header class="learn-lesson-head"><div class="learn-lesson-breadcrumb"><a href="#learn">Tananyag</a><span aria-hidden="true">/</span><span>${esc(lesson.chapter.title)}</span><span class="learn-lesson-position">${groupIndex + 1} / ${chapterGroups.length} téma</span><button type="button" class="learn-header-search" data-learn-action="search-open"><span aria-hidden="true">⌕</span> Keresés</button></div><div class="learn-title-row"><h1 id="learnLessonTitle" tabindex="-1">${esc(groupTitle(lesson))}</h1></div>${group.length > 1 ? `<nav class="learn-section-nav" aria-label="A téma részletei">${group.map((item,index) => `<a href="${href(item)}" ${item.id === lesson.id ? 'aria-current="page"' : ''}><span>${index + 1}</span><span><strong>${esc(item.title)}</strong><small>${esc(item.takeaway || (Array.isArray(item.recap) ? item.recap[0] : item.recap) || item.intro || '')}</small></span></a>`).join('')}</nav>` : ''}<div class="learn-tabs" role="tablist" aria-label="A tananyag részei"><button type="button" id="learnTab-read" role="tab" aria-selected="${tab === 'read'}" aria-controls="learnPanel" tabindex="${tab === 'read' ? '0' : '-1'}" data-learn-tab="read">Lényeg</button>${group.some(item => item.interaction) ? `<button type="button" id="learnTab-model" role="tab" aria-selected="${tab === 'model'}" aria-controls="learnPanel" tabindex="${tab === 'model' ? '0' : '-1'}" data-learn-tab="model">Működésmodell</button>` : ''}${group.some(item => item.check) ? `<button type="button" id="learnTab-check" role="tab" aria-selected="${tab === 'check'}" aria-controls="learnPanel" tabindex="${tab === 'check' ? '0' : '-1'}" data-learn-tab="check">Ellenőrzöm <span>${group.filter(item => progress.checks[item.id]?.correct).length}/${group.filter(item => item.check).length}</span></button>` : ''}<button type="button" id="learnTab-questions" role="tab" aria-selected="${tab === 'questions'}" aria-controls="learnPanel" tabindex="${tab === 'questions' ? '0' : '-1'}" data-learn-tab="questions">Feladatok <span>${related.length}</span></button></div></header><div id="learnPanel" class="learn-panel" role="tabpanel" aria-labelledby="learnTab-${tab}">${detailSelect}${tab === 'read' ? [lesson].map((item) => `<section class="learn-topic-section" id="learn-section-${esc(item.id)}" data-learn-section-root="${esc(item.id)}">${group.length > 1 && norm(item.title) !== norm(groupTitle(lesson)) ? `<header class="learn-section-heading"><span>${String(group.indexOf(item) + 1).padStart(2,'0')}</span><h2>${esc(item.title)}</h2></header>` : ''}${readMarkup(item)}${item.check ? `<button type="button" class="learn-inline-check" data-learn-open-check="${esc(item.id)}">${progress.checks[item.id]?.correct ? '✓ Ellenőrző feladat újra' : 'Ellenőrző feladat'} <span aria-hidden="true">→</span></button>` : ''}</section>`).join('') : tab === 'model' ? interactionMarkup(lesson) : tab === 'check' ? checkMarkup(lesson) : questionMarkup(lesson)}</div><footer class="learn-lesson-footer">${previous ? `<a class="button outline" href="${href(previous)}" aria-label="Előző rész: ${esc(previous.title)}">← ${previous.chapter.id === lesson.chapter.id && groupId(previous) === groupId(lesson) ? 'Előző rész' : 'Előző téma'}</a>` : '<span></span>'}<button type="button" class="learn-mark ${progress.read[lesson.id] ? 'is-marked' : ''}" data-learn-action="mark" aria-pressed="${!!progress.read[lesson.id]}">${progress.read[lesson.id] ? '✓ Átolvasva' : 'Átolvastam ezt a részt'}</button>${next ? `<a class="button dark" href="${href(next)}" aria-label="Következő rész: ${esc(next.title)}">${next.chapter.id === lesson.chapter.id && groupId(next) === groupId(lesson) ? 'Következő rész' : 'Következő téma'} →</a>` : '<a class="button dark" href="#learn">Áttekintés →</a>'}</footer></article></div>`;
     hydrate();
     if (tab === 'read') window.VVLearningVisuals?.mount($(`[data-learn-section-root="${lesson.id}"]`,host),lesson);
     if (tab === 'check' && lesson.check?.type === 'order' && !sessionFor(lesson).submitted) {
@@ -409,8 +520,8 @@
       else captureInputs();
     });
     host.addEventListener('keydown', event => {
-      if (event.target.matches('[role=tab]') && ['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) {
-        event.preventDefault(); const tabs = $$('[role=tab]', host), at = tabs.indexOf(event.target), next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (at + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      if (event.target.matches('[data-learn-tab]') && ['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) {
+        event.preventDefault(); const tabs = $$('[data-learn-tab]', host), at = tabs.indexOf(event.target), next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (at + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
         tabs[next].click(); $(`[data-learn-tab="${tabs[next].dataset.learnTab}"]`, host)?.focus();
       }
       if (event.key === 'Enter' && event.target.matches('[data-learn-number]')) { event.preventDefault(); evaluateCheck(); }

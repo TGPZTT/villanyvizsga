@@ -93,6 +93,10 @@
   const states = new Map();
   const bound = new WeakSet();
   const wavePlayback = new WeakMap();
+  const illustrationStates = new Map();
+  const illustrationBound = new WeakSet();
+  const ohmStates = new Map();
+  let illustrationSerial = 0;
   function glyph(name, color, stripe) {
     if(['protective-conductor','pen-conductor'].includes(name)){color='#287849';stripe=stripe||'#edcd38';}
     if(name==='neutral')color='#2878b2';
@@ -116,7 +120,8 @@
   function nodes(spec, index, key) {
     const items = spec.items || [], sequence = ['flow','route','timeline','safety'].includes(spec.type);
     const technical=item=>diagramGlyphs.has(item.glyph)||Object.hasOwn(glyphLabels,item.glyph);
-    return `<div class="lv-diagram lv-${esc(spec.type)} ${sequence?'lv-sequence':''} ${items.some(technical)?'':'lv-text-only'}" data-lv-diagram>${items.map((item,i) => `<button type="button" class="lv-node ${technical(item)?'':'lv-text-node'} ${i===index?'is-active':''} ${sequence&&i<index?'is-traced':''}" data-lv-index="${i}" aria-pressed="${i===index}" style="--lv-node:${esc(item.color || colors[i%colors.length])}" aria-label="${esc(item.label)}">${technical(item)?`<span class="lv-component">${glyph(item.glyph,item.color,item.stripe)}</span>`:''}<strong>${esc(item.label)}</strong>${item.value!==undefined?`<span class="lv-node-value">${esc(item.value)} <small>${esc(item.unit||'')}</small></span>`:''}</button>`).join('')}</div>`;
+    const withSymbols=spec.variant!=='ohm-relations'&&items.length>0&&items.every(technical);
+    return `<div class="lv-diagram lv-${esc(spec.type)} ${sequence?'lv-sequence':''} ${withSymbols?'':'lv-text-only'}" data-lv-diagram>${items.map((item,i) => `<button type="button" class="lv-node ${withSymbols?'':'lv-text-node'} ${i===index?'is-active':''} ${sequence&&i<index?'is-traced':''}" data-lv-index="${i}" aria-pressed="${i===index}" style="--lv-node:${esc(item.color || colors[i%colors.length])}" aria-label="${esc(item.label)}">${withSymbols?`<span class="lv-component">${glyph(item.glyph,item.color,item.stripe)}</span>`:''}<strong>${esc(item.label)}</strong>${item.value!==undefined?`<span class="lv-node-value">${esc(item.value)} <small>${esc(item.unit||'')}</small></span>`:''}</button>`).join('')}</div>`;
   }
   function circuit(spec,index) {
     const type=spec.circuit||'series';
@@ -147,6 +152,43 @@
     return `<div class="lv-spectrum" data-lv-diagram>${(spec.items||[]).map((item,i)=>`<button type="button" class="${i===index?'is-active':''}" data-lv-index="${i}" aria-pressed="${index===i}" style="--lv-band:${esc(item.color||colors[i%colors.length])}"><span class="lv-band"></span>${glyph(item.glyph||'lamp',item.color)}<strong>${esc(item.label)}</strong>${item.value!==undefined?`<small>${esc(item.value)} ${esc(item.unit||'')}</small>`:''}</button>`).join('')}</div>`;
   }
   function controls(spec,index){return `<div class="lv-state-controls">${spec.items.map((item,i)=>`<button type="button" data-lv-index="${i}" aria-pressed="${index===i}">${esc(item.label)}</button>`).join('')}</div>`;}
+  const ohmNumber=value=>new Intl.NumberFormat('hu-HU',{maximumFractionDigits:3}).format(value);
+  const ohmRelation=value=>Math.abs(value-Number(value.toFixed(3)))>1e-10?'≈':'=';
+  function ohmDiagram(spec,key){
+    if(!ohmStates.has(key)){
+      const valid=(value,fallback)=>Number.isFinite(Number(value))&&Number(value)>=1&&Number(value)<=24?Number(value):fallback;
+      const initial={u:valid(spec.ohmDefaults?.u,12),r:valid(spec.ohmDefaults?.r,6)};
+      ohmStates.set(key,{...initial,initial});
+    }
+    const state=ohmStates.get(key),current=state.u/state.r,id='lv-ohm-'+key.replace(/[^a-zA-Z0-9_-]/g,'-');
+    const symbol=(letter,meaning,unit)=>{
+      const explanation=`Az ${letter} ${meaning==='feszültség'?'a':'az'} ${meaning} jele. Mértékegysége ${unit==='V'?'a volt':unit==='Ω'?'az ohm':'az amper'} (${unit}).`;
+      return `<span class="lv-ohm-symbol" tabindex="0" data-learn-tooltip="${esc(explanation)}">${letter}</span>`;
+    };
+    const control=(field,letter,name,unit,value)=>`<div class="lv-ohm-control"><label for="${id}-${field}">${symbol(letter,name.toLocaleLowerCase('hu'),unit)} ${name}</label><div class="lv-ohm-control-row"><input id="${id}-${field}" type="range" min="1" max="24" step="1" value="${value}" data-lv-ohm="${field}" aria-label="${name}, ${unit}"><input type="number" min="1" max="24" step="1" value="${value}" inputmode="numeric" data-lv-ohm="${field}" aria-label="${name} számmal, ${unit}"><span class="lv-ohm-unit">${unit}</span></div></div>`;
+    const circuit=narrow=>{
+      const sx=narrow?60:120,rx=narrow?260:475,arrow=narrow?115:250;
+      return `<svg class="${narrow?'lv-ohm-narrow':'lv-ohm-wide'}" viewBox="0 0 ${narrow?330:650} 260" role="img" aria-label="A feszültségforrás és az ellenállás zárt áramköre"><g fill="none" stroke="#79624f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M${sx} 106V65H${rx}V110M${rx} 190V240H${sx}V174"/><circle cx="${sx}" cy="140" r="34" fill="#fff"/><path d="M${sx-8} 127h16m-8-8v16m-8 20h16"/><rect x="${rx-25}" y="110" width="50" height="80" class="lv-load"/><path d="M${arrow} 65h95m-10-8 10 8-10 8" class="lv-current-arrow" data-lv-ohm-indicator style="stroke-width:${Math.min(8,2+current)}"/><text x="${sx}" y="209"><tspan>U = </tspan><tspan data-lv-ohm-value="u">${ohmNumber(state.u)}</tspan><tspan> V</tspan></text><text x="${narrow?rx:555}" y="${narrow?220:155}"><tspan>R = </tspan><tspan data-lv-ohm-value="r">${ohmNumber(state.r)}</tspan><tspan> Ω</tspan></text><text x="${narrow?160:300}" y="42"><tspan data-lv-ohm-relation>I ${ohmRelation(current)} </tspan><tspan data-lv-ohm-value="i">${ohmNumber(current)}</tspan><tspan> A</tspan></text></g></svg>`;
+    };
+    return `<div class="lv-ohm"><div class="lv-ohm-controls">${control('u','U','Feszültség','V',state.u)}${control('r','R','Ellenállás','Ω',state.r)}</div><div class="lv-technical lv-ohm-circuit" tabindex="0" role="region" aria-label="Zárt egyenáramú forrás–ellenállás kör" data-lv-diagram>${circuit(false)}${circuit(true)}</div><div class="lv-ohm-answer"><div class="lv-ohm-equation">${symbol('I','áramerősség','A')} = ${symbol('U','feszültség','V')} / ${symbol('R','ellenállás','Ω')} = <b data-lv-ohm-value="u">${ohmNumber(state.u)}</b> <span class="lv-ohm-unit">V</span> / <b data-lv-ohm-value="r">${ohmNumber(state.r)}</b> <span class="lv-ohm-unit">Ω</span> <span data-lv-ohm-equals>${ohmRelation(current)}</span> <output data-lv-ohm-current aria-live="polite">${ohmNumber(current)} A</output></div><p data-lv-ohm-held>Az egyik értéket változtasd. A másik változatlan marad.</p><button type="button" data-lv-ohm-reset>Alaphelyzet</button><p class="lv-ohm-baseline" data-lv-ohm-baseline aria-label="Kiindulási értékek az összehasonlításhoz"><span>Kiindulás:</span><b>U = ${ohmNumber(state.initial.u)} V</b><b>R = ${ohmNumber(state.initial.r)} Ω</b><b>I ${ohmRelation(state.initial.u/state.initial.r)} ${ohmNumber(state.initial.u/state.initial.r)} A</b></p></div></div>`;
+  }
+  function updateOhm(panel,field,raw,commit=false){
+    const state=ohmStates.get(panel.dataset.lvKey);if(!state||!['u','r','reset'].includes(field))return;
+    if(field==='reset'){state.u=state.initial.u;state.r=state.initial.r;}
+    else{
+      let value=raw===''?NaN:Number(raw);
+      if(!Number.isFinite(value)||value<1||value>24||!Number.isInteger(value)){if(!commit)return;value=Number.isFinite(value)?Math.max(1,Math.min(24,Math.round(value))):state[field];}
+      state[field]=value;
+    }
+    const current=state.u/state.r;
+    panel.querySelectorAll('[data-lv-ohm]').forEach(input=>{const value=String(state[input.dataset.lvOhm]);if(input.value!==value)input.value=value;});
+    panel.querySelectorAll('[data-lv-ohm-value]').forEach(node=>{node.textContent=ohmNumber(node.dataset.lvOhmValue==='i'?current:state[node.dataset.lvOhmValue]);});
+    panel.querySelector('[data-lv-ohm-current]').textContent=ohmNumber(current)+' A';
+    panel.querySelectorAll('[data-lv-ohm-relation]').forEach(node=>node.textContent='I '+ohmRelation(current)+' ');
+    panel.querySelector('[data-lv-ohm-equals]').textContent=ohmRelation(current);
+    panel.querySelectorAll('[data-lv-ohm-indicator]').forEach(arrow=>arrow.style.strokeWidth=Math.min(8,2+current));
+    panel.querySelector('[data-lv-ohm-held]').textContent=field==='reset'?'Az egyik értéket változtasd. A másik változatlan marad.':field==='u'?`R = ${ohmNumber(state.r)} Ω változatlan.`:`U = ${ohmNumber(state.u)} V változatlan.`;
+  }
   function materialComparison(spec,index){
     const max=Math.max(...spec.items.map(item=>Number(item.resistivity)||0));
     return `<div class="lv-materials" data-lv-diagram>${spec.items.map((item,i)=>{const metal=item.material==='Al'?'#b5bbc0':'#bf7a43',rho=Number(item.resistivity)||0;return `<button type="button" data-lv-index="${i}" aria-pressed="${i===index}" class="${i===index?'is-active':''}" style="--lv-metal:${metal}"><svg viewBox="0 0 120 100" aria-hidden="true"><circle cx="60" cy="45" r="33" fill="${metal}" stroke="#786b5d" stroke-width="1.5"/><path d="M39 22 84 67M31 34 72 75M47 14 91 58" stroke="#fff" stroke-opacity=".35" stroke-width="2"/><path d="M24 88h72m-72-5v10m72-10v10" stroke="#8b7969" stroke-width="1.5"/></svg><strong>${esc(item.label)} (${esc(item.material)})</strong><span class="lv-material-value">ρ ≈ <b>${esc(item.value)}</b> <small>${esc(item.unit)}</small></span><span class="lv-material-bar" aria-hidden="true"><i style="width:${max?rho/max*100:0}%"></i></span></button>`;}).join('')}</div><p class="lv-material-condition">${esc(spec.condition||'')}</p>`;
@@ -195,7 +237,7 @@
     const tick=now=>{if(!panel.isConnected||document.hidden||matchMedia('(prefers-reduced-motion: reduce)').matches){cancel();return;}const p=Math.min(1,(now-started)/2800),x=80+620*p,angle=p*2*Math.PI;scan.setAttribute('x1',x);scan.setAttribute('x2',x);u.setAttribute('cx',x);u.setAttribute('cy',175-95*Math.sin(angle));if(i){i.setAttribute('cx',x);i.setAttribute('cy',175-95*Math.sin(angle+phase));}if(p<1)frame=requestAnimationFrame(tick);else cancel();};
     frame=requestAnimationFrame(tick);
   }
-  function technical(spec,index){
+  function technical(spec,index,key='ohm'){
     const v=spec.variant,item=spec.items[index],label=String(item.label||'').toLocaleLowerCase('hu'),n=spec.items.length;
     let drawing='',kind=v;
     const line=(path,cls='')=>`<path class="${cls}" d="${path}" fill="none"/>`;
@@ -283,8 +325,7 @@
       const active=/^p\b|hatásos/.test(label)?'p':/^q\b|meddő/.test(label)?'q':'s';
       drawing=line('M170 260H590','lv-p '+(active==='p'?'is-focus':''))+line('M590 260V70','lv-q '+(active==='q'?'is-focus':''))+line('M170 260 590 70','lv-s '+(active==='s'?'is-focus':''))+line('M568 260v-22h22')+text(380,300,'P','lv-p')+text(630,170,'Q','lv-q')+text(350,135,'S','lv-s');
     }else if(v==='ohm'){
-      if(index<2)drawing=line('M110 45v230H690','lv-axis')+line(index===0?'M110 275 635 65':'M120 60C180 170 275 240 665 260','lv-supply')+text(85,45,'I')+text(710,283,index===0?'U':'R')+text(560,80,index===0?'R = állandó':'U = állandó');
-      else drawing=line('M210 90 420 175M210 260 420 175M420 175H650','lv-supply')+text(180,90,'U')+text(180,270,'R')+text(690,185,'I')+text(470,310,'I = U / R');
+      return ohmDiagram(spec,key);
     }else if(v==='slip'){
       drawing=line('M120 90H650m-20-12 20 12-20 12','lv-p')+line('M120 200H565m-20-12 20 12-20 12','lv-q')+line('M565 270H650M565 260v20M650 260v20','lv-pointer')+text(75,100,'ns')+text(75,210,'n')+text(607,310,'ns − n');
       drawing+=text(400,35,index===2?'s = (ns − n) / ns':'ns > n');
@@ -343,20 +384,72 @@
     }else return '';
     return `<div class="lv-technical lv-${esc(kind)}" tabindex="0" role="region" aria-label="${esc(spec.title)}" data-lv-diagram data-lv-active="${esc(item.target||'')}" style="--lv-active:${esc(item.color||colors[index%colors.length])}"><svg viewBox="0 0 780 350" role="img" aria-label="${esc(spec.title)}"><g stroke="#79624f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${drawing}</g></svg></div>${controls(spec,index)}`;
   }
-  function one(spec,lessonId,part) {
+  function one(spec,lessonId,part,tabbed=false) {
     if(!spec?.items?.length)return '';
     const key=lessonId+':'+part, index=Math.min(states.get(key)||0,spec.items.length-1),item=spec.items[index];
     const network=window.VVLearningNetworks?.render(spec,index)||'';
-    const drawing=network?network+controls(spec,index):technical(spec,index)||(spec.type==='circuit'?circuit(spec,index):spec.type==='graph'?graph(spec,index):spec.type==='spectrum'?spectrum(spec,index):nodes(spec,index,key));
-    const showTitle=spec.showTitle===true||(part===1&&!/^(kövesd|figyeld|válaszd|hasonlítsd|különítsd|keresd|előbb)/iu.test(spec.title));
-    return `<section class="lv-workbench" data-lv-key="${esc(key)}" data-lv-part="${part}" aria-label="${esc(spec.title)}">${showTitle?`<div class="lv-heading"><h3>${esc(spec.title)}</h3></div>`:''}${drawing}<div class="lv-observation" role="status" aria-live="polite"><span class="lv-observation-dot" style="background:${esc(item.color||colors[index%colors.length])}"></span><div><strong>${esc(item.label)}</strong><p>${esc(item.detail||'')}</p></div></div>${spec.variant==='wave'?'<button type="button" class="lv-play" data-lv-play>Jelek összehasonlítása mozgásban</button>':''}${['flow','timeline','route','safety'].includes(spec.type)?`<div class="lv-step-controls"><button type="button" data-lv-prev ${index===0?'disabled':''} aria-label="Előző részlet">←</button><span>${index+1} / ${spec.items.length}</span><button type="button" data-lv-next ${index===spec.items.length-1?'disabled':''} aria-label="Következő részlet">→</button></div>`:''}</section>`;
+    const drawing=network?network+controls(spec,index):technical(spec,index,key)||(spec.type==='circuit'?circuit(spec,index):spec.type==='graph'?graph(spec,index):spec.type==='spectrum'?spectrum(spec,index):nodes(spec,index,key));
+    const showTitle=!tabbed&&(spec.showTitle===true||(part===1&&!/^(kövesd|figyeld|válaszd|hasonlítsd|különítsd|keresd|előbb)/iu.test(spec.title)));
+    return `<section class="lv-workbench" data-lv-key="${esc(key)}" data-lv-part="${part}" aria-label="${esc(spec.title)}">${showTitle?`<div class="lv-heading"><h3>${esc(spec.title)}</h3></div>`:''}${drawing}${spec.variant==='ohm'?'':`<div class="lv-observation" role="status" aria-live="polite"><span class="lv-observation-dot" style="background:${esc(item.color||colors[index%colors.length])}"></span><div><strong>${esc(item.label)}</strong><p>${esc(item.detail||'')}</p></div></div>`}${spec.variant==='wave'?'<button type="button" class="lv-play" data-lv-play>Jelek összehasonlítása mozgásban</button>':''}${['flow','timeline','route','safety'].includes(spec.type)&&spec.items.length>5?`<div class="lv-step-controls"><button type="button" data-lv-prev ${index===0?'disabled':''} aria-label="Előző részlet">←</button><span>${index+1} / ${spec.items.length}</span><button type="button" data-lv-next ${index===spec.items.length-1?'disabled':''} aria-label="Következő részlet">→</button></div>`:''}</section>`;
   }
-  function render(lesson){return `<div class="lv-visuals">${one(lesson.visualSpec,lesson.id,0)}${one(lesson.secondaryVisual,lesson.id,1)}</div>`;}
+  function render(lesson){
+    const initial=lesson.interaction?.states?.[0]?.channels||[];
+    const specs=[lesson.visualSpec,lesson.secondaryVisual].map((spec,part)=>({spec:spec?.variant==='ohm'?{...spec,ohmDefaults:{u:initial.find(item=>item.unit==='V')?.value,r:initial.find(item=>item.unit==='Ω')?.value}}:spec,part})).filter(({spec})=>spec?.items?.length);
+    if(!specs.length)return '';
+    if(specs.length===1)return `<div class="lv-visuals">${one(specs[0].spec,lesson.id,specs[0].part)}</div>`;
+    const selected=specs.some(({part})=>part===illustrationStates.get(lesson.id))?illustrationStates.get(lesson.id):specs[0].part;
+    const id='lv-illustrations-'+(++illustrationSerial);
+    const title=spec=>spec.variant==='ohm'?'U, R és I kapcsolata':spec.variant==='ohm-relations'?'Képlet átrendezése':String(spec.title||'Ábra').trim().replace(/[.!?]+$/u,'');
+    return `<div class="lv-visuals lv-tabbed" data-lv-illustrations="${esc(lesson.id)}"><div class="lv-illustration-tabs" role="tablist" aria-label="Szemléltető ábrák">${specs.map(({spec,part})=>`<button type="button" id="${id}-tab-${part}" role="tab" aria-selected="${part===selected}" aria-controls="${id}-panel-${part}" tabindex="${part===selected?0:-1}" data-lv-illustration="${part}">${esc(title(spec))}</button>`).join('')}</div>${specs.map(({spec,part})=>`<div id="${id}-panel-${part}" class="lv-illustration-panel" role="tabpanel" aria-labelledby="${id}-tab-${part}" data-lv-illustration-panel="${part}" ${part===selected?'':'hidden'}>${one(spec,lesson.id,part,true)}</div>`).join('')}</div>`;
+  }
+  function within(root,selector){return [...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector)];}
+  function fitDrawings(panel){
+    panel.querySelectorAll('.lv-technical>svg,.lv-circuit>svg,.lv-graph>svg,.ln-diagram>svg').forEach(svg=>{
+      if(!svg.getClientRects().length)return;
+      const full=(svg.dataset.lvFullBox||svg.getAttribute('viewBox')||'').split(/[\s,]+/).map(Number);
+      if(full.length!==4||!full.every(Number.isFinite))return;
+      svg.dataset.lvFullBox=full.join(' ');
+      try{
+        const box=svg.getBBox();if(!box.width||!box.height)return;
+        const top=Math.max(full[1],Math.floor(box.y)-16),bottom=Math.min(full[1]+full[3],Math.ceil(box.y+box.height)+16);
+        if(bottom-top>100&&full[3]-(bottom-top)>12)svg.setAttribute('viewBox',`${full[0]} ${top} ${full[2]} ${bottom-top}`);
+      }catch{ /* An undisplayed SVG is fitted when its illustration is selected. */ }
+    });
+  }
+  function selectIllustration(group,part,focus=false){
+    const tabs=[...group.querySelectorAll('[data-lv-illustration]')],target=tabs.find(tab=>Number(tab.dataset.lvIllustration)===part);
+    if(!target)return;
+    illustrationStates.set(group.dataset.lvIllustrations,part);
+    tabs.forEach(tab=>{const selected=tab===target;tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;});
+    group.querySelectorAll('[data-lv-illustration-panel]').forEach(pane=>{
+      const selected=Number(pane.dataset.lvIllustrationPanel)===part;
+      if(!selected)pane.querySelectorAll('[data-lv-key]').forEach(panel=>{wavePlayback.get(panel)?.cancel();panel.getAnimations({subtree:true}).forEach(animation=>animation.cancel());});
+      pane.hidden=!selected;
+      if(selected)pane.querySelectorAll('[data-lv-key]').forEach(fitDrawings);
+    });
+    if(focus)target.focus({preventScroll:true});
+  }
   function mount(root,lesson){
-    root.querySelectorAll('[data-lv-key]').forEach(panel=>{
+    if(!root)return;
+    within(root,'[data-lv-illustrations]').forEach(group=>{
+      if(illustrationBound.has(group))return;
+      illustrationBound.add(group);
+      group.addEventListener('click',event=>{const tab=event.target.closest('[data-lv-illustration]');if(tab&&group.contains(tab))selectIllustration(group,Number(tab.dataset.lvIllustration));});
+      group.addEventListener('keydown',event=>{
+        const tab=event.target.closest('[data-lv-illustration]');if(!tab||!group.contains(tab))return;
+        const tabs=[...group.querySelectorAll('[data-lv-illustration]')],index=tabs.indexOf(tab);
+        let next;if(event.key==='ArrowRight')next=(index+1)%tabs.length;else if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;
+        event.preventDefault();event.stopPropagation();selectIllustration(group,Number(tabs[next].dataset.lvIllustration),true);
+      });
+    });
+    within(root,'[data-lv-key]').forEach(panel=>{
+      if(!panel.closest('[hidden]'))fitDrawings(panel);
       if(bound.has(panel))return;
       bound.add(panel);
+      panel.addEventListener('input',event=>{const input=event.target.closest('[data-lv-ohm]');if(input)updateOhm(panel,input.dataset.lvOhm,input.value);});
+      panel.addEventListener('change',event=>{const input=event.target.closest('[data-lv-ohm]');if(input)updateOhm(panel,input.dataset.lvOhm,input.value,true);});
       panel.addEventListener('click',event=>{
+        if(event.target.closest('[data-lv-ohm-reset]')){updateOhm(panel,'reset');return;}
         const play=event.target.closest('[data-lv-play]');
         if(play&&panel.contains(play)){
           playWave(panel,play);return;
@@ -369,8 +462,10 @@
         index=button.hasAttribute('data-lv-index')?Number(button.dataset.lvIndex):index+(button.hasAttribute('data-lv-prev')?-1:1);
         index=Math.max(0,Math.min(spec.items.length-1,index));if(index===(states.get(key)||0))return;states.set(key,index);
         const focusIndex=button.hasAttribute('data-lv-index')?`[data-lv-index="${index}"]`:button.hasAttribute('data-lv-prev')?'[data-lv-prev]':'[data-lv-next]';
+        const pans=[...panel.querySelectorAll('[data-lv-diagram],.ln-diagram')].map(diagram=>diagram.scrollLeft);
         wavePlayback.get(panel)?.cancel();panel.getAnimations({subtree:true}).forEach(animation=>animation.cancel());
-        const wrapper=document.createElement('div');wrapper.innerHTML=one(spec,lesson.id,part);const next=wrapper.firstElementChild;panel.replaceWith(next);mount(next.parentElement,lesson);
+        const wrapper=document.createElement('div');wrapper.innerHTML=one(spec,lesson.id,part,!!panel.closest('[data-lv-illustration-panel]'));const next=wrapper.firstElementChild;panel.replaceWith(next);mount(next.parentElement,lesson);
+        next.querySelectorAll('[data-lv-diagram],.ln-diagram').forEach((diagram,i)=>{if(pans[i])diagram.scrollLeft=pans[i];});
         const focus=next.querySelector(focusIndex),fallback=next.querySelector(`[data-lv-index="${index}"]`);(focus&&!focus.disabled?focus:fallback)?.focus({preventScroll:true});
         if(!matchMedia('(prefers-reduced-motion: reduce)').matches){next.querySelector('.lv-observation')?.animate([{opacity:.5},{opacity:1}],{duration:220,easing:'ease-out'});next.querySelectorAll('[data-animate-path],.ln-trace').forEach(path=>{const length=path.getTotalLength?.();if(length)path.animate([{strokeDashoffset:Math.max(90,length/4)},{strokeDashoffset:0}],{duration:1200,easing:'ease-out'});});}
       },{once:false});
