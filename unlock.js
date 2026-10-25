@@ -104,6 +104,8 @@
     catch { throw new Error('format'); }
     if (!payload || typeof payload !== 'object' || !Array.isArray(payload.data?.questions) || !Array.isArray(payload.data?.sources) || !payload.assetMap || typeof payload.assetMap !== 'object' || typeof payload.tutorialHtml !== 'string') throw new Error('format');
 
+    if (payload.learning && !Array.isArray(payload.learning.chapters)) throw new Error('format');
+    window.VV_LEARNING = payload.learning || null;
     window.VV_DATA = payload.data;
     window.VV_ASSETS = assetAccess(key, payload.assetMap);
     prepareGuide(payload.tutorialHtml);
@@ -112,7 +114,7 @@
     document.querySelector('.shell').hidden = false;
     document.querySelector('.skip').hidden = false;
     const script = document.createElement('script');
-    script.src = 'app.js?v=20260929b';
+    script.src = 'app.js?v=20261025';
     script.onerror = () => {
       document.querySelector('.shell').hidden = true;
       screen.hidden = false;

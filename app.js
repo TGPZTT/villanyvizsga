@@ -122,6 +122,9 @@
       if(root&&!$('#examNavigationNotice',root))root.insertAdjacentHTML('afterbegin','<div id="examNavigationNotice" class="feedback review" role="status">A folyamatban lévő próbából a „Próba megszakítása” gombbal léphetsz ki.</div>');
       return;
     }
+    if(view==='question'&&target!=='question')captureQuestionResponse();
+    if(view==='practice'&&practice&&target!=='practice'){const active=practice.list[practice.index];practice.responses[active.id]=selectedFrom($('#practiceSession'),active)}
+    if(view==='learn'&&target!=='learn')window.VV_LEARN?.capture();
     view=target;
     $$('.view').forEach(e=>e.classList.toggle('active',e.id===`${target}View`));
     $$('.nav-link[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===target));
@@ -132,6 +135,7 @@
     if(target==='bank')renderBank();
     if(target==='home')renderHome();
     if(target==='practice')renderWrongTasks();
+    if(target==='learn')window.VV_LEARN?.renderRoute(location.hash.startsWith('#learn')?location.hash:'#learn');
   }
   function fillSelect(select,items,label){if(!select)return;select.innerHTML=`<option value="">${esc(label)}</option>`+items.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')}
   function sourceNames(){return [...new Set(qlist.map(sourceLabel))].sort((a,b)=>b.localeCompare(a,'hu'))}
@@ -446,6 +450,11 @@
     }
     return '';
   }
+  function learningLinksMarkup(q,mode){
+    if(mode==='exam')return '';
+    const links=window.VV_LEARN?.linksForQuestion(q.id)||[];
+    return links.length?`<div class="learn-question-links"><span>Tananyag ehhez:</span>${links.map(link=>`<a href="${esc(link.href)}">${esc(link.title)} →</a>`).join('')}</div>`:'';
+  }
   function questionBody(q,mode,response,show){
     const auto=isAuto(q),multi=q.type==='multi',choice=q.type==='single'||q.type==='multi';
     const values=Array.isArray(response)?response:[response];
@@ -462,7 +471,7 @@
     const prompt=mode==='bank'?`<h1 id="questionTitle" class="question-title question-prompt" tabindex="-1">${esc(q.prompt)}</h1>`:`<h2 class="question-title question-prompt">${esc(q.prompt)}</h2>`;
     const mobileActions=mode==='bank'?`<div class="question-mobile-actions">${isAuto(q)?'<button id="questionCheckMobile" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!show?`<button id="questionShowMobile" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}</div><div id="questionFeedbackMobile" role="status" aria-live="polite"></div>`:'';
     const rationale=show&&mode!=='review'?wrongAnswerMarkup(q,response):'';
-    return `<div class="question-top"><div class="tags"><span class="chip">${esc(q.topic)}</span><span class="chip">${esc(typeLabel(q))}</span>${q.requiresFigure?'<span class="chip">Ábrás feladat</span>':''}${q.review?'<span class="chip review">Megoldás ellenőrzendő</span>':''}</div><span>${q.points} pont</span></div>${title}${prompt}${figure}${sourceFigureLink}${hint}${opts}${selectionSummary}${input}${mobileActions}${!auto&&mode==='exam'?'<div class="feedback review">Ezt a feladatot a vizsga végén önellenőrzéssel lehet értékelni.</div>':''}${show&&mode!=='review'?`<div class="explanation"><strong>${q.review?'Forrás szerinti megoldás':'Megoldás'}</strong><p>${esc(answerLabel(q))}</p>${rationale}${q.explanation?`<strong style="margin-top:14px">Miért?</strong>${explanationMarkup(q)}`:''}${q.review?'<p>A forrás vagy a válaszkulcs ellenőrzése szükséges; biztonsági szempontból kétes állítást ne tanulj meg tényként.</p>':''}${sourceLink(q)}</div>`:''}`;
+    return `<div class="question-top"><div class="tags"><span class="chip">${esc(q.topic)}</span><span class="chip">${esc(typeLabel(q))}</span>${q.requiresFigure?'<span class="chip">Ábrás feladat</span>':''}${q.review?'<span class="chip review">Megoldás ellenőrzendő</span>':''}</div><span>${q.points} pont</span></div>${title}${prompt}${figure}${sourceFigureLink}${learningLinksMarkup(q,mode)}${hint}${opts}${selectionSummary}${input}${mobileActions}${!auto&&mode==='exam'?'<div class="feedback review">Ezt a feladatot a vizsga végén önellenőrzéssel lehet értékelni.</div>':''}${show&&mode!=='review'?`<div class="explanation"><strong>${q.review?'Forrás szerinti megoldás':'Megoldás'}</strong><p>${esc(answerLabel(q))}</p>${rationale}${q.explanation?`<strong style="margin-top:14px">Miért?</strong>${explanationMarkup(q)}`:''}${q.review?'<p>A forrás vagy a válaszkulcs ellenőrzése szükséges; biztonsági szempontból kétes állítást ne tanulj meg tényként.</p>':''}${sourceLink(q)}</div>`:''}`;
   }
   function selectedFrom(root,q){if(q.type==='single'||q.type==='multi'){const checked=$$('input[name="answer"]:checked',root).map(x=>x.value);return q.type==='multi'?checked:checked[0]||''}if(q.type==='number'&&answerFields(q).length)return $$('.numeric-answer, .answer-field-select',root).map(input=>input.value);return $('#freeAnswer',root)?.value||''}
   function restoreNumericResponse(root,q,response){if(q.type!=='number')return;if(answerFields(q).length){const values=Array.isArray(response)?response:[response];$$('.numeric-answer, .answer-field-select',root).forEach((input,index)=>input.value=values[index]||'')}else if($('#freeAnswer',root))$('#freeAnswer',root).value=response||''}
@@ -470,12 +479,14 @@
   function bindOptions(root){$$('.option input',root).forEach(input=>input.addEventListener('change',()=>$$('.option',root).forEach(label=>label.classList.toggle('selected',!!$('input:checked',label)))))}
   function openQuestion(q,{fromRoute=false,origin=view}={}){
     if(!q||exam&&!exam.submitted)return;
-    if(!questionState||view!=='question'||!questionState.ids.includes(q.id)){
-      const homeView=origin==='exam'?'exam':'bank';
-      const list=homeView==='exam'&&exam?.list?exam.list:progressManager.open?progressManagerQuestions():filteredBankQuestions();
+    const reuse=questionState&&(view==='question'||view==='learn'&&questionState.ids[questionState.index]===q.id)&&questionState.ids.includes(q.id);
+    if(!reuse){
+      const homeView=['exam','learn'].includes(origin)?origin:'bank';
+      const learningIds=homeView==='learn'?window.VV_LEARN?.questionIds()||[]:[];
+      const list=homeView==='learn'?learningIds.map(id=>byId.get(id)).filter(Boolean):homeView==='exam'&&exam?.list?exam.list:progressManager.open?progressManagerQuestions():filteredBankQuestions();
       const ids=list.map(item=>item.id);
       if(!ids.includes(q.id))ids.unshift(q.id);
-      questionState={ids,index:ids.indexOf(q.id),origin:homeView,originId:q.id,returnScroll:fromRoute?0:window.scrollY,returnPage:bankPage,responses:{},shown:{},hints:{},feedback:{}};
+      questionState={ids,index:ids.indexOf(q.id),origin:homeView,originId:q.id,returnScroll:fromRoute?0:window.scrollY,returnPage:bankPage,learnReturnRoute:homeView==='learn'?window.VV_LEARN?.currentRoute()||'learn':'',responses:{},shown:{},hints:{},feedback:{}};
       if(fromRoute&&homeView==='bank')bankPage=Math.floor(questionState.index/40);
     }else questionState.index=Math.max(0,questionState.ids.indexOf(q.id));
     renderQuestionPage(fromRoute?'none':view==='question'?'replace':'push',true);
@@ -496,6 +507,7 @@
     captureQuestionResponse();
     const {origin,originId:stateReturnId,returnScroll,returnPage}=questionState;
     if(origin==='bank')bankPage=returnPage;
+    if(origin==='learn'){const route=questionState.learnReturnRoute||'learn';navigate('learn',{updateHash:false,scroll:false});routeTo(route,true);window.VV_LEARN?.renderRoute('#'+route);return}
     navigate(origin,{replaceHash:true,scroll:false});
     requestAnimationFrame(()=>{
       window.scrollTo({top:returnScroll,behavior:'instant'});
@@ -515,7 +527,7 @@
     const next=`<button type="button" class="question-nav-button next" data-question-step="1" ${hasNext?'':'disabled'} aria-label="Következő találat">Következő →</button>`;
     const jumpOptions=state.ids.map((id,i)=>{const item=byId.get(id);return `<option value="${i}" ${i===state.index?'selected':''}>${i+1}. ${esc(sourceLabel(item))} · ${esc(item.number)}. feladat</option>`}).join('');
     const status=attemptStatus(q)==='correct'?'Sikerült':attemptStatus(q)==='retry'?'Újra gyakorlom':'Még nem gyakorolt';
-    root.innerHTML=`<div class="question-workspace"><header class="question-workspace-nav"><button id="questionBack" class="question-back" type="button">← ${state.origin==='exam'?'Vizsga áttekintése':'Feladatbank'}</button><span class="question-workspace-counter">${ordinal}. találat a szűrt ${total} feladatból</span></header><div class="question-workspace-layout"><article class="question-workspace-main">${questionBody(q,'bank',response,shown)}</article><aside class="question-workspace-side" aria-label="Feladat adatai és vezérlés"><div class="question-side-card"><span class="question-side-kicker">FELADAT ADATAI</span><div class="question-side-detail"><span>Téma</span><b>${esc(q.topic)}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</b></div><div class="question-side-detail"><span>Típus · pont</span><b>${esc(typeLabel(q))} · ${q.points} pont</b></div><div class="question-side-detail"><span>Gyakorlási állapot</span><b>${status}</b></div></div><div class="question-side-nav"><label for="questionJump">Ugrás a szűrt találatok között</label><select id="questionJump" aria-label="Ugrás egy másik találatra">${jumpOptions}</select><div class="question-side-nav-buttons">${prev}${next}</div></div><div class="question-side-actions">${isAuto(q)?'<button id="questionCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="questionShow" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!isAuto(q)&&shown?'<button id="questionGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="questionRetry" class="button outline" type="button">Újra gyakorlom</button></div><div id="questionFeedback" role="status" aria-live="polite">${feedbackHtml}</div></aside></div></div>`;
+    root.innerHTML=`<div class="question-workspace"><header class="question-workspace-nav"><button id="questionBack" class="question-back" type="button">← ${state.origin==='exam'?'Vizsga áttekintése':state.origin==='learn'?'Tananyag':'Feladatbank'}</button><span class="question-workspace-counter">${ordinal}. találat a szűrt ${total} feladatból</span></header><div class="question-workspace-layout"><article class="question-workspace-main">${questionBody(q,'bank',response,shown)}</article><aside class="question-workspace-side" aria-label="Feladat adatai és vezérlés"><div class="question-side-card"><span class="question-side-kicker">FELADAT ADATAI</span><div class="question-side-detail"><span>Téma</span><b>${esc(q.topic)}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(sourceLabel(q))} · ${esc(q.number)}. feladat</b></div><div class="question-side-detail"><span>Típus · pont</span><b>${esc(typeLabel(q))} · ${q.points} pont</b></div><div class="question-side-detail"><span>Gyakorlási állapot</span><b>${status}</b></div></div><div class="question-side-nav"><label for="questionJump">Ugrás a szűrt találatok között</label><select id="questionJump" aria-label="Ugrás egy másik találatra">${jumpOptions}</select><div class="question-side-nav-buttons">${prev}${next}</div></div><div class="question-side-actions">${isAuto(q)?'<button id="questionCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="questionShow" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!isAuto(q)&&shown?'<button id="questionGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="questionRetry" class="button outline" type="button">Újra gyakorlom</button></div><div id="questionFeedback" role="status" aria-live="polite">${feedbackHtml}</div></aside></div></div>`;
     $('#questionFeedbackMobile',root).innerHTML=feedbackHtml;
     restoreNumericResponse(root,q,response);
     bindOptions(root);
@@ -758,6 +770,8 @@
   function setupWorkedAnimations(root){if(root){window.VV_WORKED?.setup(root);window.VV_GUIDE?.setup(root)}}
   function init(){
     setupFilters();renderHome();setupProgressReset();renderWrongTasks();setupWorkedAnimations($('#guideView'));
+    window.VV_LEARN?.setup({root:$('#learnView'),data:window.VV_LEARNING,questions:qlist});
+    document.addEventListener('vv-learning-ready',()=>{if(view==='question'){captureQuestionResponse();renderQuestionPage()}else if(view==='practice'&&practice){const active=practice.list[practice.index];practice.responses[active.id]=selectedFrom($('#practiceSession'),active);renderPractice()}});
     $('#startPractice').addEventListener('click',startPractice);$('#startExam').addEventListener('click',startExam);
     $$('[data-view]').forEach(e=>e.addEventListener('click',()=>navigate(e.dataset.view)));
     $$('[data-go]').forEach(e=>e.addEventListener('click',event=>{if(e.tagName==='A')event.preventDefault();navigate(e.dataset.go)}));
@@ -791,10 +805,11 @@
       if(route.startsWith('question/')){
         let id='';try{id=decodeURIComponent(route.slice(9))}catch{}
         const q=byId.get(id);
-        if(q){if(view!=='question'||questionState?.ids[questionState.index]!==id)openQuestion(q,{fromRoute:true,origin:questionState?.origin||'bank'});return}
+        if(q){if(view!=='question'||questionState?.ids[questionState.index]!==id)openQuestion(q,{fromRoute:true,origin:view==='learn'?'learn':questionState?.origin||'bank'});return}
       }
-      const target=route.startsWith('guide/')?'guide':['home','bank','practice','exam','guide'].includes(route)?route:'home';
+      const target=route.startsWith('learn/')?'learn':route.startsWith('guide/')?'guide':['home','bank','practice','exam','guide','learn'].includes(route)?route:'home';
       if(view!==target)navigate(target,{updateHash:false});
+      if(target==='learn')window.VV_LEARN?.renderRoute('#'+route);
     };
     window.addEventListener('hashchange',followHash);
     window.addEventListener('beforeunload',event=>{if(exam&&!exam.submitted){event.preventDefault();event.returnValue=''}});

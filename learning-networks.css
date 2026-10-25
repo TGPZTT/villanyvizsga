@@ -1,0 +1,31 @@
+.ln-diagram{max-width:920px;margin:0 auto;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:#b6a28d #f8f0e2}
+.ln-diagram svg{display:block;width:100%;min-width:740px;height:auto;max-height:310px;overflow:visible}
+.ln-diagram:focus-visible{outline:3px solid #875425;outline-offset:3px}
+.ln-diagram svg>g{fill:none;stroke:#6c5b4a;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.ln-diagram text{fill:#493427;stroke:none;font:500 21px/1.3 'Segoe UI',Arial,sans-serif}
+.ln-diagram .ln-small{font-size:18px}
+.ln-diagram .ln-caption{font-size:17px;fill:#6c5b4a}
+.ln-diagram .ln-case{fill:#fffdf9;stroke:#8a7a66;stroke-width:2.2}
+.ln-diagram .ln-winding,.ln-diagram .ln-source-bus{stroke:#6d5946;stroke-width:2.7}
+.ln-diagram .ln-load,.ln-diagram .ln-star-winding,.ln-diagram .ln-impedance{fill:#fff7e8;stroke:#6d5946;stroke-width:2.7}
+.ln-diagram .ln-winding-mask{fill:var(--lv-surface,#fffaf0);stroke:none}
+.ln-diagram .ln-phase{stroke-width:3.7}
+.ln-diagram .ln-l1{stroke:#805033}.ln-diagram .ln-l2{stroke:#343434}.ln-diagram .ln-l3{stroke:#808080}
+.ln-diagram .ln-n{stroke:#2878b2;stroke-width:4}
+.ln-diagram .ln-protective{stroke:#287849;stroke-width:7}
+.ln-diagram .ln-protective-stripe{stroke:#edcd38;stroke-width:3.5;stroke-dasharray:9 7}
+.ln-diagram .ln-pen-end{stroke-width:7}
+.ln-diagram .ln-active{stroke-width:8}
+.ln-diagram .ln-protective-stripe.ln-active{stroke-width:4}
+.ln-diagram .ln-earth{stroke:#65745d;stroke-width:2.6}
+.ln-diagram .ln-junction circle{fill:#493d30;stroke:#fffdf9;stroke-width:.8}
+.ln-diagram .ln-focus-ring{fill:none;stroke:#b85a18;stroke-width:3.5}
+.ln-diagram .ln-focus-node circle{r:8;fill:#b85a18}
+.ln-diagram .ln-label-n{fill:#216d9d}.ln-diagram .ln-label-pe,.ln-diagram .ln-label-pen{fill:#28683e}
+.ln-diagram .ln-fault-link,.ln-diagram .ln-fault-trace{stroke:#b34f24;stroke-width:4.8;stroke-dasharray:9 6}
+.ln-diagram .ln-current-trace{stroke:#b34f24;stroke-width:2.5;stroke-dasharray:8 7}
+.ln-diagram .ln-soil-path{stroke:#967b50;stroke-width:3;stroke-dasharray:2 7}
+.ln-diagram .ln-earth-bar{fill:#b4a17e;stroke:#6b604b}
+.ln-diagram .ln-metal-pipe{fill:#dce1e4;stroke:#65737c;stroke-width:2.7}
+@media(max-width:650px){.ln-diagram svg{min-height:260px;max-height:300px}.ln-diagram text{font-size:25px}.ln-diagram .ln-small{font-size:20px}.ln-diagram .ln-caption{font-size:19px}}
+@media(prefers-reduced-motion:reduce){.ln-diagram *{animation:none!important;transition:none!important}}

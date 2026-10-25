@@ -1,0 +1,380 @@
+(function () {
+  'use strict';
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const colors = ['#b84d17','#286c9b','#7c579b','#507b36','#b47a13','#a84c59'];
+  const glyphs = {
+    generator:'M12 32a20 20 0 1 0 40 0 20 20 0 1 0-40 0M4 32h8m40 0h8',
+    pylon:'M32 5 16 58m16-53 16 53M23 20h18M19 34h26M14 48h36M16 58l29-24M48 58 19 34M10 20h44M9 34h46',
+    transformer:'M4 14h16m0 36H4M44 14h16m-16 36h16M28 8v48M36 8v48M20 14c-12 0-12 12 0 12-12 0-12 12 0 12-12 0-12 12 0 12M44 14c12 0 12 12 0 12 12 0 12 12 0 12 12 0 12 12 0 12',
+    house:'M6 29 32 7l26 22M13 25v31h38V25M26 56V36h13v20M18 29h7',
+    building:'M13 57V9h38v48M6 57h52M22 18h5m10 0h5M22 29h5m10 0h5M22 40h5m10 0h5M29 57V47h8v10',
+    wire:'M6 19h39a13 13 0 0 1 0 26H6M7 19a13 13 0 0 1 0 26M6 26h39a6 6 0 0 1 0 12H6',
+    cable:'M7 16h39a16 16 0 0 1 0 32H7M7 16a16 16 0 0 1 0 32M7 23a9 9 0 0 1 0 18M7 23h39m-39 18h39',
+    switch:'M4 44h14m0 0 26-25M46 44h14',
+    lamp:'M12 32a20 20 0 1 0 40 0 20 20 0 1 0-40 0M18 18l28 28M46 18 18 46M4 32h8m40 0h8',
+    led:'M4 36h16m22 0h18M20 23v26l22-13-22-13m22 0v26M41 17 54 4m-7 0h7v7M47 29 60 16m-7 0h7v7',
+    resistor:'M3 32h13m0-10h32v20H16V22m32 10h13',
+    meter:'M12 32a20 20 0 1 0 40 0 20 20 0 1 0-40 0M4 32h8m40 0h8M22 41l19-19M34 22h7v7',
+    motor:'M12 32a20 20 0 1 0 40 0 20 20 0 1 0-40 0M23 42V23l9 12 9-12v19M3 32h9m40 0h9',
+    ground:'M32 5v28M12 33h40M19 42h26M26 51h12',
+    shield:'M32 5 53 14v18c0 13-11 23-21 28C22 55 11 45 11 32V14L32 5M23 31l7 8 14-17',
+    rcd:'M15 12h34v40H15V12M4 23h11m34 0h11M4 41h11m34 0h11',
+    breaker:'M4 44h14m0 0 26-25M46 44h14M42 40l8 8m-8 0 8-8',
+    fuse:'M4 32h13m0-11h30v22H17V21m30 11h13M17 32h30',
+    battery:'M4 32h10m0-18v36m8-27v18m0-9h16m0-18v36m8-27v18m0-9h14',
+    coil:'M4 38h8c0-25 12-25 12 0 0-25 12-25 12 0 0-25 12-25 12 0h12',
+    capacitor:'M3 32h22m0-18v36m14-36v36m0-18h22',
+    sun:'M20 32a12 12 0 1 0 24 0 12 12 0 1 0-24 0M32 3v9m0 40v9M3 32h9m40 0h9M11 11l7 7m28 28 7 7M53 11l-7 7M18 46l-7 7',
+    wind:'M32 29v31m0-31L25 6c-8 0-6 17 7 23m0 0 23-6c5 7-10 14-23 6m0 0L18 49c-8-3-1-18 14-20',
+    water:'M32 5C22 21 12 30 12 40a20 20 0 0 0 40 0C52 30 42 21 32 5M22 40c0 8 5 11 10 11',
+    heat:'M15 55c-12-16 13-19 0-36M32 55c-12-16 13-19 0-36M49 55c-12-16 13-19 0-36M32 4v8m-5-5 5-5 5 5',
+    box:'M10 15h44v39H10V15M10 15l10-8h24l10 8M25 25h14v14H25V25M10 46h44',
+    terminal:'M7 20h50v26H7V20M19 26v14M32 26v14M45 26v14M19 3v17m13-17v17M45 3v17M19 46v15m13-15v15M45 46v15',
+    pipe:'M5 16h37c22 0 22 32 0 32H5M5 16a16 16 0 0 1 0 32M5 23h37c12 0 12 18 0 18H5',
+    sensor:'M20 50V18h24v32H20V50M27 26h10M8 20a32 32 0 0 1 0 27M56 20a32 32 0 0 0 0 27M14 25a20 20 0 0 1 0 17M50 25a20 20 0 0 0 0 17',
+    bell:'M14 44h36L44 33V24a12 12 0 0 0-24 0v9l-6 11M27 50a5 5 0 0 0 10 0M32 7v5',
+    tool:'M47 5c-18-4-25 9-20 21L8 45a8 8 0 0 0 11 11l19-19C51 42 63 31 58 17L46 28l-10-9L47 5',
+    document:'M16 5h24l12 12v42H16V5M40 5v14h12M24 29h20M24 39h20M24 49h13',
+    warning:'M32 5 60 55H4L32 5M32 23v15m0 7v2',
+    person:'M23 14a9 9 0 1 0 18 0 9 9 0 1 0-18 0M18 59V39c0-17 28-17 28 0v20M25 46v13m14-13v13',
+    fire:'M33 4c5 15 22 21 22 36a23 23 0 0 1-46 0c0-9 6-18 14-23-1 12 2 16 7 18 8-13-2-18 3-31M27 58c-14-11 2-19 5-26 2 10 14 14 8 23',
+    network:'M5 6h16v14H5V6M43 6h16v14H43V6M24 44h16v14H24V44M13 20v12h38V20M32 32v12',
+    field:'M7 14c15-12 35-12 50 0M7 27c15-12 35-12 50 0M7 40c15-12 35-12 50 0M7 53c15-12 35-12 50 0',
+    trash:'M16 15h32l-3 43H19L16 15M10 15h44M24 15V7h16v8M26 24v24m12-24v24',
+    'star-point':'M32 5v27M10 45l22-13 22 13M32 32h26',
+    'star-connection':'M32 5v27M10 45l22-13 22 13',
+    'delta-connection':'M32 7 8 50h48L32 7',
+    'earthed-neutral':'M32 3v16M12 7l20 12L52 7M32 19v23M14 42h36M21 49h22M27 56h10',
+    'isolated-neutral':'M32 3v16M12 7l20 12L52 7M32 19v12M32 43v6M16 49h32M22 55h20M28 61h8',
+    impedance:'M4 32h12m0-12h32v24H16V20m32 12h12',
+    voltmeter:'M12 32a20 20 0 1 0 40 0 20 20 0 1 0-40 0M4 32h8m40 0h8',
+    ammeter:'M12 32a20 20 0 1 0 40 0 20 20 0 1 0-40 0M4 32h8m40 0h8',
+    ohmmeter:'M12 32a20 20 0 1 0 40 0 20 20 0 1 0-40 0M4 32h8m40 0h8',
+    'insulation-meter':'M9 32a23 23 0 1 0 46 0 23 23 0 1 0-46 0M3 32h6m46 0h6',
+    'energy-meter':'M8 12h48v40H8V12M4 32h4m48 0h4',
+    instrument:'M12 32a20 20 0 1 0 40 0 20 20 0 1 0-40 0M4 32h8m40 0h8M22 41l19-19M34 22h7v7',
+    'voltage-tester':'M16 12h8v29h-8V12M40 12h8v29h-8V12M20 3v9m24-9v9M20 41v8c0 13 24 13 24 0v-8',
+    neutral:'M4 40h56',
+    'protective-conductor':'M4 40h56',
+    'pen-conductor':'M4 40h56',
+    'protective-earth':'M32 10v24M16 34h32M22 42h20M28 50h8',
+    'normally-open':'M4 32h20M24 17v30M40 17v30M40 32h20',
+    'normally-closed':'M4 32h20M24 17v30M40 17v30M40 32h20M20 45l24-26',
+    'pushbutton-no':'M4 40h20M24 25v30M40 25v30M40 40h20M21 7h22M32 7v12',
+    'pushbutton-nc':'M4 40h20M24 25v30M40 25v30M40 40h20M20 53l24-26M21 7h22M32 7v12',
+    'double-pole-switch':'M4 24h14m0 0 26-15M46 24h14M4 50h14m0 0 26-15M46 50h14',
+    'chandelier-switch':'M4 32h14V17m0 15v15M18 17 43 4M46 17h14M18 47l25-13M46 47h14',
+    'changeover-switch':'M4 32h14m0 0 28-17M46 15h14M46 49h14',
+    'intermediate-switch':'M4 18h12l32 28h12M4 46h12L48 18h12',
+    disconnector:'M4 44h14m0 0 26-25M48 44h12',
+    diode:'M4 32h16m22 0h18M20 19v26l22-13-22-13m22 0v26',
+    varistor:'M4 32h12m0-12h32v24H16V20m32 12h12M12 50 52 14',
+    'spark-gap':'M4 32h21m-6-4 6 4-6 4M39 32h21m-15-4-6 4 6 4',
+    'suppressor-diode':'M4 32h8M52 32h8M12 19v26l20-13-20-13M52 19v26L32 32l20-13M26 12l6 7v26l6 7',
+    'class-ii':'M10 10h44v44H10V10M22 22h20v20H22V22',
+    'class-iii':'M32 5 59 32 32 59 5 32 32 5',
+    'alternating-current':'M5 32c9-27 18-27 27 0s18 27 27 0',
+    clock:'M10 32a22 22 0 1 0 44 0 22 22 0 1 0-44 0M32 15v18l12 7',
+    socket:'M10 32a22 22 0 1 0 44 0 22 22 0 1 0-44 0M23 28v8m18-8v8M28 11h8M28 53h8',
+    'discharge-lamp':'M5 20h54v24H5V20M13 24v16m38-16v16M1 32h4m54 0h4',
+    insulation:'M32 5a27 27 0 1 0 0 54 27 27 0 1 0 0-54M32 20a12 12 0 1 0 0 24 12 12 0 1 0 0-24',
+    annotation:'M11 12h42v40H11V12M20 24h24M20 33h24M20 42h15',
+    'quantity-u':'', 'quantity-i':'', 'quantity-r':'', 'quantity-g':'', 'quantity-p':'', 'quantity-q':'', 'quantity-s':'', 'quantity-e':'', 'quantity-t':'', 'quantity-f':'', 'quantity-eta':'', 'light-efficacy':''
+  };
+  const glyphLabels = {
+    generator:['G',32,39,21], impedance:['Z',32,38,18],voltmeter:['V',32,39,22],ammeter:['A',32,39,22],ohmmeter:['Ω',32,39,22],
+    'insulation-meter':['MΩ',32,38,17],'energy-meter':['Wh',32,39,18],neutral:['N',32,28,20],'protective-conductor':['PE',32,28,18],'pen-conductor':['PEN',32,28,18],
+    rcd:['IΔ',32,38,18],varistor:['U',12,17,13],'class-iii':['III',32,39,20],
+    'quantity-u':['U',32,44,36],'quantity-i':['I',32,44,36],'quantity-r':['R',32,44,36],'quantity-g':['G',32,44,36],
+    'quantity-p':['P',32,44,36],'quantity-q':['Q',32,44,36],'quantity-s':['S',32,44,36],'quantity-e':['E',32,44,36],
+    'quantity-t':['t',32,44,36],'quantity-f':['f',32,44,36],'quantity-eta':['η',32,44,36],'light-efficacy':['Φ/P',32,42,26]
+  };
+  const diagramGlyphs=new Set(['generator','switch','lamp','led','resistor','motor','ground','fuse','battery','coil','capacitor','star-point','star-connection','delta-connection','earthed-neutral','isolated-neutral','impedance','voltmeter','ammeter','ohmmeter','energy-meter','insulation-meter','instrument','neutral','protective-conductor','pen-conductor','protective-earth','normally-open','normally-closed','pushbutton-no','pushbutton-nc','double-pole-switch','chandelier-switch','changeover-switch','intermediate-switch','disconnector','breaker','diode','varistor','spark-gap','suppressor-diode','class-ii','class-iii','alternating-current','discharge-lamp']);
+  const states = new Map();
+  const bound = new WeakSet();
+  const wavePlayback = new WeakMap();
+  function glyph(name, color, stripe) {
+    if(['protective-conductor','pen-conductor'].includes(name)){color='#287849';stripe=stripe||'#edcd38';}
+    if(name==='neutral')color='#2878b2';
+    const known=Object.hasOwn(glyphs,name),path=known?glyphs[name]:'',label=glyphLabels[name],ink=esc(color||'currentColor');
+    let extra='';
+    if(['star-point','star-connection'].includes(name))extra='<circle cx="32" cy="32" r="3.2" fill="currentColor" stroke="none"/>';
+    if(['earthed-neutral','isolated-neutral'].includes(name))extra='<circle cx="32" cy="19" r="2.7" fill="currentColor" stroke="none"/>';
+    if(name==='protective-earth')extra='<circle cx="32" cy="32" r="29"/>';
+    if(name==='spark-gap')extra='<circle cx="32" cy="32" r="20"/>';
+    if(['switch','breaker','disconnector','changeover-switch'].includes(name))extra=`<circle cx="18" cy="${name==='changeover-switch'?32:44}" r="1.8" fill="currentColor" stroke="none"/>${name==='disconnector'?'<circle cx="46" cy="44" r="2"/>':''}`;
+    if(['pushbutton-no','pushbutton-nc'].includes(name))extra='<path d="M32 19v16" stroke-dasharray="2 3"/>';
+    if(name==='double-pole-switch')extra='<path d="M31 17v27" stroke-dasharray="2 3"/>';
+    if(name==='chandelier-switch')extra='<circle cx="18" cy="32" r="2" fill="currentColor" stroke="none"/>';
+    if(name==='intermediate-switch')extra='<rect x="13" y="9" width="38" height="46" stroke-width="1"/>';
+    if(stripe&&['wire','cable'].includes(name))extra+=`<path d="M7 32h39" stroke="${esc(stripe)}" stroke-width="5"/>`;
+    if(stripe&&['protective-conductor','pen-conductor'].includes(name))extra+=`<path d="M4 40h56" stroke="${esc(stripe)}" stroke-width="2.4" stroke-dasharray="6 5"/>`;
+    if(name==='pen-conductor')extra+='<path d="M51 40h9" stroke="#2878b2" stroke-width="4"/>';
+    const text=label?`<text x="${label[1]}" y="${label[2]}" text-anchor="middle" fill="${ink}" stroke="none" style="font:${label[3]}px Arial,sans-serif">${esc(label[0])}</text>`:!known?`<text x="32" y="43" text-anchor="middle" fill="${ink}" stroke="none" style="font:30px Arial,sans-serif">?</text>`:'';
+    return `<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" data-glyph="${esc(name||'unknown')}" data-glyph-kind="${diagramGlyphs.has(name)?'diagram-symbol':label?'quantity':'pictogram'}"><g fill="none" stroke="${ink}" color="${ink}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">${path?`<path d="${path}"/>`:''}${extra}${text}</g></svg>`;
+  }
+  function nodes(spec, index, key) {
+    const items = spec.items || [], sequence = ['flow','route','timeline','safety'].includes(spec.type);
+    const technical=item=>diagramGlyphs.has(item.glyph)||Object.hasOwn(glyphLabels,item.glyph);
+    return `<div class="lv-diagram lv-${esc(spec.type)} ${sequence?'lv-sequence':''} ${items.some(technical)?'':'lv-text-only'}" data-lv-diagram>${items.map((item,i) => `<button type="button" class="lv-node ${technical(item)?'':'lv-text-node'} ${i===index?'is-active':''} ${sequence&&i<index?'is-traced':''}" data-lv-index="${i}" aria-pressed="${i===index}" style="--lv-node:${esc(item.color || colors[i%colors.length])}" aria-label="${esc(item.label)}">${technical(item)?`<span class="lv-component">${glyph(item.glyph,item.color,item.stripe)}</span>`:''}<strong>${esc(item.label)}</strong>${item.value!==undefined?`<span class="lv-node-value">${esc(item.value)} <small>${esc(item.unit||'')}</small></span>`:''}</button>`).join('')}</div>`;
+  }
+  function circuit(spec,index) {
+    const type=spec.circuit||'series';
+    if(type==='motor'||type==='rcd')return nodes({...spec,type:'compare'},index);
+    let drawing='';
+    if(type==='parallel'){
+      const xs=index===2?[300,480,650]:[300,650];
+      drawing='<path d="M100 165V80H650M650 290H100V183"/><path class="lv-source" d="M80 165h40m-32 18h24"/>';
+      drawing+=xs.map((x,i)=>`<path d="M${x} 80V157M${x} 212V290"/><path class="lv-load" d="M${x-25} 157h50v55h-50z"/><circle cx="${x}" cy="80" r="4" fill="currentColor"/><circle cx="${x}" cy="290" r="4" fill="currentColor"/><text x="${x}" y="143">R${i+1}</text>`).join('');
+      drawing+='<text x="160" y="55">U</text>'+(index===1?'<path d="M280 100V140M280 230V270M630 100V140M630 230V270" class="lv-measure"/>':'');
+    }
+    else if(type==='transformer') drawing='<path d="M80 80H250M250 290H80M520 80H690M520 290H690M340 75v220m25-220v220"/><path class="lv-load" d="M250 80c70 0 70 42 0 42 70 0 70 42 0 42 70 0 70 42 0 42 70 0 70 42 0 42 70 0 70 42 0 42M520 80c-70 0-70 42 0 42-70 0-70 42 0 42-70 0-70 42 0 42-70 0-70 42 0 42-70 0-70 42 0 42"/>';
+    else if(type==='motor') drawing='<path d="M80 100h195m-195 70h195M80 240h195"/><circle class="lv-load" cx="390" cy="170" r="118"/><path d="M340 215V120l50 65 50-65v95M510 170h160"/><path class="lv-rotor" d="M565 95a80 80 0 0 1 0 150m-5-14 5 14 15-3"/>';
+    else if(type==='measurement') drawing='<path d="M80 165V80h180m80 0h160m100 0h100v210H80V183M450 80v95h62m76 0h62V80"/><circle class="lv-load" cx="300" cy="80" r="40"/><path class="lv-load" d="M500 55h100v50H500z"/><circle class="lv-source" cx="550" cy="175" r="38"/><path class="lv-source" d="M60 165h40m-32 18h24"/><text x="300" y="90">A</text><text x="550" y="185">V</text>';
+    else if(type==='rcd') drawing='<path class="lv-source" d="M80 100H650V250H80"/><ellipse class="lv-load" cx="340" cy="175" rx="60" ry="120"/><path d="M320 60v230m40-230v230"/><path class="lv-load" d="M625 145h50v60h-50z"/><path class="lv-signal" d="M410 165h100v-90h80"/>';
+    else if(type==='switch') drawing='<path d="M100 165V80h180m110 0h260v65m0 80v65H100V183"/><path class="lv-lever" d="M280 80l95-47"/><circle class="lv-load" cx="650" cy="185" r="40"/><path d="M623 158l54 54m0-54-54 54"/><path class="lv-source" d="M80 165h40m-32 18h24"/>';
+    else drawing='<path d="M100 165V80h100m90 0h100m90 0h100m90 0h30v210H100V183"/><path class="lv-load" d="M200 55h90v50h-90zM390 55h90v50h-90zM580 55h90v50h-90z"/><path class="lv-source" d="M80 165h40m-32 18h24"/>';
+    return `<div class="lv-circuit lv-circuit-${esc(type)}" tabindex="0" role="region" aria-label="${esc(spec.title)}" data-lv-diagram data-lv-active="${esc(spec.items[index]?.target||'')}" style="--lv-selected:${index};--lv-active:${esc(spec.items[index]?.color||colors[index%colors.length])}"><svg viewBox="0 0 780 350" role="img" aria-label="${esc(spec.title)}"><g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${drawing}</g></svg></div><div class="lv-state-controls">${(spec.items||[]).map((item,i)=>`<button type="button" data-lv-index="${i}" aria-pressed="${index===i}">${glyph(item.glyph||'resistor',item.color)}<span>${esc(item.label)}</span></button>`).join('')}</div>`;
+  }
+  function graph(spec,index) {
+    if(spec.items.some(item=>item.value===undefined||item.value===null||String(item.value).trim()===''))return nodes(spec,index);
+    const values=(spec.items||[]).map(item=>Number(String(item.value??'').replace(',','.')));
+    if(!values.every(Number.isFinite))return nodes(spec,index);
+    const max=Math.max(1,...values),n=values.length;
+    return `<div class="lv-graph" data-lv-diagram><svg viewBox="0 0 780 300" role="img" aria-label="${esc(spec.title)}"><path d="M50 25v220h680" fill="none" stroke="#bda58f" stroke-width="2"/>${values.map((v,i)=>{const h=Math.max(3,v/max*180),x=90+i*620/n;return `<g class="${i===index?'is-active':''}"><rect x="${x}" y="${245-h}" width="${Math.min(85,460/n)}" height="${h}" rx="5" fill="${esc(spec.items[i].color||colors[i%colors.length])}"/><text x="${x+25}" y="${230-h}">${esc(spec.items[i].value)} ${esc(spec.items[i].unit||'')}</text></g>`}).join('')}</svg></div><div class="lv-state-controls">${spec.items.map((item,i)=>`<button type="button" data-lv-index="${i}" aria-pressed="${index===i}">${esc(item.label)}</button>`).join('')}</div>`;
+  }
+  function spectrum(spec,index) {
+    return `<div class="lv-spectrum" data-lv-diagram>${(spec.items||[]).map((item,i)=>`<button type="button" class="${i===index?'is-active':''}" data-lv-index="${i}" aria-pressed="${index===i}" style="--lv-band:${esc(item.color||colors[i%colors.length])}"><span class="lv-band"></span>${glyph(item.glyph||'lamp',item.color)}<strong>${esc(item.label)}</strong>${item.value!==undefined?`<small>${esc(item.value)} ${esc(item.unit||'')}</small>`:''}</button>`).join('')}</div>`;
+  }
+  function controls(spec,index){return `<div class="lv-state-controls">${spec.items.map((item,i)=>`<button type="button" data-lv-index="${i}" aria-pressed="${index===i}">${esc(item.label)}</button>`).join('')}</div>`;}
+  function materialComparison(spec,index){
+    const max=Math.max(...spec.items.map(item=>Number(item.resistivity)||0));
+    return `<div class="lv-materials" data-lv-diagram>${spec.items.map((item,i)=>{const metal=item.material==='Al'?'#b5bbc0':'#bf7a43',rho=Number(item.resistivity)||0;return `<button type="button" data-lv-index="${i}" aria-pressed="${i===index}" class="${i===index?'is-active':''}" style="--lv-metal:${metal}"><svg viewBox="0 0 120 100" aria-hidden="true"><circle cx="60" cy="45" r="33" fill="${metal}" stroke="#786b5d" stroke-width="1.5"/><path d="M39 22 84 67M31 34 72 75M47 14 91 58" stroke="#fff" stroke-opacity=".35" stroke-width="2"/><path d="M24 88h72m-72-5v10m72-10v10" stroke="#8b7969" stroke-width="1.5"/></svg><strong>${esc(item.label)} (${esc(item.material)})</strong><span class="lv-material-value">ρ ≈ <b>${esc(item.value)}</b> <small>${esc(item.unit)}</small></span><span class="lv-material-bar" aria-hidden="true"><i style="width:${max?rho/max*100:0}%"></i></span></button>`;}).join('')}</div><p class="lv-material-condition">${esc(spec.condition||'')}</p>`;
+  }
+  function branchDiagram(spec,index){
+    const selective=spec.variant==='selectivity',count=selective?2:Math.max(2,Math.min(3,spec.items.length-1)),ys=Array.from({length:count},(_,i)=>70+i*170/(count-1));
+    let d='<path d="M55 35H145M190 35H260V240" class="lv-branch-phase"/><path d="M55 290H685" class="lv-branch-neutral"/><rect x="145" y="20" width="45" height="30" class="lv-branch-fuse"/><path d="M145 35h45"/><text x="40" y="43">L</text><text x="40" y="298">N</text>';
+    ys.forEach((y,i)=>{const fault=selective&&i===1&&index>0,active=selective?(index===1?i===1:index===2?i===0:false):index===i+1;
+      d+=`<g class="${active?'lv-branch-focus':''}"><path d="M260 ${y}H360M405 ${y}H560" class="lv-branch-phase"/><path d="M600 ${y}H685V290" class="lv-branch-neutral"/><rect x="360" y="${y-15}" width="45" height="30" class="lv-branch-fuse"/>${fault?`<path d="M369 ${y-8}l27 16m0-16-27 16" class="lv-branch-open"/>`:`<path d="M360 ${y}h45"/>`}<rect x="560" y="${y-20}" width="40" height="40" class="lv-branch-load"/><circle cx="260" cy="${y}" r="4" fill="#805033"/><circle cx="685" cy="${y}" r="4" fill="#2878b2"/><text x="540" y="${y-30}" text-anchor="end">${esc(selective?spec.items[i===0?2:1]?.label:spec.items[i+1]?.label)}</text></g>`;
+    });
+    return `<div class="lv-technical lv-branches" tabindex="0" role="region" aria-label="${esc(spec.title)}" data-lv-diagram><svg viewBox="0 0 780 330" role="img" aria-label="${esc(spec.title)}"><g fill="none" stroke="#79624f" stroke-width="2.5">${d}</g></svg></div>${controls(spec,index)}`;
+  }
+  function contactorDiagram(spec,index){
+    const focus=spec.items[index].selectedPart||'',part=(kind,body)=>`<g class="${focus===kind?'lv-part-focus':''}">${body}</g>`;
+    let d=part('coil','<path d="M45 160H95M205 160H250"/><rect x="95" y="138" width="110" height="44"/><text x="70" y="125">A1</text><text x="230" y="125">A2</text>');
+    d+='<path d="M150 138V100H690M290 100V260H690" class="lv-mechanical"/>';
+    d+=part('main-contact',[330,460,590].map((x,i)=>`<g transform="translate(${x} 65) scale(1.3)"><path d="${glyphs['normally-open']}"/></g><text x="${x+42}" y="52">${i*2+1}–${i*2+2}</text>`).join(''));
+    d+=part('aux-no',`<g transform="translate(440 225) scale(1.3)"><path d="${glyphs['normally-open']}"/></g><text x="480" y="220">13–14</text>`);
+    d+=part('aux-nc',`<g transform="translate(590 225) scale(1.3)"><path d="${glyphs['normally-closed']}"/></g><text x="630" y="220">21–22</text>`);
+    return `<div class="lv-technical lv-contactor-parts" tabindex="0" role="region" aria-label="${esc(spec.title)}" data-lv-diagram><svg viewBox="0 0 780 340" role="img" aria-label="${esc(spec.title)}"><g fill="none" stroke="#79624f" stroke-width="2.5">${d}</g></svg></div>${controls(spec,index)}`;
+  }
+  function waveSketch(spec,item,index){
+    const mode=spec.waveMode||spec.phaseMode||'rlc',label=String(item.label||'').toLocaleLowerCase('hu'),dual=mode==='rlc';
+    const shift=Number.isFinite(item.phaseShiftDegrees)?item.phaseShiftDegrees*Math.PI/180:Number.isFinite(item.phaseRadians)?item.phaseRadians:(/tekercs|induktív/.test(label)||item.glyph==='coil')?-Math.PI/2:(/kondenz|kapacitív/.test(label)||item.glyph==='capacitor')?Math.PI/2:0;
+    const curve=phase=>Array.from({length:161},(_,i)=>`${i?'L':'M'}${80+i*620/160} ${175-95*Math.sin(i/160*Math.PI*2+phase)}`).join('');
+    let d='<path d="M50 175H740M80 35V305" class="lv-axis" fill="none"/>'+`<path d="${curve(0)}" class="lv-voltage-wave" fill="none"/>`;
+    if(dual)d+=`<path d="${curve(shift)}" class="lv-current-wave" fill="none"/><text x="145" y="35" class="lv-p">u/Umax</text><text x="285" y="35" class="lv-q">i/Imax</text>`;
+    else d+='<text x="110" y="35" class="lv-p">U</text>';
+    if(mode==='period'){
+      const angle=/negatív/.test(label)?Math.PI*1.5:/nulla/.test(label)?Math.PI:Math.PI*.5;
+      d+=`<circle cx="${80+620*angle/(Math.PI*2)}" cy="${175-95*Math.sin(angle)}" r="8" class="lv-wave-point"/><text x="390" y="320">T</text>`;
+    }
+    const f=Number(item.frequencyHz??item.frequency??spec.frequencyHz??spec.frequency??(mode==='frequency'?item.value:NaN));
+    if(mode==='frequency'&&f>0)d+=`<text x="530" y="35">f = ${esc(f)} Hz</text><text x="390" y="320">T = ${esc(Number((1000/f).toFixed(3)))} ms</text>`;
+    d+='<text x="740" y="200">t</text><g data-wave-cursor opacity="0"><line data-wave-scan x1="80" x2="80" y1="42" y2="300"/><circle data-wave-u cx="80" cy="175" r="7"/>'+(dual?'<circle data-wave-i cx="80" cy="175" r="4.5"/>':'')+'</g>';
+    return `<g data-lv-wave data-wave-phase="${shift}" data-wave-dual="${dual}">${d}</g>`;
+  }
+  function playWave(panel,button){
+    wavePlayback.get(panel)?.cancel();
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const wave=panel.querySelector('[data-lv-wave]'),cursor=wave?.querySelector('[data-wave-cursor]');if(!cursor)return;
+    const scan=wave.querySelector('[data-wave-scan]'),u=wave.querySelector('[data-wave-u]'),i=wave.querySelector('[data-wave-i]'),phase=Number(wave.dataset.wavePhase)||0;
+    let frame=0,started=performance.now(),done=false;
+    const cancel=()=>{if(done)return;done=true;cancelAnimationFrame(frame);cursor.setAttribute('opacity','0');button.setAttribute('aria-pressed','false');wavePlayback.delete(panel);};
+    wavePlayback.set(panel,{cancel});button.setAttribute('aria-pressed','true');cursor.setAttribute('opacity','1');
+    const tick=now=>{if(!panel.isConnected||document.hidden||matchMedia('(prefers-reduced-motion: reduce)').matches){cancel();return;}const p=Math.min(1,(now-started)/2800),x=80+620*p,angle=p*2*Math.PI;scan.setAttribute('x1',x);scan.setAttribute('x2',x);u.setAttribute('cx',x);u.setAttribute('cy',175-95*Math.sin(angle));if(i){i.setAttribute('cx',x);i.setAttribute('cy',175-95*Math.sin(angle+phase));}if(p<1)frame=requestAnimationFrame(tick);else cancel();};
+    frame=requestAnimationFrame(tick);
+  }
+  function technical(spec,index){
+    const v=spec.variant,item=spec.items[index],label=String(item.label||'').toLocaleLowerCase('hu'),n=spec.items.length;
+    let drawing='',kind=v;
+    const line=(path,cls='')=>`<path class="${cls}" d="${path}" fill="none"/>`;
+    const text=(x,y,s,cls='')=>`<text class="${cls}" x="${x}" y="${y}">${esc(s)}</text>`;
+    if(v==='material-resistivity')return materialComparison(spec,index);
+    if(v==='voltage-drop-model'){
+      const model=item.model;
+      if(model==='three-phase'){
+        drawing='<rect x="55" y="60" width="100" height="220" fill="#fff"/><rect x="590" y="60" width="125" height="220" fill="#fff"/>';
+        [90,170,250].forEach((y,i)=>{drawing+=line(`M155 ${y}H315M365 ${y}H590`,'lv-supply')+`<rect x="315" y="${y-12}" width="50" height="24" fill="#fff"/>`+text(105,y+8,`L${i+1}`);});
+        drawing+=text(650,180,'3~')+text(390,43,'l')+text(390,325,'ΔU₃f = √3 × ρ × l × Iw / A');
+      }else{
+        drawing='<rect x="65" y="110" width="90" height="110" fill="#fff"/><rect x="590" y="120" width="65" height="90" class="lv-load"/>'+text(110,173,'U');
+        drawing+=line('M155 135H315M365 135H590','lv-supply')+'<rect x="315" y="123" width="50" height="24" fill="#fff"/>'+text(390,90,'l')+text(340,175,'R₁');
+        if(model==='loop')drawing+=line('M655 190H690V265H365M315 265H110V220')+'<rect x="315" y="253" width="50" height="24" fill="#fff"/>'+text(390,306,'l')+text(340,243,'R₂');
+        else drawing+=line('M655 190H690V265H110V220')+text(390,315,'ΔU = I × R₁');
+        drawing+=text(625,105,'Fogyasztó');
+      }
+    }else if(v==='contact-protection'){
+      const state=item.protectionState||'';
+      if(['fault-protection','insulation-fault'].includes(state)){
+        const example={...spec,variant:'fault-loop',networkType:'TN-S',labels:{source:'Forrás',consumer:'Készülék fémteste',fault:'L–test hiba',detail:'TN-S példa: a hibaáram a PE-n, fémes úton tér vissza a forráshoz.'},items:spec.items.map(it=>({...it,networkType:'TN-S',currentPath:'fault',selectedPath:'pe'}))};
+        return window.VVLearningNetworks.render(example,index)+controls(spec,index);
+      }
+      drawing='<rect x="295" y="70" width="220" height="220" rx="8" fill="#eee6d8"/><rect x="330" y="105" width="150" height="150" rx="3" fill="#fff"/>'+line('M350 180h110','lv-load')+text(405,142,'L')+text(405,320,'Szigetelés / burkolat');
+      drawing+='<path d="M80 175h180v35H80" fill="#e9bd90" stroke="#9a653b"/>'+line('M270 130v120','lv-barrier');
+    }
+    else if(v==='selectivity'||v==='circuit-branches')return branchDiagram(spec,index);
+    else if(v==='contactor')return contactorDiagram(spec,index);
+    else if(v==='efficiency-split'){
+      drawing=line('M90 170H330M330 170 590 85M330 170 590 265','lv-supply')+'<circle cx="330" cy="170" r="7" fill="#71513b"/>';
+      drawing+=spec.items.slice(0,3).map((it,i)=>text([155,600,600][i],[145,60,305][i],it.label)).join('');
+    }else if(v==='steam-cycle'){
+      drawing=line('M150 90H360V265H150V90','lv-supply')+line('M360 90H610','lv-mechanical');
+      drawing+='<rect x="95" y="55" width="110" height="70" rx="6" fill="#fff0d5"/><circle cx="360" cy="90" r="40" fill="#fff"/><rect x="300" y="230" width="120" height="70" rx="6" fill="#edf5fb"/><circle cx="610" cy="90" r="43" fill="#fff"/>'+text(150,95,spec.items[0]?.label)+text(360,95,spec.items[1]?.label)+text(610,95,spec.items[2]?.label)+text(360,272,spec.items[3]?.label);
+    }else if(v==='battery-load'){
+      const open=index===0;
+      drawing=line('M110 160V85H250M340 85H440M520 85h140v70M660 225v65H110V182')+line('M90 160h40m-32 22h24','lv-source')+line('M250 65h90v40h-90zM635 155h50v70h-50z','lv-load')+line(open?'M440 85l68-35':'M440 85h80','lv-contact')+text(295,50,'Rb')+text(700,195,'R');
+      if(!open)drawing+=`<path d="M145 85H220m-10-8 10 8-10 8" class="lv-current-arrow" fill="none" style="stroke-width:${index===2?6:3}"/>`;
+      drawing+=text(175,50,open?'I = 0':index===2?'I ↑':'I');
+    }else if(v==='current-transformer'){
+      drawing=line('M70 155H680','lv-source')+'<ellipse cx="350" cy="155" rx="85" ry="110" fill="none" stroke="#a48e7a" stroke-width="17"/><path d="M420 90c35 0 35 20 0 20 35 0 35 20 0 20 35 0 35 20 0 20" fill="none" stroke="#765594"/>'+line('M420 90H580V143M580 207V245H480V150H420','lv-secondary')+'<circle cx="580" cy="175" r="32" fill="#fff"/>'+text(580,185,'A');
+    }else if(v==='rcd-balance'){
+      const leak=index>0,tripped=index===2;
+      drawing=line(tripped?'M65 95H170M170 95l30-20M220 95H660V145M660 205V255H220M170 255H65M170 255l30 20':'M65 95H660V145M660 205V255H65','lv-source')+line('M635 145h50v60h-50z','lv-load')+'<ellipse cx="330" cy="175" rx="65" ry="125" fill="none" stroke="#a18b74" stroke-width="12"/>';
+      if(leak)drawing+=line('M660 120H730V305','lv-q')+line('M710 305h40m-33 9h26m-19 9h12','lv-q');
+      if(!tripped)drawing+=line('M120 95h60m-10-8 10 8-10 8M180 255h-60m10-8-10 8 10 8','lv-current-arrow');
+      drawing+=text(90,65,'L')+text(90,290,'N');
+    }else if(v==='self-hold'){
+      const state=item.controlState||(/leáll|stop/.test(label)?'stop':/retesz/.test(label)?'interlock':/ön|tart/.test(label)?'hold':'start');
+      const off=['stop','interlock','idle'].includes(state),on=!off;
+      drawing=line('M90 40V310M690 40V310M90 80H245M285 80H380M420 80H470M510 80H550M620 80H690M330 80V205H380M420 205H470V80');
+      drawing+=state==='interlock'?line('M470 65v30M510 65v30M470 65l25-24','lv-contact')+text(490,45,'K2'):line('M470 80h40');
+      drawing+=line('M245 65v30M285 65v30','lv-contact')+line(state==='stop'?'M245 65l26-23':'M245 65l40 30','lv-contact')+line('M380 65v30M420 65v30M380 190v30M420 190v30','lv-contact');
+      if(on)drawing+=line(state==='start'?'M380 80h40M380 205h40':'M380 205h40','lv-supply');
+      drawing+='<rect x="550" y="55" width="70" height="50" fill="'+(on?'#f4c77f':'#fff')+'"/>'+text(265,45,'STOP')+text(400,45,'START')+text(400,250,'K')+text(585,90,'K');
+    }else if(v==='tube'){
+      return nodes({...spec,type:'compare'},index);
+    }else if(v==='network-topology'){
+      const mode=/sugar/.test(label)?0:/gyűr/.test(label)?1:/íves/.test(label)?2:/hurkol/.test(label)?3:index;
+      drawing=line('M90 70H230V160H390V260H550','lv-supply');
+      if(mode===1)drawing=line('M90 70H230V160H390V260H550V70H90','lv-supply');
+      if(mode===2)drawing=line('M90 70H230V160H390V260H550V70H690','lv-supply');
+      if(mode===3)drawing=line('M90 70H230V160H390V260H550V70H90M230 70H550M230 160H550V260H390M90 70V260H390','lv-supply');
+      drawing+=[['90','70'],['230','160'],['390','260'],['550','70']].map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="${i?12:20}" fill="${i?'#fff':'#b84d17'}"/>`).join('');
+      if(mode===2)drawing+='<circle cx="690" cy="70" r="20" fill="#286c9b"/>';
+    }else if(v==='conductor-dimensions'){
+      const length=index===1?500:330,height=index===2?90:45;
+      drawing=`<rect x="140" y="${170-height/2}" width="${length}" height="${height}" rx="${height/2}" fill="${index===0?'#d0a26a':'#c7aaa0'}" stroke="#9a6a45"/><ellipse cx="155" cy="170" rx="14" ry="${height/2}" fill="#b77845"/>`+line(`M140 ${220+height/2}H${140+length}M140 ${210+height/2}v20M${140+length} ${210+height/2}v20`,'lv-pointer')+text(140+length/2,280,index===1?'l':'')+text(115,173,index===2?'S':'');
+    }else if(v==='cable-types'){
+      if(index===0){const curve=(phase)=>Array.from({length:121},(_,i)=>`${i?'L':'M'}${100+i*4.8} ${175+38*Math.sin(i/120*Math.PI*7+phase)}`).join('');drawing=line(curve(0),'lv-p')+line(curve(Math.PI),'lv-q');}
+      else if(index===1)drawing='<circle cx="390" cy="175" r="125" fill="#c5b9a7"/><circle cx="390" cy="175" r="105" fill="#f6f0e6" stroke="#7e8e91" stroke-width="12"/><circle cx="390" cy="175" r="80" fill="#fff"/><circle cx="390" cy="175" r="25" fill="#bc8644"/>';
+      else drawing='<rect x="115" y="130" width="550" height="85" rx="35" fill="#e5e7f0"/><rect x="120" y="160" width="540" height="25" rx="12" fill="#93c9e9"/>'+line('M140 175h130l35-24 55 47 60-47 55 47 55-47 50 24h55','lv-supply');
+    }else if(v==='wire-colors'){
+      const color=esc(item.color||colors[index%colors.length]);
+      drawing=`<rect x="120" y="115" width="500" height="105" rx="48" fill="${color}" stroke="${color}"/><ellipse cx="135" cy="167" rx="32" ry="51" fill="#b97a3d"/><ellipse cx="135" cy="167" rx="19" ry="33" fill="#e5af72"/>${item.stripe?`<path d="M165 145h425m-425 43h425" stroke="${esc(item.stripe)}" stroke-width="19"/>`:''}${item.endColor?`<rect x="545" y="115" width="68" height="105" fill="${esc(item.endColor)}"/>`:''}${text(390,285,item.label)}`;
+    }else if(v==='cable-section'||v==='cable-structure'){
+      const peClipId='lv-cable-pe-'+(technical.cableClipSerial=(technical.cableClipSerial||0)+1);
+      drawing=`<defs><clipPath id="${peClipId}" clipPathUnits="userSpaceOnUse"><circle cx="325" cy="225" r="40"/></clipPath></defs><circle cx="340" cy="175" r="133" fill="#565451"/><circle cx="340" cy="175" r="119" fill="#e6dfd1"/>`;
+      [[300,130,'#805033'],[385,150,'#2878b2'],[325,225,'#287849']].forEach(([x,y,color],i)=>{drawing+=`<circle cx="${x}" cy="${y}" r="40" fill="${color}" stroke="${index===1?'#b84d17':'#fff9ed'}" stroke-width="${index===1?6:2}"/>${i===2?`<g clip-path="url(#${peClipId})">${line(`M${x-45} ${y-44}l88 94m-106-46 80 86`,'lv-pe-stripe')}</g>`:''}<circle cx="${x}" cy="${y}" r="23" fill="#c1884d" stroke="${index===0?'#b84d17':'#e3ba87'}" stroke-width="${index===0?5:2}"/>`;});
+      if(index===2)drawing+='<circle cx="340" cy="175" r="133" fill="none" stroke="#b84d17" stroke-width="6"/>';
+      const pointerX=index===2?473:index===1?425:408,pointerY=index===2?175:150;
+      drawing+=line(`M${pointerX} ${pointerY}H665`,'lv-pointer')+text(590,pointerY-25,item.label);
+    }else if(v==='power-triangle'){
+      const active=/^p\b|hatásos/.test(label)?'p':/^q\b|meddő/.test(label)?'q':'s';
+      drawing=line('M170 260H590','lv-p '+(active==='p'?'is-focus':''))+line('M590 260V70','lv-q '+(active==='q'?'is-focus':''))+line('M170 260 590 70','lv-s '+(active==='s'?'is-focus':''))+line('M568 260v-22h22')+text(380,300,'P','lv-p')+text(630,170,'Q','lv-q')+text(350,135,'S','lv-s');
+    }else if(v==='ohm'){
+      if(index<2)drawing=line('M110 45v230H690','lv-axis')+line(index===0?'M110 275 635 65':'M120 60C180 170 275 240 665 260','lv-supply')+text(85,45,'I')+text(710,283,index===0?'U':'R')+text(560,80,index===0?'R = állandó':'U = állandó');
+      else drawing=line('M210 90 420 175M210 260 420 175M420 175H650','lv-supply')+text(180,90,'U')+text(180,270,'R')+text(690,185,'I')+text(470,310,'I = U / R');
+    }else if(v==='slip'){
+      drawing=line('M120 90H650m-20-12 20 12-20 12','lv-p')+line('M120 200H565m-20-12 20 12-20 12','lv-q')+line('M565 270H650M565 260v20M650 260v20','lv-pointer')+text(75,100,'ns')+text(75,210,'n')+text(607,310,'ns − n');
+      drawing+=text(400,35,index===2?'s = (ns − n) / ns':'ns > n');
+    }else if(v==='overcurrent'){
+      const traces=['M100 245h100v-75h480','M100 245h100V45H300v200h380','M100 245h100C220 70 250 60 280 115S340 245 420 245H680'];
+      drawing=line('M100 30v250H700','lv-axis')+line('M100 245H690','lv-rating')+line(traces[Math.min(index,2)],'lv-supply')+text(75,35,'I')+text(715,285,'t');
+    }else if(v==='instrument'){
+      const angle=Math.PI+46/60*Math.PI;
+      drawing='<path d="M165 270a225 225 0 0 1 450 0" fill="#fff"/>'+Array.from({length:61},(_,i)=>{const a=Math.PI+i*Math.PI/60,r=i%10===0?195:207;return line(`M${390+r*Math.cos(a)} ${270+r*Math.sin(a)} ${390+220*Math.cos(a)} ${270+220*Math.sin(a)}`,i===60&&index===0?'lv-supply':'lv-axis')+(i%10===0?text(390+245*Math.cos(a),278+245*Math.sin(a),i):'');}).join('');
+      drawing+=line(`M390 270 ${390+195*Math.cos(angle)} ${270+195*Math.sin(angle)}`,'lv-supply')+'<circle cx="390" cy="270" r="8" fill="#71513b"/>'+text(390,310,index===0?'Skálavég: 60':index===1?'Méréshatár: 300 V':'46 / 60 × 300 V = 230 V');
+    }else if(v==='wave'){
+      drawing=waveSketch(spec,item,index);
+    }else if(v==='light-distance'){
+      if(index<2){const y=index===0?185:285,half=index===0?110:240;
+        drawing='<path d="M355 30h70l-10 25h-50z" fill="#79604a"/>'+`<path d="M365 55 ${390-half} ${y}H${390+half}L415 55Z" fill="#f4b637" fill-opacity="${index===0?.35:.15}" stroke="#d79c32" stroke-dasharray="7 7"/><ellipse cx="390" cy="${y}" rx="${half}" ry="15" fill="#efba55" fill-opacity="${index===0?.7:.3}"/>`+line(`M${365-half} ${y+20}H${415+half}M650 55V${y}`,'lv-axis');
+      }else drawing=line('M80 175H280M420 175H680','lv-supply')+'<circle cx="350" cy="175" r="70" fill="#fff2cc"/>'+text(350,185,'lm/W')+text(160,140,'P')+text(590,140,'Φ')+text(390,300,'fényhasznosítás = Φ / P');
+    }else if(['light-beam','light-distribution'].includes(v)){
+      const focused=index%n;
+      drawing=`<path d="M315 40h150l-35 25h-80z" fill="#79604a"/><path d="M350 65 155 275H625L430 65Z" fill="#f4b637" fill-opacity=".19" stroke="#d79c32" stroke-dasharray="7 7"/><path d="M130 278H650" class="${focused===2?'is-focus':''}"/><path d="M390 65v210" class="${focused===1?'is-focus lv-supply':'lv-axis'}"/><ellipse cx="390" cy="278" rx="235" ry="24" fill="#efba55" fill-opacity="${focused===2?.55:.18}"/>${line('M367 90 287 230M413 90l80 140','lv-light-ray')}`;
+    }else if(['star-delta','three-phase-voltage','star-delta-start'].includes(v)){
+      if(v==='three-phase-voltage'&&(item.measurementState==='frequency'||/hz|frekven/.test(label))){return `<div class="lv-technical" tabindex="0" role="region" aria-label="${esc(spec.title)}" data-lv-diagram><svg viewBox="0 0 780 350" role="img" aria-label="${esc(spec.title)}"><g>${waveSketch({...spec,waveMode:'frequency'},{...item,frequencyHz:item.frequencyHz??Number(item.value??label.match(/\d+/)?.[0])},index)}</g></svg></div>${controls(spec,index)}`;}
+      const state=item.connectionState||(/delta|háromszög|Δ/.test(label)&&!/csillag/.test(label)?'delta':/átkapcsol|szünet/.test(label)?'open':'star'),delta=state==='delta';
+      if(state==='nameplate')return nodes({...spec,type:'compare'},index);
+      const winding=(x,y,angle)=>`<g transform="translate(${x} ${y}) rotate(${angle})"><rect x="-32" y="-15" width="64" height="30" class="lv-winding-mask"/><path d="M-32 0h5c0-12 18-12 18 0 0-12 18-12 18 0 0-12 18-12 18 0h5" class="lv-winding" fill="none"/></g>`;
+      if(delta){drawing=line('M390 45 185 290H595L390 45','lv-supply')+winding(287.5,167.5,129.9)+winding(390,290,0)+winding(492.5,167.5,50.1);}
+      else if(state==='open')drawing=line('M390 45V130M185 290 310 220M595 290 470 220')+winding(390,102,90)+winding(264,245,150.7)+winding(516,245,29.3)+'<circle cx="390" cy="130" r="5" fill="#fff"/><circle cx="310" cy="220" r="5" fill="#fff"/><circle cx="470" cy="220" r="5" fill="#fff"/>';
+      else drawing=line('M390 175V45M390 175 185 290M390 175 595 290','lv-supply')+winding(390,102,90)+winding(301,225,150.7)+winding(479,225,29.3)+'<circle cx="390" cy="175" r="7" fill="#73513c"/>';
+      drawing+=text(390,30,'L1')+text(150,310,'L2')+text(630,310,'L3');
+      if(v==='three-phase-voltage'){
+        if(index===0)drawing+=line('M390 175H690','lv-neutral-reference')+text(715,182,'N')+line('M390 45H665V88M665 132V175','lv-measure')+'<circle cx="665" cy="110" r="22" fill="#fffaf0" stroke="#286c9b"/>'+text(665,118,'V');
+        else drawing+=line('M185 290H120V182M120 138V45H390','lv-measure')+'<circle cx="120" cy="160" r="22" fill="#fffaf0" stroke="#286c9b"/>'+text(120,168,'V');
+      }
+      if(v==='star-delta'&&item.selectedPart==='line-terminal')drawing+=line('M185 290H120V182M120 138V45H390','lv-measure')+'<circle cx="120" cy="160" r="22" fill="#fffaf0" stroke="#286c9b"/>'+text(120,168,'V');
+      if(v==='star-delta'&&item.selectedPart==='winding')drawing+=line('M390 45H665V88M665 132V175H390','lv-measure')+'<circle cx="665" cy="110" r="22" fill="#fffaf0" stroke="#286c9b"/>'+text(665,118,'V');
+    }else if(v==='clock-group'){
+      const match=String(item.label).match(/(\d{1,2})\s*$/),hour=Number(item.hour??(match?Number(match[1]):6)),angle=hour*Math.PI/6;
+      const x=390+105*Math.sin(angle),y=175-105*Math.cos(angle);
+      drawing='<circle cx="390" cy="175" r="125" fill="#fff"/>'+Array.from({length:12},(_,i)=>{const a=(i+1)*Math.PI/6;return text(390+150*Math.sin(a),183-150*Math.cos(a),i+1)}).join('')+line('M390 175V60','lv-p')+line(`M390 175 ${x} ${y}`,'lv-q')+'<circle cx="390" cy="175" r="6" fill="#73513c"/>';
+    }else if(['ip-barrier','ip-water'].includes(v)){
+      drawing='<rect x="295" y="70" width="220" height="220" rx="14" fill="#eee6d8"/><rect x="330" y="105" width="150" height="150" rx="6" fill="#fff"/>'+line('M350 180h110','lv-load');
+      drawing+=v==='ip-water'?'<path d="M200 55c-18 28-35 45-35 65a35 35 0 0 0 70 0c0-20-17-37-35-65" fill="#9dcee1" stroke="#286c9b"/>':'<path d="M80 175h180v35H80" fill="#e9bd90" stroke="#9a653b"/>';
+      drawing+=line('M270 130v120','lv-barrier');
+    }else if(v==='bath-zones'){
+      drawing='<rect x="220" y="65" width="60" height="220" fill="#f7e7c4"/><rect x="500" y="65" width="60" height="220" fill="#f7e7c4"/><rect x="280" y="65" width="220" height="135" fill="#e7d7c2"/><path d="M280 200h220l-20 85H300z" fill="#c6e4ef" stroke="#286c9b" stroke-width="3"/>'+line('M175 285H610M600 65v220M590 65h20M590 285h20M500 45h60M500 35v20M560 35v20','lv-axis')+text(650,175,'2,25 m')+text(530,26,'0,60 m')+text(390,250,'0')+text(390,135,'1')+text(530,180,'2')+text(250,180,'2');
+      drawing+=index===0?'<path d="M280 200h220l-20 85H300z" fill="none" stroke="#b84d17" stroke-width="5"/>':index===1?'<rect x="280" y="65" width="220" height="135" fill="none" stroke="#b84d17" stroke-width="5"/>':'<path d="M220 65h60v220h-60zM500 65h60v220h-60z" fill="none" stroke="#b84d17" stroke-width="5"/>';
+    }else if(v==='contactor'){
+      drawing='<rect x="105" y="120" width="140" height="85" fill="#f2dcc0"/>'+line('M45 162h60m140 0h60M245 162H430','lv-mechanical');
+      drawing+=line('M430 65V130M430 205v85M520 65v65M520 205v85M610 65v65M610 205v85');
+      const closed=/behúz|gerjeszt|zárt|bekapcsol|tart/.test(label);
+      drawing+=line(closed?'M430 130v75M520 130v75M610 130v75':'M430 130l40 55M520 130l40 55M610 130l40 55','lv-contact');
+      drawing+=text(175,170,'A1 / A2');
+    }else if(v==='energy-meter'){
+      return nodes({...spec,type:'compare'},index);
+    }else if(['breaker-label','rcd-label','cable-code'].includes(v)){
+      return nodes({...spec,type:'compare'},index);
+    }else return '';
+    return `<div class="lv-technical lv-${esc(kind)}" tabindex="0" role="region" aria-label="${esc(spec.title)}" data-lv-diagram data-lv-active="${esc(item.target||'')}" style="--lv-active:${esc(item.color||colors[index%colors.length])}"><svg viewBox="0 0 780 350" role="img" aria-label="${esc(spec.title)}"><g stroke="#79624f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${drawing}</g></svg></div>${controls(spec,index)}`;
+  }
+  function one(spec,lessonId,part) {
+    if(!spec?.items?.length)return '';
+    const key=lessonId+':'+part, index=Math.min(states.get(key)||0,spec.items.length-1),item=spec.items[index];
+    const network=window.VVLearningNetworks?.render(spec,index)||'';
+    const drawing=network?network+controls(spec,index):technical(spec,index)||(spec.type==='circuit'?circuit(spec,index):spec.type==='graph'?graph(spec,index):spec.type==='spectrum'?spectrum(spec,index):nodes(spec,index,key));
+    const showTitle=spec.showTitle===true||(part===1&&!/^(kövesd|figyeld|válaszd|hasonlítsd|különítsd|keresd|előbb)/iu.test(spec.title));
+    return `<section class="lv-workbench" data-lv-key="${esc(key)}" data-lv-part="${part}" aria-label="${esc(spec.title)}">${showTitle?`<div class="lv-heading"><h3>${esc(spec.title)}</h3></div>`:''}${drawing}<div class="lv-observation" role="status" aria-live="polite"><span class="lv-observation-dot" style="background:${esc(item.color||colors[index%colors.length])}"></span><div><strong>${esc(item.label)}</strong><p>${esc(item.detail||'')}</p></div></div>${spec.variant==='wave'?'<button type="button" class="lv-play" data-lv-play>Jelek összehasonlítása mozgásban</button>':''}${['flow','timeline','route','safety'].includes(spec.type)?`<div class="lv-step-controls"><button type="button" data-lv-prev ${index===0?'disabled':''} aria-label="Előző részlet">←</button><span>${index+1} / ${spec.items.length}</span><button type="button" data-lv-next ${index===spec.items.length-1?'disabled':''} aria-label="Következő részlet">→</button></div>`:''}</section>`;
+  }
+  function render(lesson){return `<div class="lv-visuals">${one(lesson.visualSpec,lesson.id,0)}${one(lesson.secondaryVisual,lesson.id,1)}</div>`;}
+  function mount(root,lesson){
+    root.querySelectorAll('[data-lv-key]').forEach(panel=>{
+      if(bound.has(panel))return;
+      bound.add(panel);
+      panel.addEventListener('click',event=>{
+        const play=event.target.closest('[data-lv-play]');
+        if(play&&panel.contains(play)){
+          playWave(panel,play);return;
+        }
+        const button=event.target.closest('[data-lv-index],[data-lv-prev],[data-lv-next]');
+        if(!button||!panel.contains(button))return;
+        const key=panel.dataset.lvKey,part=Number(panel.dataset.lvPart),spec=part?lesson.secondaryVisual:lesson.visualSpec;
+        if(!spec)return;
+        let index=states.get(key)||0;
+        index=button.hasAttribute('data-lv-index')?Number(button.dataset.lvIndex):index+(button.hasAttribute('data-lv-prev')?-1:1);
+        index=Math.max(0,Math.min(spec.items.length-1,index));if(index===(states.get(key)||0))return;states.set(key,index);
+        const focusIndex=button.hasAttribute('data-lv-index')?`[data-lv-index="${index}"]`:button.hasAttribute('data-lv-prev')?'[data-lv-prev]':'[data-lv-next]';
+        wavePlayback.get(panel)?.cancel();panel.getAnimations({subtree:true}).forEach(animation=>animation.cancel());
+        const wrapper=document.createElement('div');wrapper.innerHTML=one(spec,lesson.id,part);const next=wrapper.firstElementChild;panel.replaceWith(next);mount(next.parentElement,lesson);
+        const focus=next.querySelector(focusIndex),fallback=next.querySelector(`[data-lv-index="${index}"]`);(focus&&!focus.disabled?focus:fallback)?.focus({preventScroll:true});
+        if(!matchMedia('(prefers-reduced-motion: reduce)').matches){next.querySelector('.lv-observation')?.animate([{opacity:.5},{opacity:1}],{duration:220,easing:'ease-out'});next.querySelectorAll('[data-animate-path],.ln-trace').forEach(path=>{const length=path.getTotalLength?.();if(length)path.animate([{strokeDashoffset:Math.max(90,length/4)},{strokeDashoffset:0}],{duration:1200,easing:'ease-out'});});}
+      },{once:false});
+    });
+  }
+  window.VVLearningVisuals={render,mount,symbol:glyph};
+})();

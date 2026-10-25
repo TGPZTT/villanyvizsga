@@ -9,6 +9,10 @@
 !/unlock.js
 !/worked-board.js
 !/guide-navigation.js
+!/learning.js
+!/learning.css
+!/learning-visuals.js
+!/learning-visuals.css
 !/favicon.svg
 !/favicon.ico
 !/protected/
@@ -18,3 +22,8 @@
 !/protected/assets/
 /protected/assets/*
 !/protected/assets/*.vve
+
+!/learning-networks.js
+!/learning-networks.css
+!/learning-sort.js
+!/learning-sort.css
