@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const KEY = 'villanyvizsga-learning-v1';
-  const VERSION = '20261025-r4';
+  const VERSION = '20261025-r6';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const norm = value => String(value ?? '').toLocaleLowerCase('hu').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -28,6 +28,14 @@
   const accentStyle = chapter => `--learn-chapter-accent:${validColor(chapter?.accent?.color,'#a9541b')};--learn-chapter-soft:${validColor(chapter?.accent?.soft,'#fff0d8')}`;
   const groupId = lesson => lesson.group?.id || lesson.id;
   const groupTitle = lesson => lesson.group?.title || lesson.title;
+  const sectionTitle = lesson => ({
+    'wires-harmonizalt':'Harmonizált jelölés',
+    'wires-jelolesrendszerek':'Magyar és VDE-jelölés',
+    'wires-tipusok':'Épületvezetékek',
+    'wires-hajlekony':'Hajlékony vezetékek',
+    'wires-energiakabelek':'Erőátviteli kábelek',
+    'wires-vezerlokabelek':'Vezérlőkábelek'
+  }[lesson.id] || lesson.title);
   const groupFor = lesson => lessons.filter(item => item.chapter.id === lesson.chapter.id && groupId(item) === groupId(lesson));
   const groupsFor = chapter => [...new Map(chapter.lessons.map(item => { const lesson = lessonMap.get(item.id); return [groupId(lesson), groupFor(lesson)]; })).values()];
   const allGroups = () => chapters.flatMap(groupsFor);
@@ -37,6 +45,165 @@
     if (text.includes('**')) return text.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');
     return text.replace(/^([^:]{3,72}:)(\s)/u,'<strong>$1</strong>$2');
   };
+
+  // Individually reviewed closing-note repetitions. The exact fingerprint also
+  // covers the supporting prose/table: author changes restore the note until
+  // reviewed again. This is an explicit policy, not a similarity classifier.
+  const repeatedReadingNotes = Object.freeze({
+    "energy-ut":[4115245108,null],
+    "energy-feszultseg":[2781782780,null],
+    "energy-alakzatok":[3271334338,613116946],
+    "energy-allomasok":[2000574113,null],
+    "energy-csillag-delta":[709368519,1438327801],
+    "energy-ho-atom":[1218790562,3688578289],
+    "energy-megujulok":[null,2321434494],
+    "energy-napelem":[2050355853,2674978205],
+    "wires-anyag-ellenallas":[1904483961,null],
+    "wires-meretezes":[213183812,1572232642],
+    "wires-feszultsegeses":[2625720462,null],
+    "wires-harmonizalt":[1880144675,null],
+    "wires-szinek":[1486663815,null],
+    "wires-adat":[2257968083,null],
+    "wires-kotes":[3645268962,2892151928],
+    "wires-szerszamok":[615693975,4034600601],
+    "wires-kabelfektetes":[2260713286,1029838453],
+    "wires-oszlop":[2622334818,null],
+    "switchgear-erintkezo-iv":[1567739996,2153555257],
+    "switchgear-kapcsolok":[2558922200,3314124610],
+    "switchgear-tularam":[865035957,4221267884],
+    "switchgear-kismegszakito":[2944354258,2074119324],
+    "switchgear-szelektiv":[957129982,3786202407],
+    "switchgear-magneskapcsolo":[1556002481,1004657661],
+    "switchgear-ontartas":[4149520065,null],
+    "switchgear-relek":[null,3821462647],
+    "connection-fogalmak":[2989294224,1977829130],
+    "connection-foldeles":[904383247,2440052932],
+    "connection-csatlakozasi-mod":[703662534,3511527532],
+    "connection-energia-meres":[968719829,2279506961],
+    "connection-merohely":[2944373704,null],
+    "connection-vezerelt-fovezetek":[null,2461841048],
+    "protection-basic":[3515560750,1965902850],
+    "protection-ip-solid":[1319612848,null],
+    "protection-tn":[3034658421,null],
+    "protection-pe-sizing":[3620428691,766585270],
+    "protection-tt-it":[482834341,null],
+    "protection-rcd":[2145276666,23259171],
+    "protection-classes":[2413935939,null],
+    "protection-elv":[1100643388,null],
+    "protection-eph":[437136454,1316760506],
+    "protection-inspection":[770132175,null],
+    "protection-insulation":[4105919413,null],
+    "protection-measurements":[null,1312565175],
+    "installation-circuits":[null,3121468351],
+    "installation-switches":[68012866,1323136836],
+    "installation-alternate":[2520377036,683470287],
+    "installation-boxes":[2002596566,null],
+    "installation-conduits":[265100490,3493679740],
+    "installation-concealed":[null,1084758380],
+    "installation-surface":[2123015921,932456721],
+    "installation-sealed":[3668008756,3700715835],
+    "installation-bath":[1947661501,4058488545],
+    "installation-special":[4210187215,null],
+    "auxiliary-bell":[3256627656,1646035194],
+    "auxiliary-alarm":[135557553,null],
+    "auxiliary-bus":[2727115611,1359275887],
+    "lighting-quantities":[3788003180,2942254445],
+    "lighting-distance":[2397303005,null],
+    "lighting-color":[1630981011,null],
+    "lighting-sources":[1669794269,null],
+    "lighting-tube":[152067593,1261926901],
+    "lighting-luminaire":[3144680612,3322662598],
+    "lighting-emergency":[1908482693,2717227223],
+    "lightning-hatas":[1538628911,333942302],
+    "lightning-aramut":[null,275192751],
+    "lightning-vedett-ter":[3426112897,null],
+    "lightning-csatolas":[3666262230,523360404],
+    "lightning-zonak":[4142812999,3397746840],
+    "lightning-spd":[3475846636,2341141021],
+    "lightning-spd-adatok":[155811373,null],
+    "lightning-eszkozok":[1273697694,null],
+    "lightning-passive":[319861302,1952930078],
+    "lightning-withstand":[null,1101992114],
+    "documentation-rajztipus":[3032618113,1432677369],
+    "documentation-alaprajz":[1045958848,459433362],
+    "documentation-terv":[143200306,null],
+    "documentation-bemutatas":[null,923082733],
+    "work-safety-ot-lepes":[1083112336,null],
+    "work-safety-ellenorzes":[160607792,null],
+    "work-safety-fam":[2349644057,null],
+    "work-safety-vedoeszkoz":[2406239969,1014341648],
+    "work-safety-magasban":[3586802541,360002989],
+    "work-safety-baleset":[591489338,499091158],
+    "work-safety-hulladek":[2248763972,1467595740],
+    "work-safety-fire":[3568830510,1598217912],
+    "work-safety-workshop":[4059558143,null],
+    "machines-transformer":[3821672214,1179979086],
+    "machines-vector-group":[3784914028,3180256871],
+    "machines-motor-types":[984546951,3433803038],
+    "machines-slip":[3071928960,null],
+    "machines-star-delta":[97963870,null],
+    "machines-contactor":[243201890,2316798998],
+    "machines-reversing":[2558298708,527101165],
+    "machines-starting":[3976512185,3327004459],
+    "machines-capacitor":[null,4252907234],
+    "fundamentals-mennyisegek":[4205477521,3369898343],
+    "fundamentals-ohm":[396253151,null],
+    "fundamentals-soros":[2708505040,1960345009],
+    "fundamentals-parhuzamos":[3376282136,3828530864],
+    "fundamentals-energia":[1679719329,3439561530],
+    "fundamentals-hatasfok":[null,4276861779],
+    "fundamentals-valtakozo":[1352769678,null],
+    "fundamentals-meter":[3263883374,3140751438],
+    "fundamentals-conductance":[1080740966,null],
+    "fundamentals-battery":[3599255095,2641664337],
+    "fundamentals-current-transformer":[1097426436,null]
+  });
+  function reviewedRepeatedNote(lesson, field) {
+    const expected = repeatedReadingNotes[lesson.id]?.[field === 'takeaway' ? 0 : 1];
+    if (expected === undefined || expected === null) return false;
+    const text = JSON.stringify([lesson.intro || '',lesson.readingBullets || lesson.bullets || [],
+      lesson.table?.headers || lesson.table?.columns || [],lesson.table?.rows || [],lesson[field] || '']);
+    let hash = 2166136261;
+    for (let index=0; index<text.length; index++) hash = Math.imul(hash ^ text.charCodeAt(index),16777619);
+    return (hash >>> 0) === expected;
+  }
+
+  // Emphasis follows the first occurrence of a few taught terms, rather than
+  // turning every number, heading and repeated mention into another highlight.
+  function readingText(lesson) {
+    const prose = [lesson.intro, ...(lesson.bullets || []), lesson.takeaway,
+      lesson.commonMistake, ...(lesson.table?.rows || []).flat()].join(' ').toLocaleLowerCase('hu');
+    const taughtTerms = lesson.id === 'wires-energiakabelek' ? ['érszigetelés','páncélzat','árnyékolás','FE180']
+      : lesson.id === 'wires-tipusok' ? ['Vezető','Ér','Köpeny'] : [];
+    const candidates = [...new Map([...taughtTerms, ...(lesson.emphasis || []), ...(lesson.keywords || [])]
+      .map(String).map(text => text.trim()).filter(text => text.length > 1 && text.length < 55)
+      .map(text => [text.toLocaleLowerCase('hu'),text])).values()];
+    const terms = candidates.filter(text => prose.includes(text.toLocaleLowerCase('hu'))).slice(0,4)
+      .sort((a,b) => b.length - a.length);
+    const used = new Set();
+    return value => {
+      const text = String(value ?? '');
+      if (text.includes('**')) return richText(text);
+      const lower = text.toLocaleLowerCase('hu');
+      let marked = '', position = 0;
+      const word = char => !!char && /[\p{L}\p{N}_]/u.test(char);
+      while (position < text.length) {
+        const term = terms.find(term => !used.has(term) && lower.startsWith(term.toLocaleLowerCase('hu'),position)
+          && !(word(text[position - 1]) && word(term[0]))
+          && (!(word(text[position + term.length]) && word(term.at(-1)))
+            || term.length >= 4 && /^[\p{L}]+$/u.test(term)));
+        if (term) {
+          // Hungarian inflection belongs to the word: highlight "ellenálláson"
+          // as a whole, never a bold stem followed by an unstyled suffix.
+          let end = position + term.length;
+          if (/^[\p{L}]+$/u.test(term)) while (word(text[end])) end++;
+          marked += `**${text.slice(position,end)}**`;
+          used.add(term); position = end;
+        } else { marked += text[position]; position++; }
+      }
+      return richText(marked);
+    };
+  }
 
   function ingest(source) {
     source = window.VV_READABLE?.payload(source) || source;
@@ -94,11 +261,13 @@
   };
   const searchable = lesson => {
     const types = cableTypesForLesson(lesson);
-    return collectSearchText(types.length ? [lesson.chapter.title,groupTitle(lesson),lesson.title,lesson.intro,cableLessonNote(lesson),types.map(cableVisibleData)] : [lesson.chapter.title,groupTitle(lesson),lesson.title,lesson.intro,lesson.bullets,lesson.facts,lesson.table,lesson.formulas,lesson.recap,lesson.takeaway,lesson.commonMistake,lesson.keywords,lesson.interaction,lesson.visualSpec,lesson.secondaryVisual]);
+    return collectSearchText(types.length ? [lesson.chapter.title,groupTitle(lesson),lesson.title,lesson.intro,cableLessonNote(lesson),cableFireNotes(lesson),types.map(cableVisibleData)] : [lesson.chapter.title,groupTitle(lesson),lesson.title,lesson.intro,lesson.bullets,lesson.facts,lesson.table,lesson.formulas,lesson.recap,lesson.takeaway,lesson.commonMistake,lesson.keywords,lesson.interaction,lesson.visualSpec,lesson.secondaryVisual]);
   };
   const cableRoute = (lesson,id) => `${lessonRoute(lesson)}/cable/${encodeURIComponent(id)}`;
   const searchHref = lesson => {
     const needle = norm(query);
+    const fireType = cableTypesForLesson(lesson).find(type => type.id === 'nhxh');
+    if (fireType && cableFireNotes(lesson).some(text => norm(text).includes(needle))) return `#${cableRoute(lesson,fireType.id)}`;
     const matches = cableTypesForLesson(lesson).map(type => ({type,score:(norm(type.name).includes(needle)?3:0)+((type.aliases || []).some(alias=>norm(alias).includes(needle))?2:0)+(collectSearchText(cableVisibleData(type)).some(text=>norm(text).includes(needle))?1:0)})).filter(item=>item.score).sort((a,b)=>b.score-a.score);
     return matches[0] ? `#${cableRoute(lesson,matches[0].type.id)}` : href(lesson);
   };
@@ -230,7 +399,12 @@
   }
 
   function cableLessonNote(lesson) {
-    return lesson.catalogNote || (lesson.id === 'wires-tipusok' ? firstCableValue(lesson.bullets) : '');
+    return lesson.catalogNote || (lesson.id === 'wires-tipusok' ? firstCableValue(lesson.bullets)
+      : lesson.id === 'wires-energiakabelek' ? lesson.bullets?.[6] || '' : '');
+  }
+
+  function cableFireNotes(lesson) {
+    return lesson.id === 'wires-energiakabelek' ? [lesson.bullets?.[4],lesson.bullets?.[5]].filter(Boolean) : [];
   }
 
   function cableLegendTerms(type) {
@@ -338,25 +512,61 @@
   }
 
   function readMarkup(lesson) {
+    const text = readingText(lesson);
     const cableTypes = cableTypesForLesson(lesson);
     if (cableTypes.length) {
       const note = cableLessonNote(lesson);
-      return `<div class="learn-reading-layout learn-catalog-reading"><p class="learn-intro">${richText(lesson.intro || '')}</p>${note ? `<p class="learn-catalog-note">${richText(note)}</p>` : ''}${cableTypesMarkup(lesson)}${relatedLessonsMarkup(lesson)}</div>`;
+      const selected = selectedCableType(lesson);
+      const fireNotes = selected?.id === 'nhxh' ? cableFireNotes(lesson) : [];
+      const intro = lesson.id === 'wires-tipusok' && note ? `${note} ${lesson.intro || ''}` : lesson.intro || '';
+      return `<div class="learn-reading-layout learn-catalog-reading"><p class="learn-intro">${text(intro)}</p>${note && lesson.id !== 'wires-tipusok' ? `<p class="learn-catalog-note">${text(note)}</p>` : ''}${cableTypesMarkup(lesson)}${fireNotes.length ? `<div class="learn-text learn-cable-fire-notes">${fireNotes.map(note => `<p>${text(note)}</p>`).join('')}</div>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
     }
+    const opening = definitionOpening(lesson);
+    const intro = opening && norm(opening.text) !== norm(lesson.intro)
+      ? `${opening.text} ${lesson.intro || ''}` : lesson.intro || '';
+    const introMarkup = `<p class="learn-intro">${text(intro)}</p>`;
+    // The table carries these exact values once. Keep the unique AC/DC,
+    // medium-voltage and real N/PE qualifications in the explanatory prose.
+    const compactVoltage = lesson.id === 'energy-feszultseg';
+    let bullets = (lesson.bullets || []).filter((_,index) =>
+      !(opening?.sourceId === lesson.id && opening.field === 'bullets' && opening.index === index)
+      && !(compactVoltage && [0,1,2].includes(index)));
+    const basicProtection = lesson.id === 'protection-basic' && lesson.definitionIntro;
+    if (basicProtection) {
+      // The opening already defines both protective functions. Keep their
+      // concrete examples and the actual fault condition, not a second glossary.
+      bullets = lesson.readingBullets || bullets;
+    }
+    // Lists are reserved for actual parallel device types, classifications
+    // and procedures. Cause and effect read as connected, short paragraphs.
+    const listed = new Set(['energy-alakzatok','energy-megujulok','switchgear-kapcsolok',
+      'switchgear-relek','protection-classes','installation-concealed',
+      'documentation-rajztipus','work-safety-ot-lepes','work-safety-workshop']);
+    const bodyMarkup = () => listed.has(lesson.id)
+      ? `<ul class="learn-points">${bullets.map(value => `<li>${text(value)}</li>`).join('')}</ul>`
+      : bullets.map(value => `<p>${text(value)}</p>`).join('');
+    const bodyBeforeTable = compactVoltage ? '' : bodyMarkup();
     const headers = lesson.table?.headers || lesson.table?.columns || [];
     const formulas = (lesson.formulas || []).map(formulaMarkup).join('');
-    const table = headers.length ? `<div class="learn-table-wrap"><table><thead><tr>${headers.map(header => `<th scope="col">${esc(header)}</th>`).join('')}</tr></thead><tbody>${(lesson.table.rows || []).map(row => `<tr>${row.map((cell,index) => `<${index === 0 ? 'th scope="row"' : 'td'}>${richText(cell)}</${index === 0 ? 'th' : 'td'}>`).join('')}</tr>`).join('')}</tbody></table></div>` : '';
+    const table = headers.length ? `<div class="learn-table-wrap"><table><thead><tr>${headers.map(header => `<th scope="col">${esc(header)}</th>`).join('')}</tr></thead><tbody>${(lesson.table.rows || []).map(row => `<tr>${row.map((cell,index) => `<${index === 0 ? 'th scope="row"' : 'td'}>${text(cell)}</${index === 0 ? 'th' : 'td'}>`).join('')}</tr>`).join('')}</tbody></table></div>` : '';
+    const body = compactVoltage ? bodyMarkup() : bodyBeforeTable;
     const tableMarkup = table;
     if (lesson.id === 'wires-jelolesrendszerek') {
       const examples = (lesson.bullets || []).filter((_,index) => [2,3,5].includes(index));
-      return `<div class="learn-reading-layout learn-code-guide"><p class="learn-intro">${richText(lesson.intro || '')}</p>${lesson.bullets?.[0] ? `<p class="learn-catalog-note">${richText(lesson.bullets[0])}</p>` : ''}${tableMarkup}${examples.length ? `<section class="learn-code-examples"><h3>Jelölési példák</h3><ul class="learn-points">${examples.map(text=>`<li>${richText(text)}</li>`).join('')}</ul></section>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
+      return `<div class="learn-reading-layout learn-code-guide">${introMarkup}${lesson.bullets?.[0] ? `<p class="learn-catalog-note">${text(lesson.bullets[0])}</p>` : ''}${tableMarkup}${examples.length ? `<section class="learn-code-examples"><h3>Jelölési példák</h3><ul class="learn-points">${examples.map(value=>`<li>${text(value)}</li>`).join('')}</ul></section>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
     }
-    const opening = definitionOpening(lesson);
-    const bullets = (lesson.bullets || []).filter((_,index) => !(opening?.sourceId === lesson.id && opening.field === 'bullets' && opening.index === index));
-    const openingMarkup = opening && norm(opening.text) !== norm(lesson.intro) ? `<p class="learn-definition-opening" data-learn-definition-source="${esc(opening.sourceId)}">${richText(opening.text)}</p>` : '';
-    const explanation = `<div class="learn-text">${bullets.length ? `<ul class="learn-points">${bullets.map(text => `<li>${richText(text)}</li>`).join('')}</ul>` : ''}${lesson.facts?.length ? `<dl class="learn-facts">${lesson.facts.map(fact => `<div><dt>${richText(fact.label)}</dt><dd>${esc(fact.value)} ${unit(fact.unit)}</dd></div>`).join('')}</dl>` : ''}${tableMarkup}</div>`;
+    const facts = !compactVoltage && lesson.facts?.length
+      ? `<dl class="learn-facts">${lesson.facts.map(fact => `<div><dt>${text(fact.label)}</dt><dd>${esc(fact.value)} ${unit(fact.unit)}</dd></div>`).join('')}</dl>` : '';
+    const explanation = `<div class="learn-text">${compactVoltage ? tableMarkup + body : body + facts + tableMarkup}</div>`;
+    const alreadySaid = norm([intro,...bullets,...(lesson.table?.rows || []).flat()].join(' '));
+    const repeats = value => !value || alreadySaid.includes(norm(value));
+    const takeaway = !compactVoltage && !basicProtection && !reviewedRepeatedNote(lesson,'takeaway') && !repeats(lesson.takeaway)
+      ? `<p class="learn-key-rule"><strong>${richText(lesson.takeaway)}</strong></p>` : '';
+    const pitfall = !compactVoltage && !basicProtection && !reviewedRepeatedNote(lesson,'commonMistake') && !repeats(lesson.commonMistake)
+      && norm(lesson.commonMistake) !== norm(lesson.takeaway)
+      ? `<p class="learn-pitfall">${text(lesson.commonMistake)}</p>` : '';
     const workbench = window.VVLearningVisuals?.render(lesson) || '';
-    return `<div class="learn-reading-layout"><p class="learn-intro">${richText(lesson.intro || '')}</p>${openingMarkup}${workbench}${!workbench && lesson.interaction ? interactionMarkup(lesson) : ''}${figureMarkup(lesson)}${explanation}${formulas ? `<section class="learn-formulas-inline">${formulas}</section>` : ''}${lesson.takeaway ? `<aside class="learn-takeaway"><span aria-hidden="true">!</span><div><strong>Ezt jegyezd meg</strong><p>${richText(lesson.takeaway)}</p></div></aside>` : ''}${lesson.commonMistake ? `<aside class="learn-common-mistake"><strong>Gyakori tévedés</strong><p>${richText(lesson.commonMistake)}</p></aside>` : ''}${lesson.guideTarget ? `<a class="learn-guide-link" href="#guide/${encodeURIComponent(lesson.guideTarget)}">Kidolgozott számítás az útmutatóban →</a>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
+    return `<div class="learn-reading-layout">${introMarkup}${explanation}${formulas ? `<section class="learn-formulas-inline">${formulas}</section>` : ''}${takeaway}${pitfall}${workbench}${!workbench && lesson.interaction ? interactionMarkup(lesson) : ''}${figureMarkup(lesson)}${lesson.guideTarget ? `<a class="learn-guide-link" href="#guide/${encodeURIComponent(lesson.guideTarget)}">Kidolgozott számítás az útmutatóban →</a>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
   }
 
   function sessionFor(lesson) {
@@ -437,7 +647,12 @@
     host.style.setProperty('--learn-chapter-soft',validColor(lesson.chapter.accent?.soft,'#fff0d8'));
     const chapterGroups = groupsFor(lesson.chapter), globalIndex = lessons.indexOf(lesson), previous = lessons[globalIndex - 1], next = lessons[globalIndex + 1], related = relatedQuestions(lesson), groupIndex = chapterGroups.findIndex(items => items.includes(lesson));
     const detailSelect = group.length > 1 && ['check','model'].includes(tab) ? `<label class="learn-detail-select">${tab === 'check' ? 'Olyan részletet ellenőrizz, amelyet már átolvastál' : 'Működésmodell'}<select id="learnDetailSelect" name="learning-detail">${group.filter(item => tab !== 'model' || item.interaction).map(item => `<option value="${esc(item.id)}" ${item.id === lesson.id ? 'selected' : ''}>${esc(item.title)} ${tab === 'check' && progress.checks[item.id]?.correct ? '✓' : ''}</option>`).join('')}</select></label>` : '';
-    host.innerHTML = `<div class="learn-workspace"><aside class="learn-rail" aria-label="Tananyag navigáció"><div class="learn-rail-inner"><a class="learn-overview-link" href="#learn">← Tananyag áttekintése</a><button type="button" class="learn-open-search" data-learn-action="search-open"><span aria-hidden="true">⌕</span> Keresés a tananyagban</button><label class="learn-chapter-select">Témakör<select id="learnChapterSelect" name="learning-chapter">${chapters.map(chapter => `<option value="${esc(chapter.id)}" ${chapter.id === lesson.chapter.id ? 'selected' : ''}>${chapter.index + 1}. ${esc(chapter.title)}</option>`).join('')}</select></label><label class="learn-chapter-select learn-topic-select">Téma<select id="learnGroupSelect" name="learning-topic">${chapterGroups.map((items,index)=>`<option value="${href(items[0])}" ${items.includes(lesson) ? 'selected' : ''}>${index+1}. ${esc(groupTitle(items[0]))}</option>`).join('')}</select></label><div class="learn-rail-progress"><span>${chapterGroups.filter(items => items.every(item => progress.read[item.id])).length} / ${chapterGroups.length} átolvasott téma</span><progress value="${chapterGroups.filter(items => items.every(item => progress.read[item.id])).length}" max="${chapterGroups.length || 1}" aria-label="Fejezet haladása"></progress></div><nav aria-label="Tananyag témái"><ol>${chapterGroups.map((items,index) => `<li><a href="${href(items[0])}" ${items.includes(lesson) ? 'aria-current="page"' : ''}><span class="learn-rail-index">${items.every(item => progress.read[item.id]) ? '✓' : String(index + 1).padStart(2,'0')}</span><span>${esc(groupTitle(items[0]))}</span>${items.every(item => progress.checks[item.id]?.correct) ? '<span class="learn-rail-check" aria-label="Minden mini feladat sikerült">●</span>' : ''}</a></li>`).join('')}</ol></nav></div></aside><article class="learn-lesson${cableTypesForLesson(lesson).length ? ' has-cable-catalog' : ''}"><header class="learn-lesson-head"><div class="learn-lesson-breadcrumb"><a href="#learn">Tananyag</a><span aria-hidden="true">/</span><span>${esc(lesson.chapter.title)}</span><span class="learn-lesson-position">${groupIndex + 1} / ${chapterGroups.length} téma</span><button type="button" class="learn-header-search" data-learn-action="search-open"><span aria-hidden="true">⌕</span> Keresés</button></div><div class="learn-title-row"><h1 id="learnLessonTitle" tabindex="-1">${esc(groupTitle(lesson))}</h1></div>${group.length > 1 ? `<nav class="learn-section-nav" aria-label="A téma részletei">${group.map((item,index) => `<a href="${href(item)}" ${item.id === lesson.id ? 'aria-current="page"' : ''}><span>${index + 1}</span><span><strong>${esc(item.title)}</strong><small>${esc(item.takeaway || (Array.isArray(item.recap) ? item.recap[0] : item.recap) || item.intro || '')}</small></span></a>`).join('')}</nav>` : ''}<div class="learn-tabs" role="tablist" aria-label="A tananyag részei"><button type="button" id="learnTab-read" role="tab" aria-selected="${tab === 'read'}" aria-controls="learnPanel" tabindex="${tab === 'read' ? '0' : '-1'}" data-learn-tab="read">Lényeg</button>${group.some(item => item.interaction) ? `<button type="button" id="learnTab-model" role="tab" aria-selected="${tab === 'model'}" aria-controls="learnPanel" tabindex="${tab === 'model' ? '0' : '-1'}" data-learn-tab="model">Működésmodell</button>` : ''}${group.some(item => item.check) ? `<button type="button" id="learnTab-check" role="tab" aria-selected="${tab === 'check'}" aria-controls="learnPanel" tabindex="${tab === 'check' ? '0' : '-1'}" data-learn-tab="check">Ellenőrzöm <span>${group.filter(item => progress.checks[item.id]?.correct).length}/${group.filter(item => item.check).length}</span></button>` : ''}<button type="button" id="learnTab-questions" role="tab" aria-selected="${tab === 'questions'}" aria-controls="learnPanel" tabindex="${tab === 'questions' ? '0' : '-1'}" data-learn-tab="questions">Feladatok <span>${related.length}</span></button></div></header><div id="learnPanel" class="learn-panel" role="tabpanel" aria-labelledby="learnTab-${tab}">${detailSelect}${tab === 'read' ? [lesson].map((item) => `<section class="learn-topic-section" id="learn-section-${esc(item.id)}" data-learn-section-root="${esc(item.id)}">${group.length > 1 && norm(item.title) !== norm(groupTitle(lesson)) ? `<header class="learn-section-heading"><span>${String(group.indexOf(item) + 1).padStart(2,'0')}</span><h2>${esc(item.title)}</h2></header>` : ''}${readMarkup(item)}${item.check ? `<button type="button" class="learn-inline-check" data-learn-open-check="${esc(item.id)}">${progress.checks[item.id]?.correct ? '✓ Ellenőrző feladat újra' : 'Ellenőrző feladat'} <span aria-hidden="true">→</span></button>` : ''}</section>`).join('') : tab === 'model' ? interactionMarkup(lesson) : tab === 'check' ? checkMarkup(lesson) : questionMarkup(lesson)}</div><footer class="learn-lesson-footer">${previous ? `<a class="button outline" href="${href(previous)}" aria-label="Előző rész: ${esc(previous.title)}">← ${previous.chapter.id === lesson.chapter.id && groupId(previous) === groupId(lesson) ? 'Előző rész' : 'Előző téma'}</a>` : '<span></span>'}<button type="button" class="learn-mark ${progress.read[lesson.id] ? 'is-marked' : ''}" data-learn-action="mark" aria-pressed="${!!progress.read[lesson.id]}">${progress.read[lesson.id] ? '✓ Átolvasva' : 'Átolvastam ezt a részt'}</button>${next ? `<a class="button dark" href="${href(next)}" aria-label="Következő rész: ${esc(next.title)}">${next.chapter.id === lesson.chapter.id && groupId(next) === groupId(lesson) ? 'Következő rész' : 'Következő téma'} →</a>` : '<a class="button dark" href="#learn">Áttekintés →</a>'}</footer></article></div>`;
+    host.innerHTML = `<div class="learn-workspace"><aside class="learn-rail" aria-label="Tananyag navigáció"><div class="learn-rail-inner"><label class="learn-chapter-select">Témakör<select id="learnChapterSelect" name="learning-chapter">${chapters.map(chapter => `<option value="${esc(chapter.id)}" ${chapter.id === lesson.chapter.id ? 'selected' : ''}>${chapter.index + 1}. ${esc(chapter.title)}</option>`).join('')}</select></label><label class="learn-chapter-select learn-topic-select">Téma<select id="learnGroupSelect" name="learning-topic">${chapterGroups.map((items,index)=>`<option value="${href(items[0])}" ${items.includes(lesson) ? 'selected' : ''}>${index+1}. ${esc(groupTitle(items[0]))}</option>`).join('')}</select></label><div class="learn-rail-progress"><span>${chapterGroups.filter(items => items.every(item => progress.read[item.id])).length} / ${chapterGroups.length} átolvasott téma</span><progress value="${chapterGroups.filter(items => items.every(item => progress.read[item.id])).length}" max="${chapterGroups.length || 1}" aria-label="Fejezet haladása"></progress></div><nav aria-label="Tananyag témái"><ol>${chapterGroups.map((items,index) => `<li><a href="${href(items[0])}" ${items.includes(lesson) ? 'aria-current="page"' : ''}><span class="learn-rail-index">${items.every(item => progress.read[item.id]) ? '✓' : String(index + 1).padStart(2,'0')}</span><span>${esc(groupTitle(items[0]))}</span>${items.every(item => progress.checks[item.id]?.correct) ? '<span class="learn-rail-check" aria-label="Minden mini feladat sikerült">●</span>' : ''}</a></li>`).join('')}</ol></nav></div></aside><article class="learn-lesson${cableTypesForLesson(lesson).length ? ' has-cable-catalog' : ''}"><header class="learn-lesson-head"><div class="learn-lesson-breadcrumb"><a href="#learn">Tananyag</a><span aria-hidden="true">/</span><span>${esc(lesson.chapter.title)}</span><span class="learn-lesson-position">${groupIndex + 1} / ${chapterGroups.length} téma</span><button type="button" class="learn-header-search" data-learn-action="search-open"><span aria-hidden="true">⌕</span> Keresés</button></div><div class="learn-title-row"><h1 id="learnLessonTitle" tabindex="-1">${esc(groupTitle(lesson))}</h1></div>${group.length > 1 ? `<nav class="learn-section-nav" aria-label="A téma részletei">${group.map((item,index) => `<a href="${href(item)}" ${item.id === lesson.id ? 'aria-current="page"' : ''}><span>${index + 1}</span><strong>${esc(sectionTitle(item))}</strong></a>`).join('')}</nav>` : ''}<div class="learn-tabs" role="tablist" aria-label="A tananyag részei"><button type="button" id="learnTab-read" role="tab" aria-selected="${tab === 'read'}" aria-controls="learnPanel" tabindex="${tab === 'read' ? '0' : '-1'}" data-learn-tab="read">Lényeg</button>${group.some(item => item.interaction) ? `<button type="button" id="learnTab-model" role="tab" aria-selected="${tab === 'model'}" aria-controls="learnPanel" tabindex="${tab === 'model' ? '0' : '-1'}" data-learn-tab="model">Működésmodell</button>` : ''}${group.some(item => item.check) ? `<button type="button" id="learnTab-check" role="tab" aria-selected="${tab === 'check'}" aria-controls="learnPanel" tabindex="${tab === 'check' ? '0' : '-1'}" data-learn-tab="check">Ellenőrzöm <span>${group.filter(item => progress.checks[item.id]?.correct).length}/${group.filter(item => item.check).length}</span></button>` : ''}<button type="button" id="learnTab-questions" role="tab" aria-selected="${tab === 'questions'}" aria-controls="learnPanel" tabindex="${tab === 'questions' ? '0' : '-1'}" data-learn-tab="questions">Feladatok <span>${related.length}</span></button></div></header><div id="learnPanel" class="learn-panel" role="tabpanel" aria-labelledby="learnTab-${tab}">${detailSelect}${tab === 'read' ? [lesson].map((item) => `<section class="learn-topic-section" id="learn-section-${esc(item.id)}" data-learn-section-root="${esc(item.id)}">${group.length > 1 && norm(item.title) !== norm(groupTitle(lesson)) ? `<header class="learn-section-heading"><span>${String(group.indexOf(item) + 1).padStart(2,'0')}</span><h2>${esc(item.title)}</h2></header>` : ''}${readMarkup(item)}${item.check ? `<button type="button" class="learn-inline-check" data-learn-open-check="${esc(item.id)}">${progress.checks[item.id]?.correct ? '✓ Ellenőrző feladat újra' : 'Ellenőrző feladat'} <span aria-hidden="true">→</span></button>` : ''}</section>`).join('') : tab === 'model' ? interactionMarkup(lesson) : tab === 'check' ? checkMarkup(lesson) : questionMarkup(lesson)}</div><footer class="learn-lesson-footer">${previous ? `<a class="button outline" href="${href(previous)}" aria-label="Előző rész: ${esc(previous.title)}">← ${previous.chapter.id === lesson.chapter.id && groupId(previous) === groupId(lesson) ? 'Előző rész' : 'Előző téma'}</a>` : '<span></span>'}<button type="button" class="learn-mark ${progress.read[lesson.id] ? 'is-marked' : ''}" data-learn-action="mark" aria-pressed="${!!progress.read[lesson.id]}">${progress.read[lesson.id] ? '✓ Átolvasva' : 'Átolvastam ezt a részt'}</button>${next ? `<a class="button dark" href="${href(next)}" aria-label="Következő rész: ${esc(next.title)}">${next.chapter.id === lesson.chapter.id && groupId(next) === groupId(lesson) ? 'Következő rész' : 'Következő téma'} →</a>` : '<a class="button dark" href="#learn">Áttekintés →</a>'}</footer></article></div>`;
+    const sectionNav = $('.learn-section-nav',host), activeSection = $('[aria-current="page"]',sectionNav || host);
+    if (sectionNav && activeSection && sectionNav.scrollWidth > sectionNav.clientWidth) {
+      sectionNav.scrollLeft = activeSection.getBoundingClientRect().left - sectionNav.getBoundingClientRect().left
+        + sectionNav.scrollLeft - (sectionNav.clientWidth - activeSection.offsetWidth) / 2;
+    }
     hydrate();
     if (tab === 'read') window.VVLearningVisuals?.mount($(`[data-learn-section-root="${lesson.id}"]`,host),lesson);
     if (tab === 'check' && lesson.check?.type === 'order' && !sessionFor(lesson).submitted) {

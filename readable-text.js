@@ -3,7 +3,7 @@
 
   // This is presentation formatting. It contains no course facts or answer keys.
   const PROSE = new Set([
-    'intro', 'bullets', 'recap', 'takeaway', 'commonMistake', 'prompt', 'hint',
+    'intro', 'bullets', 'readingBullets', 'recap', 'takeaway', 'commonMistake', 'prompt', 'hint',
     'explanation', 'solution', 'notes', 'note', 'optionReasons', 'feedback',
     'detail', 'meaning', 'caption', 'alt', 'why', 'reason', 'description',
     'summary', 'body', 'structure', 'application', 'limitations'

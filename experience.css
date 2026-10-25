@@ -1744,3 +1744,14 @@ main:not(:has(#guideView)):has(.guide-solving) { padding-top: 10px; padding-bott
   .tutorial-layout.guide-solving .tutorial-content { grid-column: 1; grid-row: 1; }
   .tutorial-layout.guide-solving .board-line { min-height: 0; padding-top: 8px; padding-bottom: 8px; }
 }
+
+/* Keep review categories inside their question, including narrow phones. */
+.review-row .question-top { align-items:flex-start; }
+.review-row .question-top .tags { flex:1 1 0; min-width:0; max-width:100%; }
+.review-row .question-top .tags .chip { max-width:100%; white-space:normal; overflow-wrap:break-word; }
+.review-row .question-top > span { flex:0 0 auto; }
+.practice-mobile-feedback { display:none; }
+@media(max-width:950px) {
+  .practice-mobile-feedback { display:block; }
+  .practice-mobile-feedback .feedback { margin:12px 0 0; }
+}

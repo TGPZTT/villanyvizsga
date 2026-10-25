@@ -46,7 +46,7 @@
       const legend=new Map([...(formula?.querySelectorAll('.formula-legend > div') || [])].flatMap(row=>{const meaning=row.querySelector('dd').cloneNode(true);meaning.querySelectorAll('.unit-chip').forEach(unit=>unit.remove());return row.querySelector('dt').textContent.split(',').map(symbol=>[key(symbol),meaning.textContent.trim()])}));
       const values=new Map(),symbols=new Map();let flowCount=0,currentStep='';
       const flowFor=(symbol,meaning)=>{const name=key(symbol);if(name&&symbols.has(name))return symbols.get(name);const flow={id:`value-${flowCount}`,color:colors[flowCount++%colors.length],label:meaning||legend.get(name)||meanings[name]||currentStep||'Számított érték'};if(name)symbols.set(name,flow);return flow};
-      const token=(raw, unit, flow)=>{const el=make('span','calc-number-token',raw+unit);el.dataset.value=numberKey(raw);el.dataset.unit=unit.trim();if(flow){el.dataset.flow=flow.id;el.style.setProperty('--value-color',flow.color);el.dataset.tooltip=flow.label+(unit?` (${unit.trim()})`:'');el.setAttribute('aria-label',`${raw}${unit}: ${el.dataset.tooltip}`);el.tabIndex=0;values.set(numberKey(raw),flow)}return el};
+      const token=(raw, unit, flow)=>{const displayUnit=unit.replace(/Ω\s*(?:[·⋅*]\s*)?mm²\s*\/\s*m/u,'Ω·mm²/m');const el=make('span','calc-number-token',raw+displayUnit);if(displayUnit.includes('Ω·mm²/m')){el.style.maxWidth='100%';el.style.whiteSpace='normal'}el.dataset.value=numberKey(raw);el.dataset.unit=displayUnit.trim();if(flow){el.dataset.flow=flow.id;el.style.setProperty('--value-color',flow.color);el.dataset.tooltip=flow.label+(displayUnit?` (${displayUnit.trim()})`:'');el.setAttribute('aria-label',`${raw}${displayUnit}: ${el.dataset.tooltip}`);el.tabIndex=0;values.set(numberKey(raw),flow)}return el};
       function expression(text, suppliedFlow) {
         const fragment=document.createDocumentFragment();
         const pieces=text.split(/(;\s*)/u);
@@ -71,7 +71,7 @@
               }
               let flow=known || (simpleResult?outputFlow:null) || suppliedFlow;
               const tail=segment.slice(m.index+m[0].length);
-              const unit=tail.match(/^\s*(?:kWh|Wh|kW|W|kVA|VA|kvar|var|kV|V|mA|A|Ω|mm²|m²|Hz|Ft|%)(?![\p{L}])/u)?.[0]||'';
+              const unit=tail.match(/^\s*(?:Ω\s*(?:[·⋅*]\s*)?mm²\s*\/\s*m|kWh|Wh|kW|W|kVA|VA|kvar|var|kV|V|mA|A|Ω|mm²|m²|Hz|Ft|%)(?![\p{L}])/u)?.[0]||'';
               fragment.append(token(m[0],unit,flow));seen.add(value);at=m.index+m[0].length+unit.length;
             }
             fragment.append(mathText(segment.slice(at)));
@@ -88,7 +88,7 @@
           const match=entry.match(/^(.+?)\s*=\s*([\d.,].*)$/u);
           if(!match){const fallback=make('div','board-equation');fallback.append(expression(entry));list.append(fallback);continue}
           const symbol=match[1].trim(),value=match[2].trim(),primary=symbol.split('=')[0].trim(),symbolKey=key(primary);
-          const rawMeaning=meanings[symbolKey]||legend.get(symbolKey)||(/^[UI][12]n?$/u.test(symbolKey)?`${symbolKey[0]==='U'?'Feszültség':'Áramerősség'} a ${symbolKey[1]==='1'?'primer':'szekunder'} oldalon`:/^R[12]$/u.test(symbolKey)?'A két ellenállás azonos értéke':/^A[ln]$/u.test(symbolKey)?'A fázis- és nullavezető keresztmetszete':symbol);
+          const rawMeaning=legend.get(symbolKey)||meanings[symbolKey]||(/^[UI][12]n?$/u.test(symbolKey)?`${symbolKey[0]==='U'?'Feszültség':'Áramerősség'} a ${symbolKey[1]==='1'?'primer':'szekunder'} oldalon`:/^R[12]$/u.test(symbolKey)?'A két ellenállás azonos értéke':/^A[ln]$/u.test(symbolKey)?'A fázis- és nullavezető keresztmetszete':symbol);
           const row=make('div','worked-input-row');
           const name=make('span','worked-input-symbol');name.append(mathText(symbol.length>12?'':symbol+' ='));const val=make('strong','worked-input-value');val.append(expression(value,flowFor(primary,rawMeaning)));
           const meaning=make('span','worked-input-meaning',rawMeaning);
@@ -130,6 +130,54 @@
       ]);
       let active=0,busy=false;const flights=new Set(),ghosts=new Set();
       const cancelFlights=()=>{for(const flight of flights)flight.cancel();flights.clear();for(const ghost of ghosts)ghost.remove();ghosts.clear();paper.querySelectorAll('.is-arriving').forEach(t=>t.classList.remove('is-arriving'))};
+      let measureFrame=0,measureTimer=0,measureEpoch=0;
+      function reservePaperHeight() {
+        if(details&&!details.open || !paper.getBoundingClientRect().width)return;
+        const current=lines.map(line=>line.classList.contains('is-current'));
+        const transition=paper.style.transitionProperty;
+        paper.style.transitionProperty='none';
+        // Reserve the largest single-current-instruction layout, rather than
+        // stacking every explanatory paragraph. Visibility phases and the
+        // solution's active stage remain untouched during this measurement.
+        paper.style.removeProperty('min-height');
+        let height=0;
+        try {
+          lines.forEach((_,index)=>{
+            lines.forEach((line,i)=>line.classList.toggle('is-current',i===index));
+            height=Math.max(height,Math.ceil(paper.getBoundingClientRect().height));
+          });
+        } finally {
+          lines.forEach((line,index)=>line.classList.toggle('is-current',current[index]));
+        }
+        if(height)paper.style.minHeight=`${height}px`;
+        paper.getBoundingClientRect();
+        if(transition)paper.style.transitionProperty=transition;
+        else paper.style.removeProperty('transition-property');
+      }
+      function schedulePaperMeasure() {
+        if(details&&!details.open)return;
+        if(measureFrame)cancelAnimationFrame(measureFrame);
+        clearTimeout(measureTimer);
+        const epoch=++measureEpoch;
+        measureFrame=requestAnimationFrame(()=>{
+          measureFrame=0;
+          // Layout requests any newly used font before waiting for it.
+          paper.getBoundingClientRect();
+          Promise.resolve(document.fonts?.ready).then(()=>{
+            if(epoch!==measureEpoch)return;
+            // Let the guide's open-state geometry finish its first paint.
+            measureTimer=setTimeout(()=>{
+              measureTimer=0;
+              measureFrame=requestAnimationFrame(()=>{
+                measureFrame=0;
+                if(epoch===measureEpoch)reservePaperHeight();
+              });
+            },80);
+          });
+        });
+      }
+      window.addEventListener('resize',schedulePaperMeasure);
+      document.fonts?.addEventListener('loadingdone',schedulePaperMeasure);
       function flyInto(targetPart,index) {
         if(reduced() || !Element.prototype.animate)return;
         const earlier=[...paper.querySelectorAll('[data-flow]')].filter(item=>{
@@ -190,8 +238,15 @@
         if(flights.size)next.disabled=true;
         setTimeout(()=>{busy=false;next.disabled=false},pause);
       });
-      details?.addEventListener('toggle',()=>{if(!details.open)cancelFlights()});
+      details?.addEventListener('toggle',()=>{
+        if(!details.open){
+          cancelFlights();measureEpoch++;clearTimeout(measureTimer);measureTimer=0;
+          if(measureFrame)cancelAnimationFrame(measureFrame);
+          measureFrame=0;paper.style.removeProperty('min-height');
+        } else schedulePaperMeasure();
+      });
       show(0);
+      if(!details||details.open)schedulePaperMeasure();
     });
   }
   window.VV_WORKED={setup};

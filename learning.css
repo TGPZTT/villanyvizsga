@@ -352,7 +352,7 @@ body:has(#learnView.active) main { max-width:1680px; }
 .learn-tabs { gap:22px; border-color:#e8d9c5; }
 .learn-tabs button { color:#876d54; font-size:15px!important; }
 .learn-tabs button[aria-selected=true] { color:#a34e16; border-color:#cc7c35; }
-.learn-tabs button > span { background:#f0e0ca; color:#8c633e; }
+.learn-tabs button > span { background:#f0e0ca; color:#734b2d; }
 .learn-panel { padding:26px 28px 32px; min-height:250px; }
 .learn-topic-section { scroll-margin-top:30px; }
 .learn-topic-section + .learn-topic-section { border-top:2px solid #e9d6bc; padding-top:30px; margin-top:34px; }
@@ -760,4 +760,71 @@ body:has(#learnView.active) .topbar { background:#fff; border-color:#dfe5e8; }
 @media (min-width:1100px) {
   #learnView .learn-media.is-plant-pair { max-width:none; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
   #learnView .learn-media.is-plant-pair .learn-figure img { max-height:320px; }
+}
+
+/* Navigation names the route once. The reading column begins with the taught
+   concept and rule, while diagrams follow the explanation they illustrate. */
+#learnView .learn-workspace { gap:12px; }
+#learnView .learn-lesson-head { padding:15px 24px 0; }
+#learnView .learn-lesson-head h1 { margin:3px 0 12px; max-width:none; }
+#learnView .learn-lesson-breadcrumb { margin-bottom:4px; }
+#learnView .learn-section-nav { display:flex; flex-wrap:wrap; gap:5px; margin:0 0 9px; }
+#learnView .learn-section-nav a,
+#learnView .has-cable-catalog .learn-section-nav a {
+  display:flex; align-items:center; flex:0 1 auto; gap:7px;
+  min-width:0; max-width:100%; min-height:38px; padding:7px 10px;
+  border:1px solid #dce3e7; border-radius:4px; background:#fff;
+  color:#38434d; font:400 14px/1.35 'Segoe UI',Arial,sans-serif;
+}
+#learnView .learn-section-nav a > span { flex:0 0 auto; padding:0; background:none; color:#68747e; font-size:13px; }
+#learnView .learn-section-nav a strong { font-weight:500; overflow-wrap:break-word; }
+#learnView .learn-section-nav a[aria-current=page] {
+  border-color:var(--learn-chapter-accent); background:var(--learn-chapter-soft);
+  box-shadow:inset 0 -2px 0 var(--learn-chapter-accent);
+}
+#learnView .learn-section-nav a[aria-current=page] strong { font-weight:700; }
+#learnView .learn-section-nav a:hover { border-color:var(--learn-chapter-accent); }
+#learnView .learn-tabs { gap:20px; }
+#learnView .learn-tabs button { min-height:42px; padding-top:7px; padding-bottom:8px; }
+#learnView .learn-panel { padding:17px 24px 22px; }
+#learnView .learn-section-heading { max-width:74ch; margin:0 auto 11px; }
+#learnView .learn-reading-layout { gap:12px; }
+#learnView .learn-reading-layout > :is(.learn-intro,.learn-text,.learn-key-rule,.learn-pitfall,.learn-catalog-note,.learn-formulas-inline) {
+  width:100%; max-width:74ch; margin-inline:auto;
+}
+#learnView .learn-reading-layout > .learn-intro { font-weight:400; }
+#learnView .learn-text > p { margin:0; }
+#learnView .learn-text > p + p { margin-top:8px; }
+#learnView .learn-text > .learn-table-wrap:first-child { margin-top:0; margin-bottom:12px; }
+#learnView .learn-text .learn-points { margin:0; gap:6px; }
+#learnView .learn-key-rule,
+#learnView .learn-pitfall { font:400 16px/1.5 Georgia,'Times New Roman',serif; color:#202730; }
+#learnView .learn-key-rule { padding:0; border:0; background:none; }
+#learnView .learn-pitfall { padding:0; border:0; background:none; font-style:italic; }
+#learnView .learn-reading-layout > .learn-catalog-note { margin-inline:auto!important; padding:0; border:0; background:none; }
+#learnView .learn-media { align-self:center; }
+#learnView .learn-cable-fire-notes { padding-top:10px; border-top:1px solid #dce3e7; }
+@media (min-width:1100px) {
+  #learnView :is(.learn-intro,.learn-text > p,.learn-key-rule,.learn-pitfall,.learn-catalog-note) {
+    text-align:justify; text-justify:inter-word; hyphens:auto;
+  }
+}
+@media (max-width:1499px) {
+  #learnView .learn-rail-inner { padding:8px 12px; gap:5px 14px; }
+  #learnView .learn-chapter-select { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; align-items:center; padding:0; }
+  #learnView .learn-chapter-select select { margin-top:0; min-height:39px; padding:6px 8px; }
+  #learnView .learn-rail-progress { margin:0; gap:10px; }
+  #learnView .learn-rail-progress progress { max-width:180px; }
+}
+@media (max-width:760px) {
+  #learnView .learn-rail-inner { gap:7px; padding:9px 11px; }
+  #learnView .learn-chapter-select { grid-template-columns:1fr; gap:2px; }
+  #learnView .learn-lesson-head { padding:13px 14px 0; }
+  #learnView .learn-lesson-head h1 { margin:4px 0 10px; }
+  #learnView .learn-panel { padding:15px 14px 19px; }
+  #learnView .learn-section-nav { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; scrollbar-width:thin; overscroll-behavior-x:contain; }
+  #learnView .learn-section-nav a { flex:0 0 auto; max-width:none; align-items:center; }
+  #learnView .learn-section-nav a strong { white-space:nowrap; }
+  #learnView .learn-tabs { gap:15px; }
+  #learnView :is(.learn-intro,.learn-text > p,.learn-key-rule,.learn-pitfall,.learn-catalog-note) { text-align:left; }
 }

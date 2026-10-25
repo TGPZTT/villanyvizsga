@@ -145,8 +145,8 @@
     if(spec.items.some(item=>item.value===undefined||item.value===null||String(item.value).trim()===''))return nodes(spec,index);
     const values=(spec.items||[]).map(item=>Number(String(item.value??'').replace(',','.')));
     if(!values.every(Number.isFinite))return nodes(spec,index);
-    const max=Math.max(1,...values),n=values.length;
-    return `<div class="lv-graph" data-lv-diagram><svg viewBox="0 0 780 300" role="img" aria-label="${esc(spec.title)}"><path d="M50 25v220h680" fill="none" stroke="#bda58f" stroke-width="2"/>${values.map((v,i)=>{const h=Math.max(3,v/max*180),x=90+i*620/n;return `<g class="${i===index?'is-active':''}"><rect x="${x}" y="${245-h}" width="${Math.min(85,460/n)}" height="${h}" rx="5" fill="${esc(spec.items[i].color||colors[i%colors.length])}"/><text x="${x+25}" y="${230-h}">${esc(spec.items[i].value)} ${esc(spec.items[i].unit||'')}</text></g>`}).join('')}</svg></div><div class="lv-state-controls">${spec.items.map((item,i)=>`<button type="button" data-lv-index="${i}" aria-pressed="${index===i}">${esc(item.label)}</button>`).join('')}</div>`;
+    const max=Math.max(1,...values);
+    return `<div class="lv-graph lv-value-bars" data-lv-diagram role="group" aria-label="${esc(spec.title)}">${values.map((v,i)=>{const item=spec.items[i],label=String(item.label||'').split(':')[0];return `<div class="lv-value-bar ${i===index?'is-active':''}" style="--lv-bar-color:${esc(item.color||colors[i%colors.length])}"><div class="lv-value-bar-label"><span>${esc(label)}</span><strong>${esc(item.value)} <span>${esc(item.unit||'')}</span></strong></div><div class="lv-value-bar-track"><span style="width:${Math.max(0,v/max*100)}%"></span></div></div>`;}).join('')}</div>${controls(spec,index)}`;
   }
   function spectrum(spec,index) {
     return `<div class="lv-spectrum" data-lv-diagram>${(spec.items||[]).map((item,i)=>`<button type="button" class="${i===index?'is-active':''}" data-lv-index="${i}" aria-pressed="${index===i}" style="--lv-band:${esc(item.color||colors[i%colors.length])}"><span class="lv-band"></span>${glyph(item.glyph||'lamp',item.color)}<strong>${esc(item.label)}</strong>${item.value!==undefined?`<small>${esc(item.value)} ${esc(item.unit||'')}</small>`:''}</button>`).join('')}</div>`;
@@ -193,6 +193,22 @@
     const max=Math.max(...spec.items.map(item=>Number(item.resistivity)||0));
     return `<div class="lv-materials" data-lv-diagram>${spec.items.map((item,i)=>{const metal=item.material==='Al'?'#b5bbc0':'#bf7a43',rho=Number(item.resistivity)||0;return `<button type="button" data-lv-index="${i}" aria-pressed="${i===index}" class="${i===index?'is-active':''}" style="--lv-metal:${metal}"><svg viewBox="0 0 120 100" aria-hidden="true"><circle cx="60" cy="45" r="33" fill="${metal}" stroke="#786b5d" stroke-width="1.5"/><path d="M39 22 84 67M31 34 72 75M47 14 91 58" stroke="#fff" stroke-opacity=".35" stroke-width="2"/><path d="M24 88h72m-72-5v10m72-10v10" stroke="#8b7969" stroke-width="1.5"/></svg><strong>${esc(item.label)} (${esc(item.material)})</strong><span class="lv-material-value">ρ ≈ <b>${esc(item.value)}</b> <small>${esc(item.unit)}</small></span><span class="lv-material-bar" aria-hidden="true"><i style="width:${max?rho/max*100:0}%"></i></span></button>`;}).join('')}</div><p class="lv-material-condition">${esc(spec.condition||'')}</p>`;
   }
+  function conductorComparison(spec,index){
+    const baseLength=230,baseDiameter=34;
+    const cylinder=(length,diameter,color,reference=false)=>{
+      const x=22,y=30,cap=9*diameter/baseDiameter;
+      return `<g class="${reference?'lv-reference-cylinder':''}" stroke="#9a6a45" stroke-width="2"><path d="M${x} ${y-diameter/2}H${x+length}V${y+diameter/2}H${x}Z" fill="${color}"/><ellipse cx="${x+length}" cy="${y}" rx="${cap}" ry="${diameter/2}" fill="${color}"/><ellipse data-lv-semantic-target="conductor-end-face" cx="${x}" cy="${y}" rx="${cap}" ry="${diameter/2}" fill="${color}"/></g>`;
+    };
+    const row=(changed)=>{
+      const length=changed&&index===1?2*baseLength:baseLength,diameter=changed&&index===2?baseDiameter*Math.SQRT2:baseDiameter;
+      const heading=!changed?'Kiindulás: réz':index===0?'Alumínium, azonos méretek':index===1?'Kétszeres hossz':'Kétszeres keresztmetszet';
+      const area=changed&&index===2?'2A':'A',lengthLabel=changed&&index===1?'2l':'l';
+      const shape=cylinder(length,diameter,changed&&index===0?'#c8cdd1':'#c88b51')+(changed&&index>0?cylinder(baseLength,baseDiameter,'none',true):'');
+      return `<div class="lv-conductor-row"><strong>${heading}</strong><div class="lv-conductor-shape"><span class="lv-conductor-area" data-lv-semantic-target="conductor-area-label">${area}</span><div><svg viewBox="0 0 510 72" role="img" aria-label="${esc(heading)}. Keresztmetszet: ${area}. Hossz: ${lengthLabel}.">${shape}<path d="M22 62H${22+length}M22 57v10M${22+length} 57v10" fill="none" stroke="#9a3e51" stroke-width="2"/></svg><span class="lv-conductor-length" style="width:${length/510*100}%;margin-left:${22/510*100}%">${lengthLabel}</span></div></div></div>`;
+    };
+    const result=index===0?'Azonos l és A mellett R<sub>Al</sub> ≈ 1,59 · R<sub>Cu</sub>.':index===1?'Azonos anyag és A mellett R = 2R<sub>0</sub>.':'Azonos anyag és l mellett R = R<sub>0</sub> / 2.';
+    return `<div class="lv-conductor-comparison" data-lv-diagram>${row(false)}${row(true)}<div class="lv-conductor-formula" data-lv-semantic-target="conductor-formula"><span>R<sub>0</sub> = ρ<sub>Cu</sub> · l / A</span><strong>${result}</strong></div></div>${controls(spec,index)}`;
+  }
   function branchDiagram(spec,index){
     const selective=spec.variant==='selectivity',count=selective?2:Math.max(2,Math.min(3,spec.items.length-1)),ys=Array.from({length:count},(_,i)=>70+i*170/(count-1));
     let d='<path d="M55 35H145M190 35H260V240" class="lv-branch-phase"/><path d="M55 290H685" class="lv-branch-neutral"/><rect x="145" y="20" width="45" height="30" class="lv-branch-fuse"/><path d="M145 35h45"/><text x="40" y="43">L</text><text x="40" y="298">N</text>';
@@ -203,11 +219,13 @@
   }
   function contactorDiagram(spec,index){
     const focus=spec.items[index].selectedPart||'',part=(kind,body)=>`<g class="${focus===kind?'lv-part-focus':''}">${body}</g>`;
+    const operated=['start','hold'].includes(spec.items[index].controlState),contact=kind=>kind==='nc'?(operated?glyphs['normally-open']:glyphs['normally-closed']):(operated?'M4 32h56M24 17v30M40 17v30':glyphs['normally-open']);
     let d=part('coil','<path d="M45 160H95M205 160H250"/><rect x="95" y="138" width="110" height="44"/><text x="70" y="125">A1</text><text x="230" y="125">A2</text>');
     d+='<path d="M150 138V100H690M290 100V260H690" class="lv-mechanical"/>';
-    d+=part('main-contact',[330,460,590].map((x,i)=>`<g transform="translate(${x} 65) scale(1.3)"><path d="${glyphs['normally-open']}"/></g><text x="${x+42}" y="52">${i*2+1}–${i*2+2}</text>`).join(''));
-    d+=part('aux-no',`<g transform="translate(440 225) scale(1.3)"><path d="${glyphs['normally-open']}"/></g><text x="480" y="220">13–14</text>`);
-    d+=part('aux-nc',`<g transform="translate(590 225) scale(1.3)"><path d="${glyphs['normally-closed']}"/></g><text x="630" y="220">21–22</text>`);
+    d+=part('main-contact',[330,460,590].map((x,i)=>`<g transform="translate(${x} 65) scale(1.3)"><path d="${contact('no')}"/></g><text x="${x+42}" y="52">${i*2+1}–${i*2+2}</text>`).join(''));
+    d+=part('aux-no',`<g transform="translate(440 225) scale(1.3)"><path d="${contact('no')}"/></g><text x="480" y="220">13–14</text>`);
+    d+=part('aux-nc',`<g transform="translate(590 225) scale(1.3)"><path d="${contact('nc')}"/></g><text x="630" y="220">21–22</text>`);
+    if(operated)d+='<text x="150" y="215">Táplált tekercs</text><text x="490" y="155">Zárt főérintkezők</text>';
     return `<div class="lv-technical lv-contactor-parts" tabindex="0" role="region" aria-label="${esc(spec.title)}" data-lv-diagram><svg viewBox="0 0 780 340" role="img" aria-label="${esc(spec.title)}"><g fill="none" stroke="#79624f" stroke-width="2.5">${d}</g></svg></div>${controls(spec,index)}`;
   }
   function waveSketch(spec,item,index){
@@ -259,8 +277,8 @@
     }else if(v==='contact-protection'){
       const state=item.protectionState||'';
       if(['fault-protection','insulation-fault'].includes(state)){
-        const example={...spec,variant:'fault-loop',networkType:'TN-S',labels:{source:'Forrás',consumer:'Készülék fémteste',fault:'L–test hiba',detail:'TN-S példa: a hibaáram a PE-n, fémes úton tér vissza a forráshoz.'},items:spec.items.map(it=>({...it,networkType:'TN-S',currentPath:'fault',selectedPath:'pe'}))};
-        return window.VVLearningNetworks.render(example,index)+controls(spec,index);
+        const example={...spec,variant:'fault-loop',networkType:'TN-S',labels:{source:'Forrás',consumer:'Készülék fémteste',fault:'L–test hiba',detail:''},items:spec.items.map(it=>({...it,networkType:'TN-S',currentPath:'fault',selectedPath:'pe'}))};
+        return window.VVLearningNetworks.render(example,index).replace('<svg ','<svg data-lv-semantic-focus="exposed-case" ')+'<p class="lv-diagram-note" data-lv-semantic-target="fault-return-explanation">TN-S példa: a hibaáram a PE-n, fémes úton tér vissza a forráshoz.</p>'+controls(spec,index);
       }
       drawing='<rect x="295" y="70" width="220" height="220" rx="8" fill="#eee6d8"/><rect x="330" y="105" width="150" height="150" rx="3" fill="#fff"/>'+line('M350 180h110','lv-load')+text(405,142,'L')+text(405,320,'Szigetelés / burkolat');
       drawing+='<path d="M80 175h180v35H80" fill="#e9bd90" stroke="#9a653b"/>'+line('M270 130v120','lv-barrier');
@@ -271,8 +289,17 @@
       drawing=line('M90 170H330M330 170 590 85M330 170 590 265','lv-supply')+'<circle cx="330" cy="170" r="7" fill="#71513b"/>';
       drawing+=spec.items.slice(0,3).map((it,i)=>text([155,600,600][i],[145,60,305][i],it.label)).join('');
     }else if(v==='steam-cycle'){
-      drawing=line('M150 90H360V265H150V90','lv-supply')+line('M360 90H610','lv-mechanical');
-      drawing+='<rect x="95" y="55" width="110" height="70" rx="6" fill="#fff0d5"/><circle cx="360" cy="90" r="40" fill="#fff"/><rect x="300" y="230" width="120" height="70" rx="6" fill="#edf5fb"/><circle cx="610" cy="90" r="43" fill="#fff"/>'+text(150,95,spec.items[0]?.label)+text(360,95,spec.items[1]?.label)+text(610,95,spec.items[2]?.label)+text(360,272,spec.items[3]?.label);
+      const focus=(i,body)=>`<g class="${index===i?'lv-process-focus':''}">${body}</g>`;
+      drawing=line('M220 125H330M405 170V225','lv-steam-pipe')+line('M335 254H222M178 254H145V170','lv-water-pipe')+line('M480 122H620M480 128H620','lv-shaft');
+      drawing+=line('M270 118l9 7-9 7M398 196l7 9 7-9','lv-steam-pipe')+line('M286 247l-9 7 9 7M138 204l7-9 7 9','lv-water-pipe');
+      drawing+=focus(0,'<rect x="70" y="80" width="150" height="90" rx="5" fill="#fff0d5"/>'+text(145,113,'Kazán /','lv-process-label')+text(145,142,'gőzfejlesztő','lv-process-label'));
+      drawing+=focus(1,'<rect x="330" y="80" width="150" height="90" rx="5" fill="#fff8ed"/>'+text(405,133,'Turbina','lv-process-label'));
+      drawing+=focus(2,'<circle cx="655" cy="125" r="35" fill="#fff"/>'+text(655,134,'G')+text(655,65,'Generátor','lv-process-label'));
+      drawing+=focus(3,'<rect x="335" y="225" width="140" height="58" rx="5" fill="#edf5fb"/>'+text(405,260,'Kondenzátor','lv-process-label'));
+      drawing+='<circle cx="200" cy="254" r="22" fill="#edf5fb"/>'+line('M212 254H188m8-7-8 7 8 7','lv-water-pipe')+text(200,302,'Tápszivattyú','lv-process-label');
+      drawing+=text(275,102,'gőz','lv-process-note')+text(275,233,'víz','lv-process-note')+text(550,153,'tengely','lv-process-note');
+      drawing+=line('M475 254H555m-9-7 9 7-9 7','lv-cooling')+text(544,283,'hőleadás','lv-process-note');
+      drawing+=text(395,335,'A kondenzátor itt a gőzt vízzé alakító hőcserélő.','lv-process-note');
     }else if(v==='battery-load'){
       const open=index===0;
       drawing=line('M110 160V85H250M340 85H440M520 85h140v70M660 225v65H110V182')+line('M90 160h40m-32 22h24','lv-source')+line('M250 65h90v40h-90zM635 155h50v70h-50z','lv-load')+line(open?'M440 85l68-35':'M440 85h80','lv-contact')+text(295,50,'Rb')+text(700,195,'R');
@@ -287,6 +314,7 @@
       if(!tripped)drawing+=line('M120 95h60m-10-8 10 8-10 8M180 255h-60m10-8-10 8 10 8','lv-current-arrow');
       drawing+=text(90,65,'L')+text(90,290,'N');
     }else if(v==='self-hold'){
+      if(item.selectedPart==='main-contact')return contactorDiagram(spec,index);
       const state=item.controlState||(/leáll|stop/.test(label)?'stop':/retesz/.test(label)?'interlock':/ön|tart/.test(label)?'hold':'start');
       const off=['stop','interlock','idle'].includes(state),on=!off;
       drawing=line('M90 40V310M690 40V310M90 80H245M285 80H380M420 80H470M510 80H550M620 80H690M330 80V205H380M420 205H470V80');
@@ -302,11 +330,11 @@
       if(mode===1)drawing=line('M90 70H230V160H390V260H550V70H90','lv-supply');
       if(mode===2)drawing=line('M90 70H230V160H390V260H550V70H690','lv-supply');
       if(mode===3)drawing=line('M90 70H230V160H390V260H550V70H90M230 70H550M230 160H550V260H390M90 70V260H390','lv-supply');
-      drawing+=[['90','70'],['230','160'],['390','260'],['550','70']].map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="${i?12:20}" fill="${i?'#fff':'#b84d17'}"/>`).join('');
+      drawing+=[[90,70],[230,160],[390,260],[550,mode===0?260:70]].map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="${i?12:20}" fill="${i?'#fff':'#b84d17'}"/>`).join('');
       if(mode===2)drawing+='<circle cx="690" cy="70" r="20" fill="#286c9b"/>';
+      drawing+='<circle cx="205" cy="320" r="7" fill="#b84d17"/>'+text(277,327,'Táppont','lv-process-note')+'<circle cx="465" cy="320" r="7" fill="#fff"/>'+text(557,327,'Fogyasztói pont','lv-process-note');
     }else if(v==='conductor-dimensions'){
-      const length=index===1?500:330,height=index===2?90:45;
-      drawing=`<rect x="140" y="${170-height/2}" width="${length}" height="${height}" rx="${height/2}" fill="${index===0?'#d0a26a':'#c7aaa0'}" stroke="#9a6a45"/><ellipse cx="155" cy="170" rx="14" ry="${height/2}" fill="#b77845"/>`+line(`M140 ${220+height/2}H${140+length}M140 ${210+height/2}v20M${140+length} ${210+height/2}v20`,'lv-pointer')+text(140+length/2,280,index===1?'l':'')+text(115,173,index===2?'S':'');
+      return conductorComparison(spec,index);
     }else if(v==='cable-types'){
       if(index===0){const curve=(phase)=>Array.from({length:121},(_,i)=>`${i?'L':'M'}${100+i*4.8} ${175+38*Math.sin(i/120*Math.PI*7+phase)}`).join('');drawing=line(curve(0),'lv-p')+line(curve(Math.PI),'lv-q');}
       else if(index===1)drawing='<circle cx="390" cy="175" r="125" fill="#c5b9a7"/><circle cx="390" cy="175" r="105" fill="#f6f0e6" stroke="#7e8e91" stroke-width="12"/><circle cx="390" cy="175" r="80" fill="#fff"/><circle cx="390" cy="175" r="25" fill="#bc8644"/>';
@@ -364,7 +392,19 @@
       const match=String(item.label).match(/(\d{1,2})\s*$/),hour=Number(item.hour??(match?Number(match[1]):6)),angle=hour*Math.PI/6;
       const x=390+105*Math.sin(angle),y=175-105*Math.cos(angle);
       drawing='<circle cx="390" cy="175" r="125" fill="#fff"/>'+Array.from({length:12},(_,i)=>{const a=(i+1)*Math.PI/6;return text(390+150*Math.sin(a),183-150*Math.cos(a),i+1)}).join('')+line('M390 175V60','lv-p')+line(`M390 175 ${x} ${y}`,'lv-q')+'<circle cx="390" cy="175" r="6" fill="#73513c"/>';
-    }else if(['ip-barrier','ip-water'].includes(v)){
+    }else if(v==='ip-water'){
+      drawing='<rect x="295" y="95" width="200" height="170" rx="8" fill="#fffaf0"/><rect x="330" y="133" width="130" height="90" rx="3" fill="#fff"/>';
+      if(index===0){
+        drawing+=['M320 40v33m-6-8 6 8 6-8','M395 40v33m-6-8 6 8 6-8','M470 40v33m-6-8 6 8 6-8','M230 155l44 17m-5-8 5 8-10 2','M560 175l-43 17m9 2-9-2 5-8'].map(d=>line(d,'lv-water-pipe')).join('');
+        drawing+=text(395,308,'Cseppek és fröccsenő víz','lv-process-label');
+      }else if(index===1){
+        drawing+='<path d="M100 165h70l20 25-20 25h-70z" fill="#d9eaf2"/>';
+        drawing+=line('M190 182L283 153M190 190H283M190 198L283 227','lv-water-pipe')+text(395,308,'Irányított vízsugár','lv-process-label');
+      }else{
+        drawing+='<path d="M210 70H580V280H210Z" fill="#b9dded" fill-opacity=".5" stroke="none"/>'+line('M210 70q23-9 46 0t46 0t46 0t46 0t46 0t46 0t46 0t46 0','lv-water-pipe');
+        drawing+=text(395,312,'Bemerítés: IPX7 / IPX8','lv-process-label');
+      }
+    }else if(v==='ip-barrier'){
       drawing='<rect x="295" y="70" width="220" height="220" rx="14" fill="#eee6d8"/><rect x="330" y="105" width="150" height="150" rx="6" fill="#fff"/>'+line('M350 180h110','lv-load');
       drawing+=v==='ip-water'?'<path d="M200 55c-18 28-35 45-35 65a35 35 0 0 0 70 0c0-20-17-37-35-65" fill="#9dcee1" stroke="#286c9b"/>':'<path d="M80 175h180v35H80" fill="#e9bd90" stroke="#9a653b"/>';
       drawing+=line('M270 130v120','lv-barrier');
@@ -389,8 +429,9 @@
     const key=lessonId+':'+part, index=Math.min(states.get(key)||0,spec.items.length-1),item=spec.items[index];
     const network=window.VVLearningNetworks?.render(spec,index)||'';
     const drawing=network?network+controls(spec,index):technical(spec,index,key)||(spec.type==='circuit'?circuit(spec,index):spec.type==='graph'?graph(spec,index):spec.type==='spectrum'?spectrum(spec,index):nodes(spec,index,key));
-    const showTitle=!tabbed&&(spec.showTitle===true||(part===1&&!/^(kövesd|figyeld|válaszd|hasonlítsd|különítsd|keresd|előbb)/iu.test(spec.title)));
-    return `<section class="lv-workbench" data-lv-key="${esc(key)}" data-lv-part="${part}" aria-label="${esc(spec.title)}">${showTitle?`<div class="lv-heading"><h3>${esc(spec.title)}</h3></div>`:''}${drawing}${spec.variant==='ohm'?'':`<div class="lv-observation" role="status" aria-live="polite"><span class="lv-observation-dot" style="background:${esc(item.color||colors[index%colors.length])}"></span><div><strong>${esc(item.label)}</strong><p>${esc(item.detail||'')}</p></div></div>`}${spec.variant==='wave'?'<button type="button" class="lv-play" data-lv-play>Jelek összehasonlítása mozgásban</button>':''}${['flow','timeline','route','safety'].includes(spec.type)&&spec.items.length>5?`<div class="lv-step-controls"><button type="button" data-lv-prev ${index===0?'disabled':''} aria-label="Előző részlet">←</button><span>${index+1} / ${spec.items.length}</span><button type="button" data-lv-next ${index===spec.items.length-1?'disabled':''} aria-label="Következő részlet">→</button></div>`:''}</section>`;
+    const depictionTitle={'steam-cycle':'Víz–gőz kör és a generátor hajtása','conductor-dimensions':'Hossz, keresztmetszet és ellenállás','network-topology':'Táplálási utak és fogyasztói pontok','ip-water':'Cseppek, vízsugár és bemerítés'}[spec.variant];
+    const showTitle=!tabbed&&(depictionTitle||spec.showTitle===true||(part===1&&!/^(kövesd|figyeld|válaszd|hasonlítsd|különítsd|keresd|előbb)/iu.test(spec.title)));
+    return `<section class="lv-workbench" data-lv-key="${esc(key)}" data-lv-part="${part}" aria-label="${esc(spec.title)}">${showTitle?`<div class="lv-heading"><h3>${esc(depictionTitle||spec.title)}</h3></div>`:''}${drawing}${spec.variant==='ohm'?'':`<div class="lv-observation" role="status" aria-live="polite"><span class="lv-observation-dot" style="background:${esc(item.color||colors[index%colors.length])}"></span><div><strong>${esc(item.label)}</strong><p>${esc(item.detail||'')}</p></div></div>`}${spec.variant==='wave'?'<button type="button" class="lv-play" data-lv-play>Jelek összehasonlítása mozgásban</button>':''}${['flow','timeline','route','safety'].includes(spec.type)&&spec.items.length>5?`<div class="lv-step-controls"><button type="button" data-lv-prev ${index===0?'disabled':''} aria-label="Előző részlet">←</button><span>${index+1} / ${spec.items.length}</span><button type="button" data-lv-next ${index===spec.items.length-1?'disabled':''} aria-label="Következő részlet">→</button></div>`:''}</section>`;
   }
   function render(lesson){
     const initial=lesson.interaction?.states?.[0]?.channels||[];
@@ -399,7 +440,7 @@
     if(specs.length===1)return `<div class="lv-visuals">${one(specs[0].spec,lesson.id,specs[0].part)}</div>`;
     const selected=specs.some(({part})=>part===illustrationStates.get(lesson.id))?illustrationStates.get(lesson.id):specs[0].part;
     const id='lv-illustrations-'+(++illustrationSerial);
-    const title=spec=>spec.variant==='ohm'?'U, R és I kapcsolata':spec.variant==='ohm-relations'?'Képlet átrendezése':String(spec.title||'Ábra').trim().replace(/[.!?]+$/u,'');
+    const title=spec=>({'steam-cycle':'Víz–gőz kör és a generátor hajtása','conductor-dimensions':'Hossz, keresztmetszet és ellenállás','network-topology':'Táplálási utak és fogyasztói pontok','ip-water':'Cseppek, vízsugár és bemerítés','ohm':'U, R és I kapcsolata','ohm-relations':'Képlet átrendezése'}[spec.variant]||String(spec.title||'Ábra').trim().replace(/[.!?]+$/u,''));
     return `<div class="lv-visuals lv-tabbed" data-lv-illustrations="${esc(lesson.id)}"><div class="lv-illustration-tabs" role="tablist" aria-label="Szemléltető ábrák">${specs.map(({spec,part})=>`<button type="button" id="${id}-tab-${part}" role="tab" aria-selected="${part===selected}" aria-controls="${id}-panel-${part}" tabindex="${part===selected?0:-1}" data-lv-illustration="${part}">${esc(title(spec))}</button>`).join('')}</div>${specs.map(({spec,part})=>`<div id="${id}-panel-${part}" class="lv-illustration-panel" role="tabpanel" aria-labelledby="${id}-tab-${part}" data-lv-illustration-panel="${part}" ${part===selected?'':'hidden'}>${one(spec,lesson.id,part,true)}</div>`).join('')}</div>`;
   }
   function within(root,selector){return [...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector)];}
@@ -412,9 +453,38 @@
       try{
         const box=svg.getBBox();if(!box.width||!box.height)return;
         const top=Math.max(full[1],Math.floor(box.y)-16),bottom=Math.min(full[1]+full[3],Math.ceil(box.y+box.height)+16);
-        if(bottom-top>100&&full[3]-(bottom-top)>12)svg.setAttribute('viewBox',`${full[0]} ${top} ${full[2]} ${bottom-top}`);
+        const left=Math.max(full[0],Math.floor(box.x)-16),right=Math.min(full[0]+full[2],Math.ceil(box.x+box.width)+16);
+        if(bottom-top>100&&right>left)svg.setAttribute('viewBox',`${left} ${top} ${right-left} ${bottom-top}`);
+        const diagram=svg.parentElement;
+        if(!diagram.classList.contains('lv-ohm-circuit')){
+          const sizes=[...svg.querySelectorAll('text')].map(text=>parseFloat(getComputedStyle(text).fontSize)).filter(size=>Number.isFinite(size)&&size>0);
+          const minFont=sizes.length?Math.min(...sizes):23;
+          // Fit empty margins first. Preserve a 16 px minimum for diagram text,
+          // then reveal the selected component instead of leaving it off-screen.
+          svg.style.minWidth=`${Math.ceil((right-left)*16/minFont)}px`;
+          svg.style.maxHeight=diagram.clientWidth<=650?'none':'';
+          revealDrawing(diagram);
+        }
       }catch{ /* An undisplayed SVG is fitted when its illustration is selected. */ }
     });
+  }
+  function revealDrawing(diagram){
+    const overflow=diagram.scrollWidth>diagram.clientWidth+8;
+    let hint=diagram.nextElementSibling;
+    if(!hint?.classList.contains('lv-pan-controls')){
+      hint=document.createElement('div');hint.className='lv-pan-controls';
+      hint.innerHTML='<button type="button" data-lv-pan="-1" aria-label="Ábra balra">←</button><span>Az ábra oldalra mozgatható.</span><button type="button" data-lv-pan="1" aria-label="Ábra jobbra">→</button>';
+      diagram.after(hint);
+    }
+    hint.hidden=!overflow;
+    if(!overflow){diagram.scrollLeft=Math.max(0,(diagram.scrollWidth-diagram.clientWidth)/2);return;}
+    const svg=diagram.querySelector('svg');
+    const semanticTarget=svg?.dataset.lvSemanticFocus==='exposed-case'?svg.querySelector('.ln-case'):null;
+    const target=semanticTarget||svg?.querySelector('.lv-part-focus,.lv-process-focus,.ln-focus-ring,.ln-focus-node,.is-focus')||svg?.querySelector('.ln-active')||svg?.querySelector('.lv-load')||svg;
+    if(!target)return;
+    const area=diagram.getBoundingClientRect(),focus=target.getBoundingClientRect();
+    const center=focus.left+focus.width/2-area.left+diagram.scrollLeft;
+    diagram.scrollLeft=Math.max(0,Math.min(diagram.scrollWidth-diagram.clientWidth,center-diagram.clientWidth/2));
   }
   function selectIllustration(group,part,focus=false){
     const tabs=[...group.querySelectorAll('[data-lv-illustration]')],target=tabs.find(tab=>Number(tab.dataset.lvIllustration)===part);
@@ -449,6 +519,8 @@
       panel.addEventListener('input',event=>{const input=event.target.closest('[data-lv-ohm]');if(input)updateOhm(panel,input.dataset.lvOhm,input.value);});
       panel.addEventListener('change',event=>{const input=event.target.closest('[data-lv-ohm]');if(input)updateOhm(panel,input.dataset.lvOhm,input.value,true);});
       panel.addEventListener('click',event=>{
+        const pan=event.target.closest('[data-lv-pan]');
+        if(pan){const diagram=pan.closest('.lv-pan-controls')?.previousElementSibling;if(diagram)diagram.scrollBy({left:Number(pan.dataset.lvPan)*diagram.clientWidth*.7,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});return;}
         if(event.target.closest('[data-lv-ohm-reset]')){updateOhm(panel,'reset');return;}
         const play=event.target.closest('[data-lv-play]');
         if(play&&panel.contains(play)){
@@ -462,14 +534,19 @@
         index=button.hasAttribute('data-lv-index')?Number(button.dataset.lvIndex):index+(button.hasAttribute('data-lv-prev')?-1:1);
         index=Math.max(0,Math.min(spec.items.length-1,index));if(index===(states.get(key)||0))return;states.set(key,index);
         const focusIndex=button.hasAttribute('data-lv-index')?`[data-lv-index="${index}"]`:button.hasAttribute('data-lv-prev')?'[data-lv-prev]':'[data-lv-next]';
-        const pans=[...panel.querySelectorAll('[data-lv-diagram],.ln-diagram')].map(diagram=>diagram.scrollLeft);
         wavePlayback.get(panel)?.cancel();panel.getAnimations({subtree:true}).forEach(animation=>animation.cancel());
         const wrapper=document.createElement('div');wrapper.innerHTML=one(spec,lesson.id,part,!!panel.closest('[data-lv-illustration-panel]'));const next=wrapper.firstElementChild;panel.replaceWith(next);mount(next.parentElement,lesson);
-        next.querySelectorAll('[data-lv-diagram],.ln-diagram').forEach((diagram,i)=>{if(pans[i])diagram.scrollLeft=pans[i];});
         const focus=next.querySelector(focusIndex),fallback=next.querySelector(`[data-lv-index="${index}"]`);(focus&&!focus.disabled?focus:fallback)?.focus({preventScroll:true});
         if(!matchMedia('(prefers-reduced-motion: reduce)').matches){next.querySelector('.lv-observation')?.animate([{opacity:.5},{opacity:1}],{duration:220,easing:'ease-out'});next.querySelectorAll('[data-animate-path],.ln-trace').forEach(path=>{const length=path.getTotalLength?.();if(length)path.animate([{strokeDashoffset:Math.max(90,length/4)},{strokeDashoffset:0}],{duration:1200,easing:'ease-out'});});}
       },{once:false});
     });
   }
+  let fitResizeFrame=0;
+  window.addEventListener?.('resize',()=>{
+    cancelAnimationFrame(fitResizeFrame);
+    fitResizeFrame=requestAnimationFrame(()=>document.querySelectorAll('.lv-workbench').forEach(panel=>{
+      if(panel.getClientRects().length&&!panel.closest('[hidden]'))fitDrawings(panel);
+    }));
+  });
   window.VVLearningVisuals={render,mount,symbol:glyph};
 })();
