@@ -25,6 +25,7 @@
   };
 
   function setup(root=document) {
+    window.VV_LABELS?.labelQuestionLinks(root, window.VV_DATA);
     root.querySelectorAll('.worked-steps').forEach(example => {
       if(example.dataset.boardReady)return;
       example.dataset.boardReady='true';

@@ -147,7 +147,7 @@
       layout.querySelectorAll('.formula-card').forEach(prepareFormula);
       lessons.forEach(lesson => {
         const scope = lesson.closest('.tutorial-group')?.dataset.sourceScope;
-        const tag = make('span', `guide-source-tag ${scope === 'contest' ? 'is-contest' : 'is-exam'}`, scope === 'contest' ? 'Csak versenyen talált' : 'Vizsgában előfordult');
+        const tag = make('span', `guide-source-tag ${scope === 'contest' ? 'is-contest' : 'is-exam'}`, scope === 'contest' ? 'Versenyfeladat' : 'Feladat');
         (lesson.querySelector('.lesson-no') || lesson.querySelector('h3'))?.after(tag);
       });
       lessons.forEach(prepareSubtopics);

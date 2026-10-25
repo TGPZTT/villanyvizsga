@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const KEY = 'villanyvizsga-learning-v1';
-  const VERSION = '20261025-r6';
+  const VERSION = '20261026-r1';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const norm = value => String(value ?? '').toLocaleLowerCase('hu').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -632,7 +632,7 @@
   function questionMarkup(lesson) {
     const all = relatedQuestions(lesson), papers = all.filter(isPaper), contest = all.filter(q => !isPaper(q)), list = scope === 'papers' ? papers : contest, size = 6;
     questionPage = Math.max(0, Math.min(questionPage, Math.ceil(list.length / size) - 1));
-    return `<section class="learn-linked"><div class="learn-linked-filter" role="group" aria-label="Kapcsolódó feladatok forrása"><button type="button" data-learn-scope="papers" aria-pressed="${scope === 'papers'}">Vizsgafeladatok <span>${papers.length}</span></button><button type="button" data-learn-scope="contest" aria-pressed="${scope === 'contest'}">Szakma Sztár <span>${contest.length}</span></button></div><div class="learn-question-list">${list.slice(questionPage * size, (questionPage + 1) * size).map(q => `<a href="#question/${encodeURIComponent(q.id)}" class="learn-question"><small>${esc(q.sourceTitle || q.sourceFile)} · ${esc(q.number)}. feladat</small><strong>${esc(q.prompt)}</strong><span>Feladat megnyitása →</span></a>`).join('') || `<p class="learn-empty">Ehhez a laphoz ${scope === 'papers' ? 'a feldolgozott vizsgákból' : 'a feldolgozott Szakma Sztár sorokból'} nincs külön hozzárendelt feladat.</p>`}</div>${list.length > size ? `<div class="learn-question-pager"><button type="button" class="button outline" data-learn-page="-1" ${questionPage === 0 ? 'disabled' : ''}>← Előző</button><span>${questionPage + 1} / ${Math.ceil(list.length / size)}</span><button type="button" class="button outline" data-learn-page="1" ${questionPage >= Math.ceil(list.length / size) - 1 ? 'disabled' : ''}>Következő →</button></div>` : ''}</section>`;
+    return `<section class="learn-linked"><div class="learn-linked-filter" role="group" aria-label="Kapcsolódó feladatcsoportok"><button type="button" data-learn-scope="papers" aria-pressed="${scope === 'papers'}">Feladatok <span>${papers.length}</span></button><button type="button" data-learn-scope="contest" aria-pressed="${scope === 'contest'}">Versenyfeladatok <span>${contest.length}</span></button></div><div class="learn-question-list">${list.slice(questionPage * size, (questionPage + 1) * size).map(q => `<a href="#question/${encodeURIComponent(q.id)}" class="learn-question"><small>${esc(window.VV_LABELS.questionLabel(q))}</small><strong>${esc(q.prompt)}</strong><span>Feladat megnyitása →</span></a>`).join('') || `<p class="learn-empty">Ehhez a laphoz ${scope === 'papers' ? 'a feladatsorokból' : 'a versenyfeladatsorokból'} nincs külön hozzárendelt feladat.</p>`}</div>${list.length > size ? `<div class="learn-question-pager"><button type="button" class="button outline" data-learn-page="-1" ${questionPage === 0 ? 'disabled' : ''}>← Előző</button><span>${questionPage + 1} / ${Math.ceil(list.length / size)}</span><button type="button" class="button outline" data-learn-page="1" ${questionPage >= Math.ceil(list.length / size) - 1 ? 'disabled' : ''}>Következő →</button></div>` : ''}</section>`;
   }
 
   function renderLesson(lesson, {focus = false} = {}) {
@@ -804,6 +804,8 @@
     if (!loading) loading = fetch(`learning-data.json?v=${VERSION}`, {cache:'no-store'}).then(response => { if (!response.ok) throw new Error('Learning unavailable'); return response.json(); }).then(source => { window.VV_LEARNING = source; ingest(source); renderRoute(location.hash); document.dispatchEvent(new CustomEvent('vv-learning-ready')); }).catch(() => { if (/^#learn(?:\/|$)/.test(location.hash)) host.innerHTML = '<p class="learn-asset-error">A tananyag nem tölthető be. Frissítsd az oldalt.</p>'; });
     return loading;
   }
+
+  window.addEventListener('storage',event=>{if(event.key===KEY){progress=readProgress();if(host?.getClientRects().length)renderRoute(location.hash);}});
 
   window.VV_LEARN = Object.freeze({setup, renderRoute, capture: captureInputs, currentRoute: () => lastRoute, linksForQuestion: id => (reverseMap.get(String(id)) || []).slice(0,3).map(lesson => ({id:lesson.id,title:lesson.title,chapterTitle:lesson.chapter.title,href:href(lesson)})), questionIds: () => current ? relatedQuestions(current).map(q => q.id) : [], stats: () => ({chapters:chapters.length,lessons:lessons.length,topics:allGroups().length,linkedQuestions:reverseMap.size,read:countRead(lessons)})});
 })();

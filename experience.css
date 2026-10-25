@@ -1755,3 +1755,15 @@ main:not(:has(#guideView)):has(.guide-solving) { padding-top: 10px; padding-bott
   .practice-mobile-feedback { display:block; }
   .practice-mobile-feedback .feedback { margin:12px 0 0; }
 }
+
+/* A reference window keeps the active task, response and timer in place. */
+.learning-dialog{width:min(1100px,calc(100vw - 36px));height:min(880px,92dvh);max-width:none;max-height:none;padding:0;border:1px solid #94aaa8;border-radius:12px;background:#fff;box-shadow:0 20px 80px #102a3255;color:#173b43;overflow:hidden}
+.learning-dialog::backdrop{background:#102a32a8}
+.learning-dialog[open]{display:flex;flex-direction:column}
+.learning-window-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:0 0 auto;padding:10px 16px;border-bottom:1px solid #d4e0dd;background:#f8faf9}
+.learning-window-header h2{margin:0;font-size:20px}
+.learning-window-header .button{min-height:40px;padding:6px 12px}
+.learning-window-frame{width:100%;flex:1 1 auto;min-height:0;border:0;background:#f5f7f8}
+.learning-window-frame[hidden],.learning-window-notice[hidden]{display:none}
+.learning-window-notice{margin:24px;font-size:16px}
+@media(max-width:600px){.learning-dialog{width:calc(100vw - 10px);height:96dvh;border-radius:8px}.learning-window-header{padding:8px 10px}}
