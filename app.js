@@ -39,7 +39,7 @@
   const progress=seed();
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(progress))}catch{}};
   const sources=(raw.sources||[]).map(s=>typeof s==='string'?{id:s,title:s,file:s}:s);
-  const qlist=(raw.questions||[]).map((q,i)=>{
+  const qlist=(raw.questions||[]).filter(q=>!q.generated?.machineGenerated||q.generated.formRevision==='concise-r5').map((q,i)=>{
     const file=q.sourceFile||q.source||q.sourceId||'';
     const src=sources.find(s=>s.id===q.sourceId||s.file===file||s.originalFile===file);
     let options=q.options||[];

@@ -151,7 +151,7 @@
               return native(state,unused,target);
             };
           }
-          await child.VV_LEARN.setup({root:doc.querySelector('#learnView'),data:window.VV_LEARNING,questions:window.VV_DATA.questions});
+          await child.VV_LEARN.setup({root:doc.querySelector('#learnView'),data:window.VV_LEARNING,questions:window.VV_DATA.questions.filter(q=>!q.generated?.machineGenerated||q.generated.formRevision==='concise-r5')});
           child.addEventListener('hashchange', () => {
             if (/^#learn(?:\/|$)/.test(child.location.hash)) { child.VV_LEARN.renderRoute(child.location.hash); child.scrollTo(0,0); }
           });
