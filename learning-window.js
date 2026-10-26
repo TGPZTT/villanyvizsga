@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const VERSION = '20261026r5';
+  const VERSION = '20261026r6';
   const esc = value => String(value).replace(/[&<>"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
   let dialog, frame, notice, returnTo, generation = 0;
   let referenceDialog, referenceReturnTo;
@@ -29,7 +29,7 @@
       requestAnimationFrame(()=>{viewport.scrollLeft=Math.max(0,cx*picture.getBoundingClientRect().width-viewport.clientWidth/2);viewport.scrollTop=Math.max(0,cy*picture.getBoundingClientRect().height-viewport.clientHeight/2);});
     };
     controls.addEventListener('click',event=>{const mode=event.target.closest('[data-image-zoom]')?.dataset.imageZoom;if(!mode)return;if(mode==='fit')fit();else zoom((fitted?picture.getBoundingClientRect().width/picture.naturalWidth:scale)*(mode==='in'?1.5:1/1.5));});
-    picture.addEventListener('load',fit);picture.addEventListener('dragstart',event=>event.preventDefault());
+    picture.addEventListener('load',()=>{fit();const initialWidth=Number(picture.dataset.initialZoomWidth||0);if(container.open&&initialWidth>picture.getBoundingClientRect().width+1)zoom(initialWidth/picture.naturalWidth);});picture.addEventListener('dragstart',event=>event.preventDefault());
     picture.addEventListener('dblclick',()=>fitted?zoom(1):fit());
     viewport.addEventListener('pointerdown',event=>{dragged=false;if(fitted||event.pointerType==='touch'||event.button!==0)return;drag={x:event.clientX,y:event.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};viewport.setPointerCapture(event.pointerId);event.preventDefault();});
     viewport.addEventListener('pointermove',event=>{if(drag){if(Math.hypot(drag.x-event.clientX,drag.y-event.clientY)>4)dragged=true;viewport.scrollLeft=drag.left+drag.x-event.clientX;viewport.scrollTop=drag.top+drag.y-event.clientY;}});
@@ -40,7 +40,7 @@
   }
 
   function referenceMarkup(reference) {
-    return `<p class="learning-reference-intro">${esc(reference.intro || '')}</p>${(reference.sections || []).map(section => `<section class="learning-reference-section"><h3>${esc(section.title)}</h3>${(section.paragraphs || []).map(value=>`<p>${esc(value)}</p>`).join('')}${section.headers?.length ? `<div class="learning-reference-table" tabindex="0" role="region" aria-label="${esc(section.title)}"><table><thead><tr>${section.headers.map(value=>`<th scope="col">${esc(value)}</th>`).join('')}</tr></thead><tbody>${(section.rows || []).map(row=>`<tr>${row.map((value,index)=>index===0?`<th scope="row">${esc(value)}</th>`:`<td>${esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''}${(section.notes || []).map(value=>`<p class="learning-reference-note">${esc(value)}</p>`).join('')}</section>`).join('')}`;
+    return `<p class="learning-reference-intro">${esc(reference.intro || '')}</p>${(reference.sections || []).map(section => `<section class="learning-reference-section"><h3>${esc(section.title)}</h3>${(section.paragraphs || []).map(value=>`<p>${esc(value)}</p>`).join('')}${section.headers?.length ? `<div class="learning-reference-table${section.headers.length>2?' is-multicol':''}" tabindex="0" role="region" aria-label="${esc(section.title)}"><table><thead><tr>${section.headers.map(value=>`<th scope="col">${esc(value)}</th>`).join('')}</tr></thead><tbody>${(section.rows || []).map(row=>`<tr>${row.map((value,index)=>index===0?`<th scope="row"><span class="learn-mobile-column" aria-hidden="true">${esc(section.headers[0]||'')}</span><span class="learn-cell-value">${esc(value)}</span></th>`:`<td><span class="learn-mobile-column" aria-hidden="true">${esc(section.headers[index]||'')}</span><span class="learn-cell-value">${esc(value)}</span></td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''}${(section.notes || []).map(value=>`<p class="learning-reference-note">${esc(value)}</p>`).join('')}</section>`).join('')}`;
   }
 
   async function openReference(href, trigger) {

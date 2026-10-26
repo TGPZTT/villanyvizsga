@@ -263,3 +263,14 @@
 .lv-inline-formula{display:inline-flex;align-items:center;vertical-align:middle;max-width:100%;overflow-x:auto;padding:.12em .18em;font-family:Cambria,"Times New Roman",serif;color:inherit}
 .lv-inline-formula .fm-row{gap:.15em}
 .lv-inline-formula .fm-numerator,.lv-inline-formula .fm-denominator{padding:.03em .12em}
+
+@media(max-width:760px){
+ .lv-technical,.lv-circuit,.ln-diagram{overflow-x:visible}
+ .lv-technical>svg,.lv-circuit>svg,.lv-graph>svg,.ln-diagram>svg{width:100%;min-width:0!important;min-height:0!important;height:auto;max-height:none}
+ .lv-pan-controls[data-mode=fit]{justify-content:flex-end;margin:3px 0 6px}
+ .lv-pan-controls[data-mode=fit] button{width:auto;min-height:40px;padding:5px 10px;font-size:14px}
+ .lv-workbench{padding:10px}
+ .lv-workbench .lv-observation{padding:8px 10px}
+}
+.lv-drawing-dialog{padding:10px;border:1px solid #b9c5ca;border-radius:10px;background:#fff;color:#263640}
+.lv-drawing-dialog::backdrop{background:#102a32a8}

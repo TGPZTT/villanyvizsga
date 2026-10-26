@@ -628,9 +628,17 @@
     if(/technologia|szerelvenyek es kapcsolasok/.test(topic)||/szereles menete|bekotes sorrendje|munkafolyamat|milyen sorrendben/.test(prompt))return 'technology';
     return 'material';
   }
+  const EXAM_SOURCES=['papers','generated','competition'];
+  const examSource=q=>q.generated?.machineGenerated===true?'generated':isContest(q)?'competition':isExamPaper(q)?'papers':'';
+  function examSources(scope){
+    const values=Array.isArray(scope)?scope:scope instanceof Set?[...scope]:scope==='papers-plus-star'?['papers','competition']:[scope];
+    return EXAM_SOURCES.filter(source=>values.includes(source));
+  }
+  const selectedExamSources=()=>examSources($$('[name="examSource"]:checked',$('#examSources')).map(input=>input.value));
   function examPool(scope){
+    const selected=new Set(examSources(scope));
     const all=qlist.filter(q=>!q.review&&['single','multi','number'].includes(q.type)&&(q.type==='number'||q.options.length>=2)&&isAuto(q)&&(!q.requiresFigure||q.figurePaths.length));
-    return all.filter(q=>inSourceScope(q,scope));
+    return all.filter(q=>selected.has(examSource(q)));
   }
   const EXAM_HISTORY_KEY='villanyvizsga-exam-history-v1';
   function examHistory(){try{const rows=JSON.parse(localStorage.getItem(EXAM_HISTORY_KEY));return Array.isArray(rows)?rows.filter(row=>Array.isArray(row.ids)).slice(-8):[]}catch{return []}}
@@ -641,15 +649,17 @@
     notice.textContent=message;notice.scrollIntoView({behavior:'smooth',block:'center'});
   }
   function startExam(){
-    const pool=examPool($('#examScope').value),count=Number($('#examCount').value);
+    const sources=selectedExamSources(),count=Number($('#examCount').value);
+    if(!sources.length){examNotice('Válassz legalább egy forráskört a mintavizsgához.');return;}
+    const pool=examPool(sources);
     if(pool.length<count){
-      examNotice(`Ebben a csoportban ${pool.length} automatikusan ellenőrizhető feladat van. Válassz kevesebb kérdést, vagy kapcsold be a versenyfeladatokat.`);
+      examNotice(`A kijelölt forrásokból ${pool.length} ellenőrizhető feladat érhető el. ${pool.length>=15?'Válassz 15 kérdést, vagy jelölj ki további forrást.':'Jelölj ki másik vagy további forrást.'}`);
       return;
     }
     $('#examPoolNotice')?.remove();
     const selection=selectExam(pool,count),list=selection.questions;
-    if(list.length<count){examNotice(`A hasonló feladatok kiszűrésével most ${list.length} különböző kérdés választható. Válassz kevesebb kérdést, vagy kapcsold be a versenyfeladatokat.`);return;}
-    try{localStorage.setItem(EXAM_HISTORY_KEY,JSON.stringify([...examHistory(),{at:Date.now(),scope:$('#examScope').value,ids:list.map(q=>q.id)}].slice(-8)))}catch{}
+    if(list.length<count){examNotice(`A hasonló feladatok kiszűrése után a kijelölt forrásokból ${list.length} különböző kérdés választható. ${list.length>=15?'Válassz 15 kérdést, vagy jelölj ki további forrást.':'Jelölj ki másik vagy további forrást.'}`);return;}
+    try{localStorage.setItem(EXAM_HISTORY_KEY,JSON.stringify([...examHistory(),{at:Date.now(),scope:sources.join('+'),sources,ids:list.map(q=>q.id)}].slice(-8)))}catch{}
     exam={list,index:0,phase:'main',responses:{},drafts:{},skipped:[],remaining:90*60,deadline:Date.now()+90*60*1000,submitted:false,revealed:false,endReason:''};
     $('#examSetup').classList.add('hidden');$('#examSession').classList.remove('hidden');$('#examView').classList.add('exam-running');document.body.classList.add('exam-running');
     renderExam();clearInterval(timerId);timerId=setInterval(tickExam,250);

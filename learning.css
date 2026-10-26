@@ -930,3 +930,30 @@ body:has(#learnView.active) .topbar { background:#fff; border-color:#dfe5e8; }
 #learnView .is-compact-legend .learn-figure-legend > div { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; }
 #learnView .is-compact-legend .learn-figure-legend dt { flex:0 1 auto; max-width:100%; margin:0; }
 #learnView .is-compact-legend .learn-figure-legend dd { flex:1 1 170px; min-width:0; margin:0; }
+
+/* On a phone, sections and tables fit the reading column. */
+.learn-section-select,.learn-mobile-column{display:none}
+@media(max-width:760px){
+ #learnView .learn-workspace{gap:8px}
+ #learnView .learn-lesson-head{padding:10px 10px 0}
+ #learnView .learn-panel{padding:11px 10px 14px}
+ #learnView .learn-section-nav{display:none}
+ #learnView .learn-section-select{display:flex;align-items:center;gap:8px;min-width:0;margin:0 0 9px;color:#4d5862;font:14px/1.35 'Segoe UI',Arial,sans-serif}
+ #learnView .learn-section-select select{flex:1;width:0;min-width:0;min-height:42px;padding:7px 8px;border:1px solid #cad4db;border-radius:5px;background:#fff;color:#273640;font:16px/1.35 'Segoe UI',Arial,sans-serif}
+ #learnView .learn-tabs{flex-wrap:wrap;gap:2px 12px}
+ #learnView .learn-tabs button{min-width:0;white-space:normal}
+ #learnView .learn-linked-filter{display:flex;flex-wrap:wrap;gap:6px}
+ #learnView .learn-linked-filter button{max-width:100%;min-height:42px;white-space:normal;text-align:left}
+ #learnView .learn-table-wrap{overflow:visible;min-width:0;max-width:100%;margin-top:10px}
+ #learnView .learn-table-wrap table{width:100%;min-width:0;table-layout:fixed}
+ #learnView .learn-table-wrap th,#learnView .learn-table-wrap td{min-width:0;padding:7px 8px;overflow-wrap:anywhere;hyphens:auto}
+ #learnView .learn-table-wrap.is-multicol table,#learnView .learn-table-wrap.is-multicol tbody{display:block}
+ #learnView .learn-table-wrap.is-multicol thead{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ #learnView .learn-table-wrap.is-multicol tr{display:block;border-bottom:1px solid #d8e0e5}
+ #learnView .learn-table-wrap.is-multicol tr:last-child{border-bottom:0}
+ #learnView .learn-table-wrap.is-multicol tbody th{display:block;width:auto;border:0;background:#f0f4f5}
+ #learnView .learn-table-wrap.is-multicol td{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:8px;border:0;border-top:1px solid #edf0f2}
+ #learnView .learn-table-wrap.is-multicol .learn-mobile-column{display:block;min-width:0;color:#52616c;font:600 13px/1.4 'Segoe UI',Arial,sans-serif}
+ #learnView .learn-table-wrap.is-multicol th .learn-mobile-column{margin-bottom:2px}
+ #learnView .learn-cell-value{min-width:0;overflow-wrap:anywhere}
+}

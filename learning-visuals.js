@@ -561,7 +561,9 @@
           const minFont=sizes.length?Math.min(...sizes):23;
           // Fit empty margins first. Preserve a 16 px minimum for diagram text,
           // then reveal the selected component instead of leaving it off-screen.
-          svg.style.minWidth=`${Math.ceil((right-left)*16/minFont)}px`;
+          const readableWidth=Math.ceil((right-left)*16/minFont);
+          svg.dataset.lvReadableWidth=String(readableWidth);
+          svg.style.minWidth=matchMedia('(max-width:760px)').matches?'0':`${readableWidth}px`;
           svg.style.maxHeight=diagram.clientWidth<=650?'none':'';
           revealDrawing(diagram);
         }
@@ -573,9 +575,14 @@
     let hint=diagram.nextElementSibling;
     if(!hint?.classList.contains('lv-pan-controls')){
       hint=document.createElement('div');hint.className='lv-pan-controls';
-      hint.innerHTML='<button type="button" data-lv-pan="-1" aria-label="Ábra balra">←</button><span>Az ábra oldalra mozgatható.</span><button type="button" data-lv-pan="1" aria-label="Ábra jobbra">→</button>';
       diagram.after(hint);
     }
+    const compact=matchMedia('(max-width:760px)').matches;
+    if(hint.dataset.mode!==(compact?'fit':'pan')){
+      hint.dataset.mode=compact?'fit':'pan';
+      hint.innerHTML=compact?'<button type="button" data-lv-expand aria-haspopup="dialog">Ábra nagyítása</button>':'<button type="button" data-lv-pan="-1" aria-label="Ábra balra">←</button><span>Az ábra oldalra mozgatható.</span><button type="button" data-lv-pan="1" aria-label="Ábra jobbra">→</button>';
+    }
+    if(compact){hint.hidden=Number(diagram.querySelector('svg')?.dataset.lvReadableWidth||0)<=diagram.clientWidth;diagram.scrollLeft=0;return;}
     hint.hidden=!overflow;
     if(!overflow){diagram.scrollLeft=Math.max(0,(diagram.scrollWidth-diagram.clientWidth)/2);diagram.dataset.lvAutoPan=String(diagram.scrollLeft);return;}
     const svg=diagram.querySelector('svg');
@@ -586,6 +593,26 @@
     const center=focus.left+focus.width/2-area.left+diagram.scrollLeft;
     diagram.scrollLeft=Math.max(0,Math.min(diagram.scrollWidth-diagram.clientWidth,center-diagram.clientWidth/2));
     diagram.dataset.lvAutoPan=String(diagram.scrollLeft);
+  }
+  let drawingDialog,drawingUrl,drawingTrigger;
+  function expandDrawing(diagram,trigger){
+    const source=diagram?.querySelector('svg');if(!source)return;
+    if(!drawingDialog){
+      drawingDialog=document.createElement('dialog');drawingDialog.className='learning-image-dialog lv-drawing-dialog';drawingDialog.setAttribute('aria-label','Szemléltető ábra nagyítása');
+      drawingDialog.innerHTML='<div class="figure-lightbox-toolbar"><button type="button" class="button outline">← Bezárás</button></div><img alt="">';document.body.append(drawingDialog);
+      drawingDialog.querySelector('button').addEventListener('click',()=>drawingDialog.close());
+      drawingDialog.addEventListener('click',event=>{if(event.target===drawingDialog)drawingDialog.close();});
+      drawingDialog.addEventListener('close',()=>{if(drawingUrl)URL.revokeObjectURL(drawingUrl);drawingUrl=null;drawingTrigger?.isConnected&&drawingTrigger.focus({preventScroll:true});});
+      window.VV_LEARNING_WINDOW?.enhanceImageDialog(drawingDialog,drawingDialog.querySelector('img'));
+    }
+    const copy=source.cloneNode(true),originals=[source,...source.querySelectorAll('*')],copies=[copy,...copy.querySelectorAll('*')];
+    const properties=['fill','fill-opacity','stroke','stroke-width','stroke-opacity','stroke-dasharray','stroke-linecap','stroke-linejoin','font-family','font-size','font-style','font-weight','text-anchor','dominant-baseline','opacity','visibility'];
+    copies.forEach((node,i)=>{const computed=getComputedStyle(originals[i]);properties.forEach(name=>node.style.setProperty(name,computed.getPropertyValue(name)));});
+    copy.setAttribute('xmlns','http://www.w3.org/2000/svg');copy.style.minWidth='';copy.style.maxHeight='';copy.style.width='';copy.style.height='';
+    const box=copy.getAttribute('viewBox').split(/[\s,]+/).map(Number),width=Math.max(box[2],Number(source.dataset.lvReadableWidth)||0);copy.setAttribute('width',String(width));copy.setAttribute('height',String(width*box[3]/box[2]));
+    const image=drawingDialog.querySelector('img');image.alt=source.getAttribute('aria-label')||source.querySelector('title')?.textContent||'Szemléltető ábra';
+    if(drawingUrl)URL.revokeObjectURL(drawingUrl);drawingUrl=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(copy)],{type:'image/svg+xml'}));image.dataset.initialZoomWidth=source.dataset.lvReadableWidth||String(width);image.src=drawingUrl;drawingTrigger=trigger;
+    if(!drawingDialog.open)drawingDialog.showModal();drawingDialog.querySelector('button').focus();
   }
   function selectIllustration(group,part,focus=false){
     const tabs=[...group.querySelectorAll('[data-lv-illustration]')],target=tabs.find(tab=>Number(tab.dataset.lvIllustration)===part);
@@ -620,6 +647,7 @@
       panel.addEventListener('input',event=>{const input=event.target.closest('[data-lv-ohm]');if(input)updateOhm(panel,input.dataset.lvOhm,input.value);});
       panel.addEventListener('change',event=>{const input=event.target.closest('[data-lv-ohm]');if(input)updateOhm(panel,input.dataset.lvOhm,input.value,true);});
       panel.addEventListener('click',event=>{
+        const expand=event.target.closest('[data-lv-expand]');if(expand){expandDrawing(expand.closest('.lv-pan-controls')?.previousElementSibling,expand);return;}
         const pan=event.target.closest('[data-lv-pan]');
         if(pan){const diagram=pan.closest('.lv-pan-controls')?.previousElementSibling;if(diagram)diagram.scrollBy({left:Number(pan.dataset.lvPan)*diagram.clientWidth*.7,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});return;}
         if(event.target.closest('[data-lv-ohm-reset]')){updateOhm(panel,'reset');return;}

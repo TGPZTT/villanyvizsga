@@ -1801,3 +1801,86 @@ main:not(:has(#guideView)):has(.guide-solving) { padding-top: 10px; padding-bott
 /* Long question topics wrap within the header without reducing type size. */
 .question-top .tags{min-width:0;max-width:100%}
 .question-top .tags .chip{max-width:100%;white-space:normal;overflow-wrap:break-word}
+
+/* Source controls for the existing exam setup. No shared CSS is changed here. */
+#examSetup .exam-source-setup {
+  grid-template-columns: minmax(10rem, .42fr) minmax(0, 1fr);
+  align-items: start;
+}
+#examSetup .exam-source-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+#examSetup .exam-source-fieldset legend {
+  margin-bottom: .5rem;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 700;
+}
+#examSetup .exam-source-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+#examSetup .exam-source-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: .55rem;
+  font-size: 1rem;
+  line-height: 1.35;
+  min-height: 2.75rem;
+  max-width: 100%;
+  margin: 0;
+  padding: .6rem .8rem;
+  border: 1px solid var(--line, #c7deda);
+  border-radius: .65rem;
+  background: #fff;
+  cursor: pointer;
+}
+#examSetup .exam-source-option:has(input:checked) {
+  border-color: var(--teal, #008b95);
+  background: #edf8f5;
+}
+#examSetup .exam-source-option input {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--teal, #008b95);
+}
+#examSetup .exam-source-option span {
+  min-width: 0;
+  overflow-wrap: normal;
+}
+#examSetup .exam-source-option:focus-within {
+  outline: 2px solid #df962b;
+  outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  #examSetup .exam-source-setup { grid-template-columns: 1fr; }
+  #examSetup .exam-source-option { flex: 1 1 13rem; }
+}
+
+@media(max-width:760px){
+ .learning-reference-table{overflow:visible}
+ .learning-reference-table table{width:100%;min-width:0;table-layout:fixed}
+ .learning-reference-table th,.learning-reference-table td{min-width:0;padding:7px;overflow-wrap:anywhere;hyphens:auto}
+ .learning-reference-table tbody th{min-width:0}
+ .learning-reference-table.is-multicol table,.learning-reference-table.is-multicol tbody{display:block}
+ .learning-reference-table.is-multicol thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .learning-reference-table.is-multicol tr{display:block;border-bottom:1px solid #d8d3ca}
+ .learning-reference-table.is-multicol tbody th{display:block;border:0;background:#f7efdf}
+ .learning-reference-table.is-multicol td{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:8px;border:0;border-top:1px solid #eee9df}
+ .learning-reference-table.is-multicol .learn-mobile-column{display:block;min-width:0;color:#52616c;font:600 13px/1.4 'Segoe UI',Arial,sans-serif}
+ .learning-reference-table.is-multicol th .learn-mobile-column{margin-bottom:2px}
+ .learning-reference-table .learn-cell-value{min-width:0;overflow-wrap:anywhere}
+ .learning-window-header{gap:8px;align-items:flex-start}
+ .learning-window-header h2{min-width:0;overflow-wrap:anywhere}
+ .learning-window-header button{flex:0 0 auto}
+ .setup-card,.exam-setup{padding:16px}
+ .exam-banner{padding:14px;margin-bottom:16px;gap:10px}
+ .setup-grid{gap:12px;margin-bottom:16px}
+}

@@ -277,6 +277,9 @@
         example.classList.toggle('is-complete',!upcoming);
         if(animate){
           const line=lines[stage.index];line.classList.add('board-new-line');
+          // Reserve the actual sticky toolbar height when revealing a row.
+          // Its mobile layout can wrap onto two lines.
+          line.style.scrollMarginBottom=`${Math.ceil(toolbar.getBoundingClientRect().height)+12}px`;
           line.scrollIntoView({block:'nearest',behavior:'instant'});
           void line.offsetWidth;
           if(stage.phase==='writing')flyInto(line.querySelector('.board-math-prefix')||line.querySelector('.board-writing'),stage.index);
