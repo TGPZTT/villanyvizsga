@@ -45,74 +45,60 @@
   }
 
   function prepareFormula(card) {
-    if(card.dataset.formulaDiagram)return;
-    const legend = card.querySelector('.formula-legend');
-    const expression = card.querySelector('.formula-card__expression');
-    if (!legend || !expression) return;
-    const terms = new Map();
-    legend.querySelectorAll('div').forEach(row => {
-      const dd = row.querySelector('dd');
-      const meaning = dd?.textContent.replace(/\s+/gu, ' ').trim();
-      row.querySelector('dt')?.textContent.split(',').forEach(symbol => terms.set(symbol.replace(/\s+/gu, '').trim(), meaning));
-      if (dd) {
-        const unit = dd.querySelector('.unit-chip');
-        const description = [...dd.childNodes].filter(node => node !== unit).map(node => node.textContent).join(' ').replace(/\s+/gu, ' ').trim();
-        dd.replaceChildren(make('span', 'formula-legend-meaning', description));
-        if (unit) {
-          if (/^(?:mértékegység nélkül|nincs mértékegység(?:e|ük))$/u.test(unit.textContent.trim())) {
-            const description = unit.textContent.trim();
-            unit.textContent = '—';
-            unit.dataset.tooltip = description;
-            unit.setAttribute('aria-label', description);
-            unit.tabIndex = 0;
-          }
-          dd.append(unit);
+    if (card.dataset.guideFormulaReady) return;
+    window.VVFormula?.guide(card.parentElement || card);
+    const figures = [...card.querySelectorAll('.fm-diagram')];
+    if (!figures.length) return;
+    const legend = make('details', 'guide-legend');
+    const summary = make('summary', '', 'Jelölések és mértékegységek');
+    const definitions = make('dl', 'guide-legend-list');
+    const seen = new Set();
+    for (const figure of figures) {
+      figure.dataset.fmPresentation = 'compact';
+      for (const callout of figure.querySelectorAll('.fm-callout')) {
+        const symbol = callout.dataset.fmFor;
+        if (!seen.has(symbol)) {
+          seen.add(symbol);
+          const row = make('div', 'guide-legend-row');
+          row.dataset.guideSymbol = symbol;
+          row.style.setProperty('--fm-color', callout.style.getPropertyValue('--fm-color'));
+          const name = make('dt', 'guide-legend-symbol');
+          name.append(callout.querySelector('.fm-callout-symbol').cloneNode(true));
+          row.classList.toggle('has-long-symbol', name.textContent.trim().length > 8);
+          const meaning = make('dd', 'guide-legend-meaning', callout.querySelector('.fm-callout-meaning').textContent);
+          const originalUnit = callout.querySelector('.fm-unit');
+          const unit = make('dd', 'guide-legend-unit', originalUnit?.textContent || 'Mértékegység nélkül');
+          unit.classList.toggle('is-unitless', originalUnit?.classList.contains('is-unitless'));
+          row.classList.toggle('has-long-unit', /\s/.test(unit.textContent.trim()) || unit.textContent.trim().length > 7);
+          row.append(name, meaning, unit);
+          definitions.append(row);
         }
+        callout.remove();
       }
-    });
-    const lookup = (symbol, node, atEnd = false) => {
-      const clean = symbol.replace(/\s+/gu, '');
-      const next = atEnd && node.nextSibling?.nodeName === 'SUB' ? node.nextSibling.textContent : '';
-      return terms.get(clean + next) || terms.get(clean) || terms.get(clean + 'φ')
-        || [...terms].find(([name]) => name.startsWith(clean))?.[1];
-    };
-    const walker = document.createTreeWalker(expression, NodeFilter.SHOW_TEXT);
-    const nodes = [];
-    while (walker.nextNode()) nodes.push(walker.currentNode);
-    const symbolPattern = /(?<![\p{L}\d])(?:cos\s*φ|sin\s*φ|cos|sin|[A-ZηρφΔεlnctfpk])(?!(?:[\p{L}]))/gu;
-    nodes.forEach(node => {
-      const value = node.textContent;
-      const matches = [...value.matchAll(symbolPattern)].filter(match => lookup(match[0], node, match.index + match[0].length === value.length));
-      if (!matches.length) return;
-      const fragment = document.createDocumentFragment();
-      let at = 0;
-      matches.forEach(match => {
-        fragment.append(document.createTextNode(value.slice(at, match.index)));
-        const symbol = make('span', 'formula-symbol', match[0]);
-        symbol.dataset.tooltip = lookup(match[0], node, match.index + match[0].length === value.length);
-        symbol.setAttribute('aria-label', `${match[0]}: ${symbol.dataset.tooltip}`);
-        symbol.tabIndex = 0;
-        fragment.append(symbol);
-        at = match.index + match[0].length;
-      });
-      fragment.append(document.createTextNode(value.slice(at)));
-      node.replaceWith(fragment);
-    });
-    const details = make('details', 'formula-legend-details');
-    details.append(make('summary', '', 'Jelölések és mértékegységek'));
-    legend.replaceWith(details);
-    details.append(legend);
+    }
+    legend.append(summary, definitions);
+    card.append(legend);
+    card.dataset.guideFormulaReady = 'true';
+    const activate = symbol => definitions.querySelectorAll('[data-guide-symbol]').forEach(row => row.classList.toggle('is-active', row.dataset.guideSymbol === symbol));
+    card.addEventListener('pointerover', event => activate(event.target.closest?.('[data-fm-symbol]')?.dataset.fmSymbol));
+    card.addEventListener('focusin', event => activate(event.target.closest?.('[data-fm-symbol]')?.dataset.fmSymbol));
+    card.addEventListener('pointerdown', event => event.target.closest?.('.fm-symbol')?.focus({preventScroll:true}));
+    window.VVFormula?.mount(card);
   }
 
+  const subtopics = new WeakMap();
   function prepareSubtopics(lesson) {
     const children = [...lesson.children];
     const starts = children.map((element, index) => element.classList.contains('formula-card') ? index : -1).filter(index => index >= 0);
     if (starts.length < 2) return;
+    lesson.classList.add('has-guide-subtopics');
     const sections = starts.map((start, index) => children.slice(start, starts[index + 1] ?? children.length));
     const nav = make('nav', 'guide-subtopic-navigation');
     nav.setAttribute('aria-label', 'Alfejezetek');
-    const previous = make('button', 'button outline', '← Előző képlet');
-    const next = make('button', 'button outline', 'Következő képlet →');
+    const previous = make('button', 'button outline', '←');
+    previous.setAttribute('aria-label', 'Előző képlet');
+    const next = make('button', 'button outline', '→');
+    next.setAttribute('aria-label', 'Következő képlet');
     const select = make('select', 'guide-subtopic-select');
     select.setAttribute('aria-label', 'Képlet kiválasztása');
     sections.forEach((section, index) => select.append(new Option(`${index + 1}. ${section[0].querySelector('.formula-card__label')?.textContent || 'Képlet'}`, String(index))));
@@ -120,6 +106,7 @@
     nav.append(previous, select, next);
     lesson.querySelector('h3')?.after(nav);
     const show = index => {
+      index = Math.max(0, Math.min(sections.length - 1, index));
       sections.forEach((section, sectionIndex) => section.forEach(element => {
         if (sectionIndex !== index && element.matches('details[open]')) element.open = false;
         element.hidden = sectionIndex !== index;
@@ -128,9 +115,14 @@
       previous.disabled = index === 0;
       next.disabled = index === sections.length - 1;
     };
-    select.addEventListener('change', () => show(Number(select.value)));
-    previous.addEventListener('click', () => show(Math.max(0, Number(select.value) - 1)));
-    next.addEventListener('click', () => show(Math.min(sections.length - 1, Number(select.value) + 1)));
+    const choose = index => {
+      show(index);
+      lesson.dispatchEvent(new CustomEvent('guide-formula-change', {bubbles:true}));
+    };
+    select.addEventListener('change', () => choose(Number(select.value)));
+    previous.addEventListener('click', () => choose(Number(select.value) - 1));
+    next.addEventListener('click', () => choose(Number(select.value) + 1));
+    subtopics.set(lesson, {show, select});
     show(0);
   }
 
@@ -149,7 +141,9 @@
       lessons.forEach(lesson => {
         const scope = lesson.closest('.tutorial-group')?.dataset.sourceScope;
         const tag = make('span', `guide-source-tag ${scope === 'contest' ? 'is-contest' : 'is-exam'}`, scope === 'contest' ? 'Versenyfeladat' : 'Feladat');
-        (lesson.querySelector('.lesson-no') || lesson.querySelector('h3'))?.after(tag);
+        const heading = lesson.querySelector('h3');
+        lesson.dataset.guideTitle = heading?.textContent.trim() || lesson.id;
+        heading?.append(tag);
       });
       lessons.forEach(prepareSubtopics);
       const embedded = !!layout.closest('#guideView');
@@ -158,16 +152,19 @@
 
       const topicFor = id => lessons.find(lesson => lesson.id === id)
         || groups.find(group => group.id === id)?.querySelector('.lesson');
-      const titleFor = lesson => lesson.querySelector('h3')?.textContent.trim() || lesson.id;
-      const hrefFor = id => `#${embedded ? 'guide/' : ''}${encodeURIComponent(id)}`;
+      const titleFor = lesson => lesson.dataset.guideTitle || lesson.id;
+      const hrefFor = id => {
+        const index = Number(subtopics.get(topicFor(id))?.select.value || 0);
+        return `#${embedded ? 'guide/' : ''}${encodeURIComponent(id)}${index ? '/' + (index + 1) : ''}`;
+      };
       const routeTopic = () => {
         let hash;
         try { hash = decodeURIComponent(location.hash.slice(1)); } catch { return null; }
         if (embedded) {
           if (hash === 'guide') return active || lessons[0];
-          return hash.startsWith('guide/') ? topicFor(hash.slice(6)) : null;
+          return hash.startsWith('guide/') ? topicFor(hash.slice(6).split('/')[0]) : null;
         }
-        return topicFor(hash);
+        return topicFor(hash.split('/')[0]);
       };
       const links = [...toc.querySelectorAll('a[href]')].map(link => {
         const id = link.getAttribute('href').split('#')[1]?.replace(/^guide\//, '');
@@ -180,15 +177,24 @@
 
       const navigation = make('nav', 'guide-topic-navigation');
       navigation.setAttribute('aria-label', 'Témák közötti léptetés');
-      const previous = make('button', 'button outline guide-topic-previous', '← Előző téma');
-      const next = make('button', 'button outline guide-topic-next', 'Következő téma →');
+      const previous = make('button', 'button outline guide-topic-previous', '←');
+      const next = make('button', 'button outline guide-topic-next', '→');
       previous.type = next.type = 'button';
       const position = make('div', 'guide-topic-position');
       position.setAttribute('role', 'status');
       position.setAttribute('aria-live', 'polite');
       const counter = make('span', 'guide-topic-counter');
-      const title = make('strong', 'guide-topic-title');
-      position.append(counter, title);
+      const topicSelect = make('select', 'guide-topic-select');
+      topicSelect.setAttribute('aria-label', 'Feladattípus kiválasztása');
+      for (const group of groups) {
+        const optionGroup = make('optgroup', '');
+        optionGroup.label = group.dataset.sourceScope === 'contest' ? 'Versenyfeladatok' : 'Feladatok';
+        lessons.filter(lesson => lesson.closest('.tutorial-group') === group).forEach(lesson => optionGroup.append(new Option(titleFor(lesson), lesson.id)));
+        topicSelect.append(optionGroup);
+      }
+      lessons.filter(lesson => !lesson.closest('.tutorial-group')).forEach(lesson => topicSelect.append(new Option(titleFor(lesson), lesson.id)));
+      counter.classList.add('guide-sr-only');
+      position.append(topicSelect, counter);
       navigation.append(previous, position, next);
       content.prepend(navigation);
 
@@ -205,6 +211,11 @@
         const changed = active !== lesson;
         if (changed) closeExamples();
         active = lesson;
+        if (!historyEntry && routeTopic() === lesson) {
+          const route = location.hash.slice(1).replace(/^guide\//, '').split('/');
+          const index = /^\d+$/.test(route[1] || '') ? Number(route[1]) - 1 : 0;
+          subtopics.get(lesson)?.show(index);
+        }
         const activeGroup = lesson.closest('.tutorial-group');
         lessons.forEach(item => { item.hidden = item !== lesson; });
         groups.forEach(group => { group.hidden = group !== activeGroup; });
@@ -218,7 +229,7 @@
         });
         const index = lessons.indexOf(lesson);
         counter.textContent = `${index + 1} / ${lessons.length} téma`;
-        title.textContent = titleFor(lesson);
+        topicSelect.value = lesson.id;
         previous.disabled = index === 0;
         next.disabled = index === lessons.length - 1;
         previous.setAttribute('aria-label', index ? `Előző téma: ${titleFor(lessons[index - 1])}` : 'Előző téma');
@@ -246,6 +257,10 @@
         event.stopPropagation();
         select(lesson, {historyEntry: true, focus: true});
       }, true);
+      topicSelect.addEventListener('change', () => select(topicFor(topicSelect.value), {historyEntry: true}));
+      layout.addEventListener('guide-formula-change', () => {
+        if (active) history.replaceState(null, '', location.pathname + location.search + hrefFor(active.id));
+      });
       previous.addEventListener('click', () => select(lessons[lessons.indexOf(active) - 1], {historyEntry: true, focus: true}));
       next.addEventListener('click', () => select(lessons[lessons.indexOf(active) + 1], {historyEntry: true, focus: true}));
       toc.addEventListener('keydown', event => {

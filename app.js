@@ -407,6 +407,9 @@
     return Math.max(0,Math.min(q.points,(good-wrong)*q.points/right.length));
   }
   function mark(q,result,refresh=true){if(result===null)return;progress[q.id]={status:result?'correct':'retry',at:Date.now()};save();if(refresh)renderWrongTasks()}
+  function resetQuestionAttempt(session,id){
+    for(const key of ['responses','shown','hints','feedback'])if(session[key])delete session[key][id];
+  }
   const inlineMathText=value=>esc(String(value??'').replace(/ × /gu,' · ')).replace(/(\p{L})_([\p{L}\p{N}]+(?:[,–][\p{L}\p{N}]+)*)/gu,'$1<sub>$2</sub>');
   function explanationMarkup(q){
     const text=String(q.explanation||'').trim();
@@ -565,7 +568,7 @@
     $('#questionCheckMobile',root)?.addEventListener('click',()=>$('#questionCheck',root).click());
     $('#questionShowMobile',root)?.addEventListener('click',()=>$('#questionShow',root)?.click());
     $('#questionGotIt',root)?.addEventListener('click',()=>{progress[q.id]={status:'correct',at:Date.now()};save();renderWrongTasks();state.feedback[q.id]={kind:'',text:'Önellenőrzés szerint sikerült.'};renderQuestionPage()});
-    $('#questionRetry',root).addEventListener('click',()=>{captureQuestionResponse();progress[q.id]={status:'retry',at:Date.now()};save();renderWrongTasks();state.feedback[q.id]={kind:'review',text:'Felvéve az újragyakorláshoz.'};renderQuestionPage()});
+    $('#questionRetry',root).addEventListener('click',()=>{resetQuestionAttempt(state,q.id);mark(q,false);renderQuestionPage()});
     hydrateAssets(root);
   }
   function exitPractice(){
@@ -593,9 +596,9 @@
       setFeedback(result?'':'wrong',result?'Helyes válasz.':'A beírt válasz eltér a megoldástól. A részletes indoklás most megjelenik a feladat alatt.');
     });
     $('#practiceShow',root)?.addEventListener('click',()=>{preserve();practice.shown[q.id]=true;renderPractice()});
-    $('#questionHintToggle',root)?.addEventListener('click',()=>{practice.hints[q.id]=!practice.hints[q.id];renderPractice()});
+    $('#questionHintToggle',root)?.addEventListener('click',()=>{preserve();practice.hints[q.id]=!practice.hints[q.id];renderPractice()});
     $('#practiceGotIt',root)?.addEventListener('click',()=>{progress[q.id]={status:'correct',at:Date.now()};save();renderWrongTasks();setFeedback('','Önellenőrzés szerint sikerült.')});
-    $('#practiceHard',root).addEventListener('click',()=>{progress[q.id]={status:'retry',at:Date.now()};save();renderWrongTasks();setFeedback('review','Felvéve az újragyakorláshoz.')});
+    $('#practiceHard',root).addEventListener('click',()=>{resetQuestionAttempt(practice,q.id);mark(q,false);renderPractice()});
     $('#practicePrev',root).addEventListener('click',()=>{preserve();practice.index--;renderPractice();window.scrollTo({top:0,behavior:'instant'})});
     $('#practiceNext',root).addEventListener('click',()=>{preserve();if(position<total){practice.index++;renderPractice();window.scrollTo({top:0,behavior:'instant'})}else{root.innerHTML=`<div class="exam-summary"><strong>Kész</strong><p>${total} feladaton mentél végig. A megjelölteket a feladatbank „Újra gyakorlom” szűrőjével találod meg.</p></div><button id="practiceAgain" class="button primary" type="button">Új gyakorlás</button>`;$('#practiceAgain').addEventListener('click',exitPractice)}});
     $('#practiceExit',root).addEventListener('click',exitPractice);

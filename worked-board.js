@@ -269,18 +269,24 @@
           line.classList.toggle('is-result-visible',i<stage.index||i===stage.index&&stage.phase==='result');
           line.classList.remove('board-new-line');
         });
-        label.textContent=`${stage.index+1} / ${lines.length} lépés · ${stage.phase==='instruction'?'instrukció':stage.phase==='result'?'eredmény':'felírás'}`;
+        label.textContent=`${stage.index+1} / ${lines.length} lépés · ${stage.phase==='instruction'?'útmutatás':stage.phase==='result'?'eredmény':'felírás'}`;
         meter.style.setProperty('--step-progress',`${(active+1)/stages.length*100}%`);
         previous.disabled=active===0;
         const upcoming=stages[active+1];
-        next.textContent=!upcoming?'Újrakezdés ↺':upcoming.phase==='instruction'?'Következő instrukció →':upcoming.phase==='result'?'Eredmény felírása →':'Képlet és számok →';
+        next.textContent=!upcoming?'Újrakezdés ↺':upcoming.phase==='instruction'?'Következő lépés →':upcoming.phase==='result'?'Eredmény felírása →':lines[upcoming.index].classList.contains('board-data-line')?'Adatok felírása →':'Képlet és számok →';
         example.classList.toggle('is-complete',!upcoming);
         if(animate){
           const line=lines[stage.index];line.classList.add('board-new-line');
-          // Reserve the actual sticky toolbar height when revealing a row.
-          // Its mobile layout can wrap onto two lines.
-          line.style.scrollMarginBottom=`${Math.ceil(toolbar.getBoundingClientRect().height)+12}px`;
-          line.scrollIntoView({block:'nearest',behavior:'instant'});
+          // Reveal only the part just written. Scrolling the entire row can
+          // pull an already visible result back towards its older instruction.
+          const target=stage.phase==='instruction'?line.querySelector('.board-note'):line.querySelector('.board-writing');
+          const toolbarBox=toolbar.getBoundingClientRect(),targetBox=target.getBoundingClientRect();
+          const safeBottom=Math.min(innerHeight-12,toolbarBox.top-12);
+          if(targetBox.top<12||targetBox.bottom>safeBottom){
+            target.style.scrollMarginBottom=`${Math.ceil(toolbarBox.height)+12}px`;
+            // Settle before measuring the flying copy's landing coordinates.
+            target.scrollIntoView({block:'nearest',behavior:'instant'});
+          }
           void line.offsetWidth;
           if(stage.phase==='writing')flyInto(line.querySelector('.board-math-prefix')||line.querySelector('.board-writing'),stage.index);
           if(stage.phase==='result')flyInto(line.querySelector('.board-math-result'),stage.index);

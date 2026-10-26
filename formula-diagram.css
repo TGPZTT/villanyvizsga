@@ -10,8 +10,13 @@
 .fm-frac{display:inline-flex;flex-direction:column;align-items:stretch;text-align:center;vertical-align:middle;line-height:1.15;margin:0 .13em;min-width:.7em}
 .fm-numerator{border-bottom:1.5px solid currentColor;padding:0 .16em .13em;display:block}
 .fm-denominator{padding:.13em .16em 0;display:block}
-.fm-root{display:inline-flex;align-items:center;gap:0}
-.fm-radicand{border-top:1px solid currentColor;padding:0 .06em}
+.fm-root{--fm-root-rule:.055em;position:relative;display:inline-flex;align-items:stretch;gap:0;max-width:100%;vertical-align:middle}
+.fm-root-symbol{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.fm-root-glyph{position:relative;display:block;align-self:stretch;flex:0 0 .7em;min-height:1em}
+.fm-root-glyph>svg{position:absolute;left:0;top:calc(var(--fm-root-rule)/2);width:100%;height:calc(100% - var(--fm-root-rule)/2);overflow:visible}
+.fm-root-glyph path{fill:none;stroke:currentColor;stroke-width:var(--fm-root-rule);stroke-linecap:butt;stroke-linejoin:miter}
+.fm-radicand{position:relative;display:inline-block;min-width:0;padding:calc(var(--fm-root-rule) + .07em) .08em 0 .05em}
+.fm-radicand::before{content:'';position:absolute;top:0;left:0;width:100%;height:var(--fm-root-rule);background:currentColor}
 .fm-symbol{color:var(--fm-color,#24333d);font-weight:600;outline-offset:4px;position:relative}
 .fm-expression sub{font-size:.65em;vertical-align:-.3em;line-height:1}
 .fm-expression sup{font-size:.65em;align-self:flex-start;line-height:1.1}

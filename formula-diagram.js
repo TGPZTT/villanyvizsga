@@ -54,7 +54,15 @@
     const factor=()=>{
       const token=tokens[pos++]; if(!token)return '';
       if(token.op==='('){const inner=expression(0);if(tokens[pos]?.op===')')pos++;return {group:inner,html:row(['<span class="fm-bracket">(</span>',inner,'<span class="fm-bracket">)</span>'])};}
-      if(token.op==='√'){const inner=factor();return {html:`<span class="fm-root"><span>√</span><span class="fm-radicand">${typeof inner==='string'?inner:inner?.group||inner?.html||''}</span></span>`};}
+      if(token.op==='√'){
+        const inner=factor();
+        let radicand=typeof inner==='string'?inner:inner?.group||inner?.html||'';
+        if(!radicand)return {html:'<span class="fm-atom">√</span>'};
+        // A postfix power belongs under an unparenthesised radical. A power
+        // after an explicit closing parenthesis stays outside that radical.
+        if(!inner?.group)while(tokens[pos]?.power)radicand=row([radicand,tokens[pos++].html]);
+        return {html:`<span class="fm-root"><span class="fm-root-symbol">√</span><span class="fm-root-glyph" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false"><path d="M1 52 L19 44 L39 91 L83 0 H102" vector-effect="non-scaling-stroke"/></svg></span><span class="fm-radicand">${radicand}</span></span>`};
+      }
       if(token.op==='−'||token.op==='+'){const inner=factor();return {html:row([esc(token.op),inner?.html||inner||''])};}
       return {html:token.html||esc(token.op)};
     };
@@ -165,7 +173,19 @@
 
   function layout(figure) {
     const stage=figure.querySelector('.fm-stage'),equation=figure.querySelector('.fm-expression'),svg=figure.querySelector('.fm-leaders');
+    if(stage&&equation&&figure.dataset.fmPresentation==='compact'){
+      // The guide owns the compact legend. Its equation stays in normal flow
+      // and needs no measured callout positions or ResizeObserver feedback.
+      if(figure.dataset.fmLayout!=='compact'){
+        figure.dataset.fmLayout='compact';figure.classList.remove('is-compact');
+        equation.style.cssText='position:static;left:auto;top:auto;transform:none;margin:0;width:auto;max-width:100%;';
+        stage.style.height='auto';
+        if(svg){svg.style.display='none';svg.querySelectorAll(':scope > path').forEach(path=>path.remove());}
+      }
+      return;
+    }
     if(!stage || !stage.getClientRects().length || !stage.clientWidth)return;
+    if(figure.dataset.fmLayout==='compact')svg?.style.removeProperty('display');
     const labels=[...stage.querySelectorAll('.fm-callout')],width=stage.clientWidth;
     figure.classList.remove('is-compact');
     equation.style.cssText='position:absolute;left:50%;top:0;transform:translateX(-50%);margin:0;width:max-content;max-width:100%;';
