@@ -1,0 +1,37 @@
+.spd-model{--spd-ink:#44354d;--spd-accent:#76509a;color:var(--spd-ink);background:#fffdfb;border:1px solid #ded3e7;border-radius:9px;margin:14px 0;overflow:hidden;font:16px/1.45 'Segoe UI',Arial,sans-serif}
+.spd-zone-key{display:flex;align-items:center;gap:16px;padding:10px 16px;background:#f6f1fa;border-bottom:1px solid #e8e0ee}
+.spd-zone-key>span{color:#6d6175;font-size:15px;white-space:nowrap}.spd-zone-key ol{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;margin:0;padding:0;flex:1;font-weight:650}
+.spd-zone-key li+li::before{content:'→';display:inline-block;margin-right:clamp(8px,2vw,30px);color:#9b8ca6;font-weight:400}
+.spd-network{height:234px;position:relative;isolation:isolate;margin:4px 15px 0}
+.spd-wires{position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;overflow:visible}
+.spd-wires path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.spd-phase,.spd-branch{stroke:#76523e;stroke-width:2.6}.spd-junction{fill:#76523e}
+.spd-down-conductor{stroke:#977b47;stroke-width:4}.spd-earth-symbol{stroke:#6b665c;stroke-width:2}
+.spd-protective{stroke:#338249;stroke-width:5}.spd-protective-stripe{stroke:#ead440;stroke-width:2.5;stroke-dasharray:9 7}
+.spd-selected-path{stroke:#b85c1a;stroke-width:4;opacity:.8}
+.spd-device-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;position:absolute;left:119px;right:74px;top:83px}
+.spd-model button{appearance:none;font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer;position:relative;touch-action:manipulation}
+.spd-model button:focus-visible{outline:3px solid #b06418;outline-offset:5px;border-radius:5px}
+.spd-stage{justify-self:center}.spd-device{display:flex;flex-direction:column;align-items:center;justify-content:center;width:68px;height:70px;background:#fff;border:2px solid #8d7a9b;border-radius:4px;box-sizing:border-box}
+.spd-device strong{font-size:22px;line-height:1.2}.spd-device>span{font-size:14px;color:#7e7088;margin-top:3px}
+.spd-stage.is-selected .spd-device{border-color:var(--spd-accent);background:#f3eafa;box-shadow:0 0 0 4px #76509a12}
+.spd-stage:hover .spd-device{background:#f7f1fb}.spd-external{position:absolute!important;left:0;top:14px;width:83px;display:flex;align-items:center;flex-direction:column-reverse;gap:7px}
+.spd-external-symbol{display:block;width:36px;height:40px;background:#fffdfb;border-radius:5px}.spd-external-symbol svg{height:35px;width:28px;fill:#f4dfae;stroke:#987644;stroke-width:1.5}
+.spd-external>span:last-child{font-size:15px;line-height:1.3;padding:3px 0}
+.spd-external.is-selected .spd-external-symbol{box-shadow:0 0 0 4px #b85c1a16}.spd-supply-label{position:absolute;left:115px;top:15px;font-size:15px;background:#fffdfb;padding:0 4px;color:#76523e}
+.spd-load{position:absolute;right:0;top:26px;width:62px;text-align:center}.spd-load svg{width:39px;height:39px;fill:#f6f1fa;stroke:#756480;stroke-width:1.8;display:block;margin:auto}.spd-load span{display:block;font-size:14px;line-height:1.25;margin-top:2px}
+.spd-protective-label{position:absolute;left:113px;right:20px;bottom:6px;line-height:1.2;font-size:14px;color:#54624e}
+.spd-explanation{padding:11px 16px;background:#f7f3fb;border-top:1px solid #e9e0ef;border-bottom:1px solid #e9e0ef;min-height:105px}
+.spd-explanation h3,.spd-withstand h3{margin:0 0 5px!important;font:650 17px/1.3 'Segoe UI',Arial,sans-serif!important;color:#513d60!important}
+.spd-explanation p,.spd-withstand p,.spd-operation-note{margin:0!important;max-width:none!important;font:16px/1.45 'Segoe UI',Arial,sans-serif!important;text-align:left!important;color:#44354d!important}
+.spd-explanation .spd-old-label{margin-top:5px!important;font-size:14px!important;color:#706276!important}
+.spd-operation-note{padding:9px 16px!important;font-size:14px!important;color:#726479!important}
+.spd-withstand{margin:0 16px 13px;padding-top:10px;border-top:1px solid #e6ddea}
+.spd-withstand-title{display:flex;align-items:baseline;justify-content:space-between;gap:15px}.spd-withstand-title>span{font-size:14px;color:#76697d}
+.spd-withstand ol{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;list-style:none;padding:0;margin:8px 0}
+.spd-withstand li{display:grid;grid-template-columns:auto 1fr;gap:2px 7px;align-items:baseline;border-left:2px solid #c6b2d8;padding-left:8px;min-width:0}.spd-withstand li>span:first-child{font-size:15px;font-weight:650;color:#76509a}.spd-withstand li>strong{font-size:22px;font-weight:650;white-space:nowrap}.spd-withstand small{font-size:15px;font-weight:400;color:#76509a}.spd-withstand li>span:last-child{grid-column:1/-1;font-size:14px;line-height:1.25;color:#6f6178}
+.spd-withstand>p{font-size:14px!important;color:#6b5a74!important}
+.spd-stage::after,.spd-external-symbol::after{content:'';position:absolute;inset:-4px;border-radius:7px;box-shadow:0 0 0 2px #76509a12;pointer-events:none;animation:spd-affordance 2.8s ease-in-out 2}
+@keyframes spd-affordance{0%,100%{opacity:0}50%{opacity:1;box-shadow:0 0 0 5px #76509a18}}
+@media(max-width:600px){.spd-zone-key{display:block;padding:8px 12px}.spd-zone-key>span{display:block;margin-bottom:5px;font-size:14px}.spd-zone-key ol{gap:5px;font-size:15px}.spd-zone-key li+li::before{margin-right:7px}.spd-network{height:234px;margin-inline:8px}.spd-device-row{left:83px;right:52px;gap:6px;top:84px}.spd-device{width:54px;height:65px}.spd-device strong{font-size:21px}.spd-device>span{font-size:14px}.spd-external{width:75px}.spd-external>span:last-child{font-size:15px}.spd-supply-label{left:83px;font-size:15px}.spd-load{width:65px;right:-2px}.spd-load svg{width:30px;height:34px}.spd-load span{font-size:14px}.spd-protective-label{left:83px;right:0;font-size:14px;bottom:3px}.spd-explanation{padding:10px 12px;min-height:147px}.spd-operation-note{padding:8px 12px!important}.spd-withstand{margin:0 12px 12px}.spd-withstand-title{display:block}.spd-withstand-title>span{display:block;margin-top:2px}.spd-withstand ol{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.spd-withstand li>span:last-child{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.spd-model *,.spd-model *::after{animation:none!important;transition:none!important}}

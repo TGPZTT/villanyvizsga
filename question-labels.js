@@ -58,6 +58,7 @@
   function sourceNumber(value) { return catalog.get(identity(value)) || null; }
   function sourceLabel(value) {
     const number = sourceNumber(value);
+    if(identity(value).startsWith('generated-exam-'))return number ? `${number}. géppel generált kérdéssor` : 'Géppel generált kérdéssor';
     return number ? `${number}. feladatsor` : 'Feladatsor';
   }
   function sourceKind(value, plural = false) {

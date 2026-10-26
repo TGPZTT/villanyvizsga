@@ -2,6 +2,30 @@
   'use strict';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const colors = ['#b84d17','#286c9b','#7c579b','#507b36','#b47a13','#a84c59'];
+  // Only authored mathematical fragments are typeset. Prose and voltage-class
+  // pairs stay prose, so a slash in 450/750 V is not treated as division.
+  function formatDetail(value) {
+    const fragments = [
+      ['nₛ = 60 × 50 / 2 = 1500 1/min','n_s = (60 · 50) / 2 = 1500',' min⁻¹'],
+      ['ΔU = I × ρ × l / A','ΔU = (I · ρ · l) / A'],
+      ['R_hurok = 2 × ρ × l / A','R_hurok = (2 · ρ · l) / A'],
+      ['R = ρ × l / A','R = (ρ · l) / A'],
+      ['nₛ = 60 × f / p','n_s = (60 · f) / p'],
+      ['46 / 60 × 300 V = 230 V','46 / 60 · 300 V = 230 V'],
+      ['46 × 5 V = 230 V','46 · 5 V = 230 V'],
+      ['η_f = Φ/P','η_f = Φ / P'],['E = P × t','E = P · t'],
+      ['I = G × U','I = G · U'],['I × R_b','I · R_b'],['G = 1/R','G = 1 / R']
+    ];
+    const rendered=[];
+    let text=String(value||'');
+    for(const [source,math,suffix=''] of fragments) {
+      if(!text.includes(source))continue;
+      const marker='\uE100'+rendered.length+'\uE101';
+      rendered.push(window.VVFormula ? `<span class="lv-inline-formula" role="math" aria-label="${esc(math+suffix)}">${window.VVFormula.typeset(math)}${esc(suffix)}</span>` : esc(source.replaceAll('×','·')));
+      text=text.replaceAll(source,marker);
+    }
+    return esc(text).replace(/(\p{L})_([\p{L}\p{N}]+(?:[,–][\p{L}\p{N}]+)*)/gu,'$1<sub>$2</sub>').replace(/\uE100(\d+)\uE101/gu,(_,index)=>rendered[Number(index)]);
+  }
   const glyphs = {
     generator:'M12 32a20 20 0 1 0 40 0 20 20 0 1 0-40 0M4 32h8m40 0h8',
     pylon:'M32 5 16 58m16-53 16 53M23 20h18M19 34h26M14 48h36M16 58l29-24M48 58 19 34M10 20h44M9 34h46',
@@ -178,7 +202,7 @@
       const sx=narrow?60:120,rx=narrow?260:475,arrow=narrow?115:250;
       return `<svg class="${narrow?'lv-ohm-narrow':'lv-ohm-wide'}" viewBox="0 0 ${narrow?330:650} 260" role="img" aria-label="A feszültségforrás és az ellenállás zárt áramköre"><g fill="none" stroke="#79624f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M${sx} 106V65H${rx}V110M${rx} 190V240H${sx}V174"/><circle cx="${sx}" cy="140" r="34" fill="#fff"/><path d="M${sx-8} 127h16m-8-8v16m-8 20h16"/><rect x="${rx-25}" y="110" width="50" height="80" class="lv-load"/><path d="M${arrow} 65h95m-10-8 10 8-10 8" class="lv-current-arrow" data-lv-ohm-indicator style="stroke-width:${Math.min(8,2+current)}"/><text x="${sx}" y="209"><tspan>U = </tspan><tspan data-lv-ohm-value="u">${ohmNumber(state.u)}</tspan><tspan> V</tspan></text><text x="${narrow?rx:555}" y="${narrow?220:155}"><tspan>R = </tspan><tspan data-lv-ohm-value="r">${ohmNumber(state.r)}</tspan><tspan> Ω</tspan></text><text x="${narrow?160:300}" y="42"><tspan data-lv-ohm-relation>I ${ohmRelation(current)} </tspan><tspan data-lv-ohm-value="i">${ohmNumber(current)}</tspan><tspan> A</tspan></text></g></svg>`;
     };
-    return `<div class="lv-ohm"><div class="lv-ohm-controls">${control('u','U','Feszültség','V',state.u)}${control('r','R','Ellenállás','Ω',state.r)}</div><div class="lv-technical lv-ohm-circuit" tabindex="0" role="region" aria-label="Zárt egyenáramú forrás–ellenállás kör" data-lv-diagram>${circuit(false)}${circuit(true)}</div><div class="lv-ohm-answer"><div class="lv-ohm-equation">${symbol('I','áramerősség','A')} = ${symbol('U','feszültség','V')} / ${symbol('R','ellenállás','Ω')} = <b data-lv-ohm-value="u">${ohmNumber(state.u)}</b> <span class="lv-ohm-unit">V</span> / <b data-lv-ohm-value="r">${ohmNumber(state.r)}</b> <span class="lv-ohm-unit">Ω</span> <span data-lv-ohm-equals>${ohmRelation(current)}</span> <output data-lv-ohm-current aria-live="polite">${ohmNumber(current)} A</output></div><p data-lv-ohm-held>Az egyik értéket változtasd. A másik változatlan marad.</p><button type="button" data-lv-ohm-reset>Alaphelyzet</button><p class="lv-ohm-baseline" data-lv-ohm-baseline aria-label="Kiindulási értékek az összehasonlításhoz"><span>Kiindulás:</span><b>U = ${ohmNumber(state.initial.u)} V</b><b>R = ${ohmNumber(state.initial.r)} Ω</b><b>I ${ohmRelation(state.initial.u/state.initial.r)} ${ohmNumber(state.initial.u/state.initial.r)} A</b></p></div></div>`;
+    return `<div class="lv-ohm"><div class="lv-ohm-controls">${control('u','U','Feszültség','V',state.u)}${control('r','R','Ellenállás','Ω',state.r)}</div><div class="lv-technical lv-ohm-circuit" tabindex="0" role="region" aria-label="Zárt egyenáramú forrás–ellenállás kör" data-lv-diagram>${circuit(false)}${circuit(true)}</div><div class="lv-ohm-answer"><div class="lv-ohm-equation">${symbol('I','áramerősség','A')} = <span class="fm-frac"><span class="fm-numerator">${symbol('U','feszültség','V')}</span><span class="fm-denominator">${symbol('R','ellenállás','Ω')}</span></span> = <span class="fm-frac"><span class="fm-numerator"><b data-lv-ohm-value="u">${ohmNumber(state.u)}</b> <span class="lv-ohm-unit">V</span></span><span class="fm-denominator"><b data-lv-ohm-value="r">${ohmNumber(state.r)}</b> <span class="lv-ohm-unit">Ω</span></span></span> <span data-lv-ohm-equals>${ohmRelation(current)}</span> <output data-lv-ohm-current aria-live="polite">${ohmNumber(current)} A</output></div><p data-lv-ohm-held>Az egyik értéket változtasd. A másik változatlan marad.</p><button type="button" data-lv-ohm-reset>Alaphelyzet</button><p class="lv-ohm-baseline" data-lv-ohm-baseline aria-label="Kiindulási értékek az összehasonlításhoz"><span>Kiindulás:</span><b>U = ${ohmNumber(state.initial.u)} V</b><b>R = ${ohmNumber(state.initial.r)} Ω</b><b>I ${ohmRelation(state.initial.u/state.initial.r)} ${ohmNumber(state.initial.u/state.initial.r)} A</b></p></div></div>`;
   }
   function updateOhm(panel,field,raw,commit=false){
     const state=ohmStates.get(panel.dataset.lvKey);if(!state||!['u','r','reset'].includes(field))return;
@@ -282,22 +306,23 @@
     frame=requestAnimationFrame(tick);
   }
   function technical(spec,index,key='ohm'){
+    const lab=window.VVLearningLabs?.render(spec,index);if(lab)return lab;
     const v=spec.variant,item=spec.items[index],label=String(item.label||'').toLocaleLowerCase('hu'),n=spec.items.length;
     let drawing='',kind=v;
     const line=(path,cls='')=>`<path class="${cls}" d="${path}" fill="none"/>`;
-    const text=(x,y,s,cls='')=>`<text class="${cls}" x="${x}" y="${y}">${esc(s)}</text>`;
+    const text=(x,y,s,cls='')=>`<text class="${cls}" x="${x}" y="${y}">${esc(s).replace(/([A-Za-zΑ-ω])_([A-Za-zÀ-ž0-9]+(?:[,–][A-Za-zÀ-ž0-9]+)*)/gu,'$1<tspan baseline-shift="sub" font-size="68%">$2</tspan>')}</text>`;
     if(v==='material-resistivity')return materialComparison(spec,index);
     if(v==='voltage-drop-model'){
       const model=item.model;
       if(model==='three-phase'){
         drawing='<rect x="55" y="60" width="100" height="220" fill="#fff"/><rect x="590" y="60" width="125" height="220" fill="#fff"/>';
         [90,170,250].forEach((y,i)=>{drawing+=line(`M155 ${y}H315M365 ${y}H590`,'lv-supply')+`<rect x="315" y="${y-12}" width="50" height="24" fill="#fff"/>`+text(105,y+8,`L${i+1}`);});
-        drawing+=text(650,180,'3~')+text(390,43,'l')+text(390,325,'ΔU₃f = √3 × ρ × l × Iw / A');
+        drawing+=text(650,180,'3~')+text(390,43,'l');
       }else{
         drawing='<rect x="65" y="110" width="90" height="110" fill="#fff"/><rect x="590" y="120" width="65" height="90" class="lv-load"/>'+text(110,173,'U');
         drawing+=line('M155 135H315M365 135H590','lv-supply')+'<rect x="315" y="123" width="50" height="24" fill="#fff"/>'+text(390,90,'l')+text(340,175,'R₁');
         if(model==='loop')drawing+=line('M655 190H690V265H365M315 265H110V220')+'<rect x="315" y="253" width="50" height="24" fill="#fff"/>'+text(390,306,'l')+text(340,243,'R₂');
-        else drawing+=line('M655 190H690V265H110V220')+text(390,315,'ΔU = I × R₁');
+        else drawing+=line('M655 190H690V265H110V220')+text(390,315,'ΔU = I · R₁');
         drawing+=text(625,105,'Fogyasztó');
       }
     }else if(v==='contact-protection'){
@@ -364,7 +389,7 @@
       // A straight, cut length of insulated conductor. The right end is a flat
       // cut, not a rounded capsule. The exposed core is visibly narrower than
       // the insulation, and PE stripes run along the insulation only.
-      drawing=`<defs><clipPath id="${wireId}"><path d="M155 77H658V119H155Z"/></clipPath></defs><path d="M100 88H185V108H100Z" fill="#c78a4d" stroke="#805c37" stroke-width="1.5"/><ellipse cx="100" cy="98" rx="5" ry="10" fill="#ecc38e" stroke="#805c37" stroke-width="1.5"/><path d="M155 77H658V119H155Z" fill="${color}" stroke="#5c5c55" stroke-width="1.5"/><g clip-path="url(#${wireId})">${item.stripe?`<path d="M155 88H660M155 109H660" stroke="${esc(item.stripe)}" stroke-width="8"/>`:''}${item.endColor?`<path d="M623 76V121" stroke="${esc(item.endColor)}" stroke-width="55"/>`:''}<path d="M160 80H656" stroke="#fff" stroke-opacity=".25" stroke-width="2"/></g><ellipse cx="155" cy="98" rx="6" ry="21" fill="${color}" stroke="#5c5c55" stroke-width="1.5"/><ellipse cx="155" cy="98" rx="3" ry="10" fill="#c78a4d"/><path d="M655 78V118" stroke="#313b40" stroke-width="1.5"/>${text(385,158,item.label)}`;
+      drawing=`<defs><clipPath id="${wireId}"><path d="M155 77H658V119H155Z"/></clipPath></defs><path d="M155 77H658V119H155Z" fill="${color}" stroke="#5c5c55" stroke-width="1.5"/><g clip-path="url(#${wireId})">${item.stripe?`<path d="M155 88H660M155 109H660" stroke="${esc(item.stripe)}" stroke-width="8"/>`:''}${item.endColor?`<path d="M183 76V121M623 76V121" stroke="${esc(item.endColor)}" stroke-width="55"/>`:''}<path d="M160 80H656" stroke="#fff" stroke-opacity=".25" stroke-width="2"/></g><ellipse cx="155" cy="98" rx="6" ry="21" fill="${color}" stroke="#5c5c55" stroke-width="1.5"/><ellipse cx="155" cy="98" rx="3" ry="10" fill="#c78a4d"/><path d="M100 88H155V108H100Z" fill="#c78a4d"/><path d="M100 88H155M100 108H155" fill="none" stroke="#805c37" stroke-width="1.5"/><ellipse cx="100" cy="98" rx="5" ry="10" fill="#ecc38e" stroke="#805c37" stroke-width="1.5"/><path d="M655 78V118" stroke="#313b40" stroke-width="1.5"/>${text(385,158,item.label)}`;
       return `<div class="lv-technical lv-wire-colors" tabindex="0" role="region" aria-label="${esc(item.label)} szigetelt vezető" data-lv-diagram><svg viewBox="70 60 620 115" role="img" aria-label="${esc(item.label)}. A szigetelés színe és a csupasz vezetővég."><g stroke-linejoin="round">${drawing}</g></svg></div>${controls(spec,index)}`;
     }else if(v==='cable-section'||v==='cable-structure'){
       const peClipId='lv-cable-pe-'+(technical.cableClipSerial=(technical.cableClipSerial||0)+1);
@@ -379,15 +404,15 @@
     }else if(v==='ohm'){
       return ohmDiagram(spec,key);
     }else if(v==='slip'){
-      drawing=line('M120 90H650m-20-12 20 12-20 12','lv-p')+line('M120 200H565m-20-12 20 12-20 12','lv-q')+line('M565 270H650M565 260v20M650 260v20','lv-pointer')+text(75,100,'ns')+text(75,210,'n')+text(607,310,'ns − n');
-      drawing+=text(400,35,index===2?'s = (ns − n) / ns':'ns > n');
+      drawing=line('M120 90H650m-20-12 20 12-20 12','lv-p')+line('M120 200H565m-20-12 20 12-20 12','lv-q')+line('M565 270H650M565 260v20M650 260v20','lv-pointer')+text(75,100,'n_s')+text(75,210,'n')+text(607,310,'n_s − n');
+      drawing+=text(400,35,'n_s > n');
     }else if(v==='overcurrent'){
       const traces=['M100 245h100v-75h480','M100 245h100V45H300v200h380','M100 245h100C220 70 250 60 280 115S340 245 420 245H680'];
       drawing=line('M100 30v250H700','lv-axis')+line('M100 245H690','lv-rating')+line(traces[Math.min(index,2)],'lv-supply')+text(75,35,'I')+text(715,285,'t');
     }else if(v==='instrument'){
       const angle=Math.PI+46/60*Math.PI;
       drawing='<path d="M165 270a225 225 0 0 1 450 0" fill="#fff"/>'+Array.from({length:61},(_,i)=>{const a=Math.PI+i*Math.PI/60,r=i%10===0?195:207;return line(`M${390+r*Math.cos(a)} ${270+r*Math.sin(a)} ${390+220*Math.cos(a)} ${270+220*Math.sin(a)}`,i===60&&index===0?'lv-supply':'lv-axis')+(i%10===0?text(390+245*Math.cos(a),278+245*Math.sin(a),i):'');}).join('');
-      drawing+=line(`M390 270 ${390+195*Math.cos(angle)} ${270+195*Math.sin(angle)}`,'lv-supply')+'<circle cx="390" cy="270" r="8" fill="#71513b"/>'+text(390,310,index===0?'Skálavég: 60':index===1?'Méréshatár: 300 V':'46 / 60 × 300 V = 230 V');
+      drawing+=line(`M390 270 ${390+195*Math.cos(angle)} ${270+195*Math.sin(angle)}`,'lv-supply')+'<circle cx="390" cy="270" r="8" fill="#71513b"/>'+text(390,310,index===0?'Skálavég: 60':index===1?'Méréshatár: 300 V':'Leolvasott feszültség: 230 V');
     }else if(v==='wave'){
       drawing=waveSketch(spec,item,index);
     }else if(v==='light-distance'){
@@ -453,7 +478,7 @@
     }else if(['breaker-label','rcd-label','cable-code'].includes(v)){
       return nodes({...spec,type:'compare'},index);
     }else return '';
-    return `<div class="lv-technical lv-${esc(kind)}" tabindex="0" role="region" aria-label="${esc(spec.title)}" data-lv-diagram data-lv-active="${esc(item.target||'')}" style="--lv-active:${esc(item.color||colors[index%colors.length])}"><svg viewBox="0 0 780 350" role="img" aria-label="${esc(spec.title)}"><g stroke="#79624f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${drawing}</g></svg></div>${controls(spec,index)}`;
+    return `<div class="lv-technical lv-${esc(kind)}" tabindex="0" role="region" aria-label="${esc(spec.title)}" data-lv-diagram data-lv-active="${esc(item.target||'')}" style="--lv-active:${esc(item.color||colors[index%colors.length])}"><svg viewBox="0 0 780 350" role="img" aria-label="${esc(spec.title)}"><g stroke="#79624f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${drawing}</g></svg></div>${v==='slip'&&index===2?`<div class="lv-typeset-formula" role="math">${window.VVFormula.typeset('s = (n_s − n) / n_s')}</div>`:v==='voltage-drop'&&item.model==='three-phase'?`<div class="lv-typeset-formula" role="math">${window.VVFormula.typeset('ΔU_3f = √3 · ρ · l · I_w / A')}</div>`:v==='instrument'&&index===2?`<div class="lv-typeset-formula" role="math">${window.VVFormula.typeset('46 / 60 · 300 V = 230 V')}</div>`:''}${controls(spec,index)}`;
   }
   function one(spec,lessonId,part,tabbed=false) {
     if(!spec?.items?.length)return '';
@@ -462,13 +487,16 @@
     const drawing=network?network+controls(spec,index):technical(spec,index,key)||(spec.type==='circuit'?circuit(spec,index):spec.type==='graph'?graph(spec,index):spec.type==='spectrum'?spectrum(spec,index):nodes(spec,index,key));
     const depictionTitle={'steam-cycle':'Víz–gőz kör és a generátor hajtása','conductor-dimensions':'Hossz, keresztmetszet és ellenállás','network-topology':'Táplálási utak és fogyasztói pontok','ip-water':'Cseppek, vízsugár és bemerítés'}[spec.variant];
     const showTitle=!tabbed&&(depictionTitle||spec.showTitle===true||(part===1&&!/^(kövesd|figyeld|válaszd|hasonlítsd|különítsd|keresd|előbb)/iu.test(spec.title)));
-    return `<section class="lv-workbench" data-lv-key="${esc(key)}" data-lv-part="${part}" aria-label="${esc(spec.title)}">${showTitle?`<div class="lv-heading"><h3>${esc(depictionTitle||spec.title)}</h3></div>`:''}${drawing}${spec.variant==='ohm'?'':`<div class="lv-observation" role="status" aria-live="polite"><span class="lv-observation-dot" style="background:${esc(item.color||colors[index%colors.length])}"></span><div><strong class="lv-observation-label">${esc(item.label)}</strong><p>${esc(item.detail||'')}</p></div></div>`}${['flow','timeline','route','safety'].includes(spec.type)&&spec.items.length>5?`<div class="lv-step-controls"><button type="button" data-lv-prev ${index===0?'disabled':''} aria-label="Előző részlet">←</button><span>${index+1} / ${spec.items.length}</span><button type="button" data-lv-next ${index===spec.items.length-1?'disabled':''} aria-label="Következő részlet">→</button></div>`:''}</section>`;
+    return `<section class="lv-workbench" data-lv-key="${esc(key)}" data-lv-part="${part}" aria-label="${esc(spec.title)}">${showTitle?`<div class="lv-heading"><h3>${esc(depictionTitle||spec.title)}</h3></div>`:''}${drawing}${spec.variant==='ohm'?'':`<div class="lv-observation" role="status" aria-live="polite"><span class="lv-observation-dot" style="background:${esc(item.color||colors[index%colors.length])}"></span><div><strong class="lv-observation-label">${esc(item.label)}</strong><p>${formatDetail(item.detail||'')}</p></div></div>`}${['flow','timeline','route','safety'].includes(spec.type)&&spec.items.length>5?`<div class="lv-step-controls"><button type="button" data-lv-prev ${index===0?'disabled':''} aria-label="Előző részlet">←</button><span>${index+1} / ${spec.items.length}</span><button type="button" data-lv-next ${index===spec.items.length-1?'disabled':''} aria-label="Következő részlet">→</button></div>`:''}</section>`;
   }
   function render(lesson){
     const initial=lesson.interaction?.states?.[0]?.channels||[];
-    const specs=[lesson.visualSpec,lesson.secondaryVisual].map((spec,part)=>({spec:spec?.variant==='ohm'?{...spec,ohmDefaults:{u:initial.find(item=>item.unit==='V')?.value,r:initial.find(item=>item.unit==='Ω')?.value}}:spec,part})).filter(({spec})=>spec?.items?.length);
-    if(!specs.length)return '';
-    if(specs.length===1)return `<div class="lv-visuals">${one(specs[0].spec,lesson.id,specs[0].part)}</div>`;
+    const visible=[lesson.visualSpec,lesson.secondaryVisual].map((spec,part)=>({spec:spec?.variant==='ohm'?{...spec,ohmDefaults:{u:initial.find(item=>item.unit==='V')?.value,r:initial.find(item=>item.unit==='Ω')?.value}}:spec,part})).filter(({spec,part})=>spec?.items?.length&&!lesson.presentationPolicy?.hideVisuals?.includes(part===0?'visualSpec':'secondaryVisual'));
+    const staticParts=visible.filter(({spec,part})=>window.VVLearningComparisons?.matches(spec,lesson.id,part));
+    const comparisons=staticParts.map(({spec,part})=>window.VVLearningComparisons.render(spec,lesson.id,part)).join('');
+    const specs=visible.filter(item=>!staticParts.includes(item));
+    if(!specs.length)return comparisons;
+    if(specs.length===1)return comparisons+`<div class="lv-visuals">${one(specs[0].spec,lesson.id,specs[0].part)}</div>`;
     const selected=specs.some(({part})=>part===illustrationStates.get(lesson.id))?illustrationStates.get(lesson.id):specs[0].part;
     const id='lv-illustrations-'+(++illustrationSerial);
     const title=spec=>String(spec.title||'Ábra').trim().replace(/[.!?]+$/u,'');
@@ -489,7 +517,7 @@
     });
   }
   function motionSnapshot(panel){
-    return new Map([...panel.querySelectorAll('.lv-changed [data-motion-key],[data-motion-key]:not(.lv-conductor-comparison [data-motion-key])')].map(node=>[node.dataset.motionKey,{...Object.fromEntries(['d','cx','cy','rx','ry','x','y','width','height','transform'].filter(a=>node.hasAttribute(a)).map(a=>[a,node.getAttribute(a)]))}]));
+    return new Map([...panel.querySelectorAll('.lv-changed [data-motion-key],[data-motion-key]:not(.lv-conductor-comparison [data-motion-key])')].map(node=>[node.dataset.motionKey,{...Object.fromEntries(['d','cx','cy','rx','ry','x','y','width','height','transform','fill-opacity','stroke-width'].filter(a=>node.hasAttribute(a)).map(a=>[a,node.getAttribute(a)]))}]));
   }
   function animateDrawing(previous,panel){
     if(matchMedia('(prefers-reduced-motion: reduce)').matches||document.hidden)return;
@@ -611,6 +639,15 @@
         const wrapper=document.createElement('div');wrapper.innerHTML=one(spec,lesson.id,part,!!panel.closest('[data-lv-illustration-panel]'));const next=wrapper.firstElementChild;panel.replaceWith(next);mount(next.parentElement,lesson);
         const focus=next.querySelector(focusIndex),fallback=next.querySelector(`[data-lv-index="${index}"]`);(focus&&!focus.disabled?focus:fallback)?.focus({preventScroll:true});
         animateDrawing(previous,next);
+        if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+          // A short, finite emphasis follows the chosen physical part only.
+          // Reference geometry and text stay still while the learner reads.
+          next.querySelectorAll('.lv-changed [data-motion-key],.lv-part-focus path,.lab-vector.is-active,.ln-trace,.lv-current-trace').forEach(node=>{
+            if(node instanceof SVGGeometryElement)node.animate([{opacity:1},{opacity:.55},{opacity:1}],{duration:1100,iterations:2,easing:'ease-in-out'});
+          });
+          next.querySelectorAll('.lab-ray.is-active,.lab-direction.is-active,.lab-vector.is-active').forEach(path=>{const length=path.getTotalLength?.();if(length)path.animate([{strokeDasharray:`${length} ${length}`,strokeDashoffset:length},{strokeDasharray:`${length} ${length}`,strokeDashoffset:0}],{duration:700,easing:'cubic-bezier(.2,.6,.3,1)'});});
+          next.querySelector('.lab-light-patch.is-active')?.animate([{opacity:.25},{opacity:1}],{duration:650,easing:'ease-out'});
+        }
         if(!matchMedia('(prefers-reduced-motion: reduce)').matches){next.querySelector('.lv-observation')?.animate([{opacity:.65},{opacity:1}],{duration:220,easing:'ease-out'});next.querySelectorAll('.ln-trace,.lv-current-trace').forEach(path=>{const length=path.getTotalLength?.();if(length)path.animate([{strokeDashoffset:60},{strokeDashoffset:0}],{duration:1500,easing:'linear'});});}
       },{once:false});
     });
@@ -622,5 +659,5 @@
       if(panel.getClientRects().length&&!panel.closest('[hidden]')){rememberPans(panel);fitDrawings(panel);restorePans(panel);}
     }));
   });
-  window.VVLearningVisuals={render,mount,symbol:glyph};
+  window.VVLearningVisuals={render,mount,symbol:glyph,formatDetail};
 })();

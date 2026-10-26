@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const VERSION = '20261026r2';
+  const VERSION = '20261026r4';
   const esc = value => String(value).replace(/[&<>"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
   let dialog, frame, notice, returnTo, generation = 0;
   let referenceDialog, referenceReturnTo;
@@ -14,9 +14,9 @@
     let toolbar=container.querySelector('.figure-lightbox-toolbar');
     if(!toolbar){toolbar=document.createElement('div');toolbar.className='figure-lightbox-toolbar';const closeButton=container.querySelector('button');if(closeButton)toolbar.append(closeButton);container.prepend(toolbar);}
     const controls=document.createElement('div');controls.className='figure-zoom-controls';
-    controls.innerHTML='<button type="button" data-image-zoom="out" aria-label="Kicsinyítés">−</button><button type="button" data-image-zoom="fit">Illesztés</button><button type="button" data-image-zoom="natural">100%</button><button type="button" data-image-zoom="in" aria-label="Nagyítás">+</button>';
+    controls.innerHTML='<button type="button" data-image-zoom="out" aria-label="Kicsinyítés">−</button><button type="button" data-image-zoom="fit">Alaphelyzet</button><button type="button" data-image-zoom="in" aria-label="Nagyítás">+</button>';
     toolbar.append(controls);container.classList.add('has-image-zoom');
-    let scale=1,fitted=true,drag=null;
+    let scale=1,fitted=true,drag=null,dragged=false;
     const fit=()=>{if(!picture.naturalWidth)return;fitted=true;viewport.classList.remove('is-zoomed');picture.style.width='';picture.style.height='';viewport.scrollLeft=viewport.scrollTop=0;controls.querySelector('[data-image-zoom=fit]').setAttribute('aria-pressed','true');};
     const zoom=target=>{
       if(!picture.naturalWidth)return;
@@ -28,12 +28,13 @@
       controls.querySelector('[data-image-zoom=fit]').setAttribute('aria-pressed','false');
       requestAnimationFrame(()=>{viewport.scrollLeft=Math.max(0,cx*picture.getBoundingClientRect().width-viewport.clientWidth/2);viewport.scrollTop=Math.max(0,cy*picture.getBoundingClientRect().height-viewport.clientHeight/2);});
     };
-    controls.addEventListener('click',event=>{const mode=event.target.closest('[data-image-zoom]')?.dataset.imageZoom;if(!mode)return;if(mode==='fit')fit();else if(mode==='natural')zoom(1);else zoom((fitted?picture.getBoundingClientRect().width/picture.naturalWidth:scale)*(mode==='in'?1.5:1/1.5));});
+    controls.addEventListener('click',event=>{const mode=event.target.closest('[data-image-zoom]')?.dataset.imageZoom;if(!mode)return;if(mode==='fit')fit();else zoom((fitted?picture.getBoundingClientRect().width/picture.naturalWidth:scale)*(mode==='in'?1.5:1/1.5));});
     picture.addEventListener('load',fit);picture.addEventListener('dragstart',event=>event.preventDefault());
     picture.addEventListener('dblclick',()=>fitted?zoom(1):fit());
-    viewport.addEventListener('pointerdown',event=>{if(fitted||event.pointerType==='touch'||event.button!==0)return;drag={x:event.clientX,y:event.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};viewport.setPointerCapture(event.pointerId);event.preventDefault();});
-    viewport.addEventListener('pointermove',event=>{if(drag){viewport.scrollLeft=drag.left+drag.x-event.clientX;viewport.scrollTop=drag.top+drag.y-event.clientY;}});
+    viewport.addEventListener('pointerdown',event=>{dragged=false;if(fitted||event.pointerType==='touch'||event.button!==0)return;drag={x:event.clientX,y:event.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};viewport.setPointerCapture(event.pointerId);event.preventDefault();});
+    viewport.addEventListener('pointermove',event=>{if(drag){if(Math.hypot(drag.x-event.clientX,drag.y-event.clientY)>4)dragged=true;viewport.scrollLeft=drag.left+drag.x-event.clientX;viewport.scrollTop=drag.top+drag.y-event.clientY;}});
     const endDrag=()=>{drag=null;};viewport.addEventListener('pointerup',endDrag);viewport.addEventListener('pointercancel',endDrag);
+    container.addEventListener('click',event=>{if(dragged){dragged=false;return;}if(event.target===container||event.target===viewport)container.close();});
     container.addEventListener('close',fit);
     if(picture.complete&&picture.naturalWidth)fit();
   }
@@ -102,8 +103,8 @@
 
   function childDocument() {
     const base = new URL('.', location.href).href;
-    const styles = ['style.css','experience.css','learning.css','learning-visuals.css','learning-networks.css','learning-sort.css'];
-    const scripts = ['readable-text.js','question-labels.js','learning-visuals.js','learning-networks.js','learning-sort.js','learning.js','learning-window.js'];
+    const styles = ['style.css','experience.css','learning.css','learning-visuals.css','learning-networks.css','learning-sort.css','formula-diagram.css','learning-labs.css','learning-comparisons.css','learning-spd.css'];
+    const scripts = ['readable-text.js','question-labels.js','formula-diagram.js','learning-labs.js','learning-comparisons.js','learning-spd.js','learning-visuals.js','learning-networks.js','learning-sort.js','learning.js','learning-window.js'];
     return `<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="${esc(base)}">${styles.map(file=>`<link rel="stylesheet" href="${esc(file)}?v=${VERSION}">`).join('')}${scripts.map(file=>`<script defer src="${esc(file)}?v=${VERSION}"></script>`).join('')}<style>
       html,body{margin:0;background:#f5f7f8;min-width:0}body{padding:12px}#learnView{display:block}
       .learn-workspace{display:block!important}.learn-rail{display:none!important}.learn-lesson{margin:0!important}

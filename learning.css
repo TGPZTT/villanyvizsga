@@ -872,6 +872,15 @@ body:has(#learnView.active) .topbar { background:#fff; border-color:#dfe5e8; }
 /* Titles explain what is calculated. Short, independent cards can share a row,
    whereas equations with several terms retain the full available width. */
 #learnView .learn-reading-layout > .learn-formula-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; max-width:none; }
+.learn-task-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid #d9dedf;border-radius:6px;background:#fff;color:#505d65;padding:6px 9px;font:15px/1.3 Arial,sans-serif;text-align:left;cursor:pointer}
+.learn-task-toggle[aria-pressed=true]{color:#765019;border-color:#d7b169;background:#fff9ed}
+.learn-task-toggle:focus-visible{outline:2px solid #765019;outline-offset:3px}
+.learn-task-mark{display:none;flex:0 0 auto;color:#a56b0e;font:14px/1 Arial,sans-serif;align-self:center}
+.has-task-emphasis .learn-task-mark{display:inline-flex}
+.has-task-emphasis .learn-section-nav a:has(.learn-task-mark){border-bottom-color:#c69d55}
+#learnView .learn-title-row .learn-task-toggle{margin-left:auto;align-self:center;font-size:14px;flex:0 1 auto}
+#learnView .learn-formula-description{font:16px/1.45 Georgia,'Times New Roman',serif;color:#28343d;margin:0 0 8px}
+@media(max-width:650px){#learnView .learn-title-row{flex-wrap:wrap}#learnView .learn-title-row .learn-task-toggle{margin:0 0 5px}}
 #learnView .learn-formula-grid .learn-formula { min-width:0; margin:0; padding:12px 14px; }
 #learnView .learn-formula-title { margin:0 0 8px; color:#273640; font:700 17px/1.4 'Segoe UI',Arial,sans-serif; }
 #learnView .learn-formula-grid .learn-formula-legend h4 { margin:10px 0 0; font:600 15px/1.4 'Segoe UI',Arial,sans-serif; color:#505b66; }

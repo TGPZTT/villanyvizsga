@@ -45,6 +45,7 @@
   }
 
   function prepareFormula(card) {
+    if(card.dataset.formulaDiagram)return;
     const legend = card.querySelector('.formula-legend');
     const expression = card.querySelector('.formula-card__expression');
     if (!legend || !expression) return;
@@ -260,8 +261,16 @@
       });
       details.forEach(example => {
         // Close the previous example before the browser lays out the newly opened one.
-        example.querySelector('summary')?.addEventListener('click', () => {
-          if (!example.open) closeExamples(example);
+        example.querySelector('summary')?.addEventListener('click', event => {
+          if (!example.open) {
+            // Open and reserve in the final layout before an intermediate
+            // paper size can paint. The later toggle remains authoritative.
+            event.preventDefault();
+            closeExamples(example);
+            layout.classList.add('guide-solving');
+            example.open = true;
+            window.VV_WORKED?.reserve(example);
+          }
         });
         example.addEventListener('toggle', () => {
           if (example.open) closeExamples(example);
