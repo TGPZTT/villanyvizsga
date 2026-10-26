@@ -45,84 +45,136 @@
   }
 
   function prepareFormula(card) {
-    if (card.dataset.guideFormulaReady) return;
     window.VVFormula?.guide(card.parentElement || card);
-    const figures = [...card.querySelectorAll('.fm-diagram')];
-    if (!figures.length) return;
-    const legend = make('details', 'guide-legend');
-    const summary = make('summary', '', 'Jelölések és mértékegységek');
-    const definitions = make('dl', 'guide-legend-list');
-    const seen = new Set();
-    for (const figure of figures) {
-      figure.dataset.fmPresentation = 'compact';
-      for (const callout of figure.querySelectorAll('.fm-callout')) {
-        const symbol = callout.dataset.fmFor;
-        if (!seen.has(symbol)) {
-          seen.add(symbol);
-          const row = make('div', 'guide-legend-row');
-          row.dataset.guideSymbol = symbol;
-          row.style.setProperty('--fm-color', callout.style.getPropertyValue('--fm-color'));
-          const name = make('dt', 'guide-legend-symbol');
-          name.append(callout.querySelector('.fm-callout-symbol').cloneNode(true));
-          row.classList.toggle('has-long-symbol', name.textContent.trim().length > 8);
-          const meaning = make('dd', 'guide-legend-meaning', callout.querySelector('.fm-callout-meaning').textContent);
-          const originalUnit = callout.querySelector('.fm-unit');
-          const unit = make('dd', 'guide-legend-unit', originalUnit?.textContent || 'Mértékegység nélkül');
-          unit.classList.toggle('is-unitless', originalUnit?.classList.contains('is-unitless'));
-          row.classList.toggle('has-long-unit', /\s/.test(unit.textContent.trim()) || unit.textContent.trim().length > 7);
-          row.append(name, meaning, unit);
-          definitions.append(row);
-        }
-        callout.remove();
-      }
-    }
-    legend.append(summary, definitions);
-    card.append(legend);
-    card.dataset.guideFormulaReady = 'true';
-    const activate = symbol => definitions.querySelectorAll('[data-guide-symbol]').forEach(row => row.classList.toggle('is-active', row.dataset.guideSymbol === symbol));
-    card.addEventListener('pointerover', event => activate(event.target.closest?.('[data-fm-symbol]')?.dataset.fmSymbol));
-    card.addEventListener('focusin', event => activate(event.target.closest?.('[data-fm-symbol]')?.dataset.fmSymbol));
-    card.addEventListener('pointerdown', event => event.target.closest?.('.fm-symbol')?.focus({preventScroll:true}));
-    window.VVFormula?.mount(card);
+    window.VVFormula?.compact(card);
   }
 
   const subtopics = new WeakMap();
+  // Short visible names keep direct choices compact. The accessible names retain
+  // the complete formula titles from the content, including the physical model.
+  const formulaButtonLabels = {
+    "alapok": [
+        "Fázisszög"
+    ],
+    "egyfazis": [
+        "Áram és teljesítmény"
+    ],
+    "energia": [
+        "Energia",
+        "Költség"
+    ],
+    "haromfazis": [
+        "Teljesítmények",
+        "Névleges áram",
+        "Áramfelvétel",
+        "Felvett P és S",
+        "Áram, %-os hatásfok"
+    ],
+    "trafo-egyfazis": [
+        "Névleges áram"
+    ],
+    "szlip": [
+        "Szlip"
+    ],
+    "zarlat": [
+        "Mért impedanciából",
+        "ÁVK-s modell"
+    ],
+    "vezetek": [
+        "Ellenállás és esés"
+    ],
+    "parhuzamos": [
+        "Két ellenállás",
+        "Több ág"
+    ],
+    "pe-keresztmetszet": [
+        "PE-keresztmetszet"
+    ],
+    "egyeb": [
+        "Áramváltó",
+        "Napelemsor"
+    ],
+    "muszer": [
+        "Skála leolvasása",
+        "Áram és védelem"
+    ],
+    "cosmeres": [
+        "Teljesítménytényező"
+    ],
+    "trafo-haromfazis": [
+        "Névleges áram"
+    ],
+    "zarlat-verseny": [
+        "Hurok vezetékkel",
+        "B karakterisztika"
+    ],
+    "vezetek-verseny": [
+        "Százalékos esés",
+        "Keresztmetszet"
+    ]
+};
   function prepareSubtopics(lesson) {
     const children = [...lesson.children];
     const starts = children.map((element, index) => element.classList.contains('formula-card') ? index : -1).filter(index => index >= 0);
-    if (starts.length < 2) return;
-    lesson.classList.add('has-guide-subtopics');
+    if (!starts.length) return;
     const sections = starts.map((start, index) => children.slice(start, starts[index + 1] ?? children.length));
     const nav = make('nav', 'guide-subtopic-navigation');
-    nav.setAttribute('aria-label', 'Alfejezetek');
-    const previous = make('button', 'button outline', '←');
-    previous.setAttribute('aria-label', 'Előző képlet');
-    const next = make('button', 'button outline', '→');
-    next.setAttribute('aria-label', 'Következő képlet');
-    const select = make('select', 'guide-subtopic-select');
-    select.setAttribute('aria-label', 'Képlet kiválasztása');
-    sections.forEach((section, index) => select.append(new Option(`${index + 1}. ${section[0].querySelector('.formula-card__label')?.textContent || 'Képlet'}`, String(index))));
-    previous.type = next.type = 'button';
-    nav.append(previous, select, next);
+    nav.setAttribute('aria-label', 'Képlet kiválasztása');
+    // A single choice has no switching task and must not repeat the card title.
+    nav.hidden = sections.length === 1;
+    lesson.classList.toggle('has-guide-subtopics', sections.length > 1);
+    let currentIndex = 0;
+    const buttons = sections.map((section, index) => {
+      const fullName = section[0].querySelector('.formula-card__label')?.textContent.trim() || `Képlet ${index + 1}`;
+      const shortName = formulaButtonLabels[lesson.id]?.[index] || fullName;
+      const button = make('button', 'guide-subtopic-button', shortName);
+      button.type = 'button';
+      button.dataset.guideFormula = String(index);
+      button.id = `guide-formula-${lesson.id}-${index + 1}`;
+      button.setAttribute('aria-label', fullName);
+      button.title = fullName;
+      const controlled = section.map((element, part) => {
+        if (!element.id) element.id = `guide-panel-${lesson.id}-${index + 1}-${part + 1}`;
+        return element.id;
+      });
+      button.setAttribute('aria-controls', controlled.join(' '));
+      button.addEventListener('click', () => choose(index));
+      nav.append(button);
+      return button;
+    });
     lesson.querySelector('h3')?.after(nav);
     const show = index => {
-      index = Math.max(0, Math.min(sections.length - 1, index));
+      currentIndex = Math.max(0, Math.min(sections.length - 1, Number(index) || 0));
       sections.forEach((section, sectionIndex) => section.forEach(element => {
-        if (sectionIndex !== index && element.matches('details[open]')) element.open = false;
-        element.hidden = sectionIndex !== index;
+        if (sectionIndex !== currentIndex && element.matches('details[open]')) element.open = false;
+        element.hidden = sectionIndex !== currentIndex;
       }));
-      select.value = String(index);
-      previous.disabled = index === 0;
-      next.disabled = index === sections.length - 1;
+      buttons.forEach((button, index) => {
+        const selected = index === currentIndex;
+        button.classList.toggle('is-selected', selected);
+        button.setAttribute('aria-pressed', String(selected));
+        button.tabIndex = selected ? 0 : -1;
+      });
     };
-    const choose = index => {
+    function choose(index) {
       show(index);
       lesson.dispatchEvent(new CustomEvent('guide-formula-change', {bubbles:true}));
-    };
-    select.addEventListener('change', () => choose(Number(select.value)));
-    previous.addEventListener('click', () => choose(Number(select.value) - 1));
-    next.addEventListener('click', () => choose(Number(select.value) + 1));
-    subtopics.set(lesson, {show, select});
+    }
+    nav.addEventListener('keydown', event => {
+      const button = event.target.closest('button[data-guide-formula]');
+      if (!button || !nav.contains(button)) return;
+      const at = Number(button.dataset.guideFormula);
+      let index;
+      if (event.key === 'ArrowRight') index = (at + 1) % buttons.length;
+      else if (event.key === 'ArrowLeft') index = (at - 1 + buttons.length) % buttons.length;
+      else if (event.key === 'Home') index = 0;
+      else if (event.key === 'End') index = buttons.length - 1;
+      else return;
+      event.preventDefault();
+      choose(index);
+      buttons[index].focus({preventScroll:true});
+    });
+    subtopics.set(lesson, {show, get index() { return currentIndex; }});
     show(0);
   }
 
@@ -154,7 +206,7 @@
         || groups.find(group => group.id === id)?.querySelector('.lesson');
       const titleFor = lesson => lesson.dataset.guideTitle || lesson.id;
       const hrefFor = id => {
-        const index = Number(subtopics.get(topicFor(id))?.select.value || 0);
+        const index = subtopics.get(topicFor(id))?.index || 0;
         return `#${embedded ? 'guide/' : ''}${encodeURIComponent(id)}${index ? '/' + (index + 1) : ''}`;
       };
       const routeTopic = () => {
@@ -166,6 +218,17 @@
         }
         return topicFor(hash.split('/')[0]);
       };
+      // The ungrouped sizing note also needs a real TOC destination when the
+      // redundant desktop topic selector is hidden. Fill any missing topic link.
+      const listedTopics = new Set([...toc.querySelectorAll('a[href]')].map(link => link.getAttribute('href').split('#')[1]?.replace(/^guide\//, '').split('/')[0]));
+      lessons.filter(lesson => !listedTopics.has(lesson.id)).forEach(lesson => {
+        const link = make('a', 'tutorial-toc-extra', lesson.id === 'figyelem' ? 'Méretezési tudnivalók' : titleFor(lesson));
+        link.href = hrefFor(lesson.id);
+        link.setAttribute('aria-label', titleFor(lesson));
+        const scope = lesson.closest('.tutorial-group')?.dataset.sourceScope;
+        const target = [...toc.querySelectorAll('.tutorial-toc-group')].find(group => group.dataset.sourceScope === scope) || toc;
+        target.append(link);
+      });
       const links = [...toc.querySelectorAll('a[href]')].map(link => {
         const id = link.getAttribute('href').split('#')[1]?.replace(/^guide\//, '');
         const lesson = topicFor(id);
@@ -237,13 +300,13 @@
         if (historyEntry && location.hash !== hrefFor(lesson.id)) {
           history.pushState(null, '', location.pathname + location.search + hrefFor(lesson.id));
         }
+        updateSolving();
         if (focus) {
           const heading = lesson.querySelector('h3');
           heading?.setAttribute('tabindex', '-1');
           heading?.focus({preventScroll: true});
-          navigation.scrollIntoView({block: 'start', behavior: 'instant'});
+          (navigation.getClientRects().length ? navigation : heading || lesson).scrollIntoView({block: 'start', behavior: 'instant'});
         }
-        updateSolving();
       }
 
       // Capture avoids legacy anchor scrolling to a now hidden lesson.

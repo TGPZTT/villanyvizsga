@@ -108,3 +108,41 @@
  .calculation-board .board-equation .fm-frac{min-width:0;max-width:100%}
  .calculation-board .board-equation .fm-numerator,.calculation-board .board-equation .fm-denominator{white-space:normal;max-width:100%}
 }
+
+
+/* A compact equation and its complete, optional source definitions. */
+.fm-diagram[data-fm-presentation="compact"]{margin:0;max-width:100%}
+.fm-diagram[data-fm-presentation="compact"] .fm-stage{height:auto;max-width:none}
+.fm-diagram[data-fm-presentation="compact"] .fm-expression{position:static;margin:0;padding:8px 0;max-width:100%;transform:none}
+.fm-diagram[data-fm-presentation="compact"] .fm-leaders{display:none}
+.learn-formula[data-fm-compact] .fm-multiple{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:10px 20px;align-items:center}
+.learn-formula[data-fm-compact] .fm-multiple:has(.fm-implication){grid-template-columns:minmax(0,1fr)}
+.learn-formula[data-fm-compact] .fm-diagram{margin:0;padding:0;border:0}
+.fm-legend{--fm-legend-ink:#29434a;--fm-legend-line:#d6e2dc;--fm-legend-accent:#285e66;margin-top:10px;border-top:1px solid var(--fm-legend-line);padding-top:6px;text-align:left}
+.learn-formula .fm-legend{--fm-legend-ink:var(--learn-ink,#392b22);--fm-legend-line:var(--learn-line,#e4d4bf);--fm-legend-accent:var(--learn-chapter-accent,#9b5422)}
+.fm-legend>summary{width:fit-content;max-width:100%;min-height:34px;padding:5px 2px;color:var(--fm-legend-accent);font:650 15px/1.4 'Segoe UI',Arial,sans-serif;cursor:pointer;overflow-wrap:break-word}
+.fm-legend>summary:focus-visible{outline:3px solid #eca858;outline-offset:3px;border-radius:3px}
+.fm-legend .fm-legend-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));gap:0 22px;margin:7px 0 0;padding:0}
+.fm-legend .fm-legend-row{display:grid;grid-template-columns:minmax(34px,max-content) minmax(0,1fr) max-content;align-items:baseline;gap:4px 9px;padding:8px 0;border-top:1px solid var(--fm-legend-line);min-width:0}
+.fm-legend-row.is-active{background:color-mix(in srgb,var(--fm-color) 7%,white)}
+.fm-legend .fm-legend-symbol{min-width:0;margin:0;color:var(--fm-color);font:600 19px/1.3 'Cambria Math',Cambria,serif;overflow-wrap:break-word}
+.fm-legend-symbol sub{font-size:.65em;line-height:1;vertical-align:-.3em}
+.fm-legend .fm-legend-meaning{min-width:0;margin:0;color:var(--fm-legend-ink);font:400 16px/1.4 'Segoe UI',Arial,sans-serif;overflow-wrap:break-word}
+.fm-legend .fm-legend-unit{min-width:0;max-width:100%;justify-self:start;margin:0;padding:2px 5px;border:1px solid color-mix(in srgb,var(--fm-color) 30%,white);border-radius:4px;background:color-mix(in srgb,var(--fm-color) 4%,white);color:var(--fm-color);font:500 15px/1.3 'Segoe UI',Arial,sans-serif;white-space:nowrap}
+.fm-legend-unit.is-unitless{grid-column:2/-1;border:0;padding:0;background:none;color:#5a6b6f;font-size:14px;white-space:normal}
+.fm-legend-row.has-long-unit .fm-legend-unit{grid-column:2/-1;white-space:normal;overflow-wrap:break-word}
+.fm-legend-row.has-long-symbol{grid-template-columns:minmax(0,1fr) max-content}
+.fm-legend-row.has-long-symbol .fm-legend-symbol{grid-column:1/-1}
+.fm-legend-row.has-long-symbol .fm-legend-meaning{grid-column:1}
+.fm-legend-row.has-long-symbol .fm-legend-unit{grid-column:2}
+.fm-legend-row.has-long-symbol.has-long-unit .fm-legend-unit,.fm-legend-row.has-long-symbol .fm-legend-unit.is-unitless{grid-column:1/-1}
+.fm-navigation.fm-chip-navigation{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;padding:0;border:0;max-width:100%}
+.fm-chip-navigation button{flex:0 1 auto;min-width:0;max-width:100%;min-height:38px;padding:7px 10px;border:1px solid var(--learn-line,#d1dce0);border-radius:6px;background:#fff;color:var(--learn-ink,#29434a);font:600 15px/1.35 'Segoe UI',Arial,sans-serif;text-align:left;white-space:normal;overflow-wrap:break-word}
+.fm-chip-navigation button[aria-pressed="true"]{background:color-mix(in srgb,var(--learn-chapter-accent,#9b5422) 10%,white);border-color:var(--learn-chapter-accent,#9b5422);box-shadow:inset 0 -2px var(--learn-chapter-accent,#9b5422)}
+.fm-navigation.fm-select-navigation{border:0;padding:0;margin:0 0 8px}
+.fm-select-navigation select{display:block;width:100%;max-width:100%;min-height:40px;color:var(--learn-ink,#29434a);border-color:var(--learn-line,#d1dce0);font-family:'Segoe UI',Arial,sans-serif}
+.learn-formula-grid[data-fm-navigator="chips"] .learn-formula-title{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.formula-card .fm-legend :is(summary,.fm-legend-meaning,.fm-legend-unit){font-family:Manrope,Arial,sans-serif}
+@media(max-width:760px){.fm-legend .fm-legend-list{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:620px){.learn-formula[data-fm-compact] .fm-multiple{grid-template-columns:minmax(0,1fr);gap:8px}.learn-formula[data-fm-compact] .fm-multiple>.fm-diagram+.fm-diagram{padding-top:8px;border-top:1px solid var(--learn-line,#e4d4bf)}}
+@media(prefers-reduced-motion:reduce){.fm-legend-row{transition:none}}

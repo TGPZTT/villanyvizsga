@@ -6,15 +6,17 @@
 .tutorial-single-topic .guide-topic-previous{grid-column:1}
 .tutorial-single-topic .guide-topic-next{grid-column:3}
 .guide-topic-select{display:block;width:100%;min-width:0;max-width:100%;min-height:44px;padding:8px 9px;border:1px solid #c6d9d2;border-radius:6px;background:#fff;color:#193c44;font:600 16px/1.4 Manrope,Arial,sans-serif}
+.tutorial-single-topic .tutorial-toc>a.tutorial-toc-extra{margin-top:9px;padding-top:10px;border-top:1px solid #cfdfd8}
 .tutorial-single-topic .guide-topic-navigation::after,.tutorial-single-topic .formula-card::after{display:none}
 .tutorial-single-topic .lesson>.lesson-no{display:none}
 .tutorial-single-topic .lesson>h3{margin:0 0 12px;line-height:1.3;text-wrap:balance}
 .tutorial-single-topic .guide-source-tag{display:inline-block;margin:0 0 0 10px;vertical-align:middle;font:600 12px/1.4 Manrope,Arial,sans-serif;letter-spacing:0;padding:3px 7px;border-radius:5px;white-space:nowrap}
-.tutorial-single-topic .guide-subtopic-navigation{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;gap:7px;padding:0;border:0;background:none;margin:0 0 11px}
-.tutorial-single-topic .guide-subtopic-navigation .button{min-width:0;width:40px;min-height:42px;padding:0;font:20px/1 Arial,sans-serif;grid-row:1}
-.tutorial-single-topic .guide-subtopic-navigation .button:first-child{grid-column:1}
-.tutorial-single-topic .guide-subtopic-navigation .button:last-child{grid-column:3}
-.tutorial-single-topic .guide-subtopic-select{order:0;grid-column:2;grid-row:1;min-width:0;width:100%;min-height:42px;font-size:16px}
+.tutorial-single-topic .guide-subtopic-navigation{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0;border:0;background:none;margin:0 0 11px}
+.tutorial-single-topic .guide-subtopic-navigation[hidden]{display:none}
+.tutorial-single-topic .guide-subtopic-button{display:inline-flex;align-items:center;justify-content:center;min-width:0;max-width:100%;min-height:36px;padding:7px 11px;border:1px solid #cfdfd8;border-radius:7px;background:#fff;color:#315c62;font:600 15px/1.25 Manrope,Arial,sans-serif;text-align:left;white-space:normal;overflow-wrap:break-word;cursor:pointer;touch-action:manipulation}
+.tutorial-single-topic .guide-subtopic-button:hover{border-color:#41888a;background:#eef7f3;color:#174f52}
+.tutorial-single-topic .guide-subtopic-button.is-selected{border-color:#126e78;background:#e8f2ee;color:#174f52;box-shadow:inset 0 -2px #126e78}
+.tutorial-single-topic .guide-subtopic-button:focus-visible{outline:3px solid #eca858;outline-offset:2px}
 .tutorial-single-topic .formula-card:has(.fm-guide-diagrams){margin:10px 0;padding:14px 16px;background:#f7fbf9;border:1px solid #cfdfd8;border-radius:9px;box-shadow:none}
 .tutorial-single-topic .formula-card__label{margin:0 0 8px;font:650 15px/1.4 Manrope,Arial,sans-serif;letter-spacing:0;text-transform:none;color:#315c62}
 .tutorial-single-topic .has-guide-subtopics .formula-card__label{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -24,23 +26,6 @@
 .tutorial-single-topic .fm-guide-diagrams:has(.fm-implication) .fm-multiple{grid-template-columns:minmax(0,1fr);gap:10px}
 .tutorial-single-topic .fm-guide-diagrams .fm-expression{margin:0;padding:8px 0;max-width:100%;background:none}
 .tutorial-single-topic .fm-guide-diagrams .fm-leaders{display:none}
-.guide-legend{margin-top:10px;border-top:1px solid #d6e2dc;padding-top:7px}
-.guide-legend>summary{width:fit-content;max-width:100%;padding:5px 2px;color:#285e66;font:650 15px/1.4 Manrope,Arial,sans-serif;cursor:pointer}
-.guide-legend>summary:focus-visible{outline:3px solid #eca858;outline-offset:3px;border-radius:3px}
-.guide-legend-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));gap:0 22px;margin:8px 0 0}
-.guide-legend-row{display:grid;grid-template-columns:minmax(34px,max-content) minmax(0,1fr) max-content;align-items:baseline;gap:5px 9px;padding:8px 0;border-top:1px solid #e0e9e5;min-width:0}
-.guide-legend-row.is-active{background:#e8f2ee}
-.guide-legend-symbol{min-width:0;margin:0;color:var(--fm-color);font:600 19px/1.3 'Cambria Math',Cambria,serif}
-.guide-legend-symbol .fm-callout-symbol{font:inherit;overflow-wrap:normal}
-.guide-legend-meaning{min-width:0;margin:0;color:#29434a;font:400 16px/1.4 Manrope,Arial,sans-serif;overflow-wrap:break-word}
-.guide-legend-unit{min-width:0;max-width:100%;margin:0;padding:2px 5px;border:1px solid #d0ded8;border-radius:4px;background:#fff;color:#315d62;font:500 15px/1.3 Manrope,Arial,sans-serif;white-space:nowrap}
-.guide-legend-unit.is-unitless{grid-column:2/-1;border:0;padding:0;background:none;color:#5a6b6f;font-size:14px;white-space:normal}
-.guide-legend-row.has-long-unit .guide-legend-unit{grid-column:2/-1;justify-self:start;white-space:normal}
-.guide-legend-row.has-long-symbol{grid-template-columns:minmax(0,1fr) max-content}
-.guide-legend-row.has-long-symbol .guide-legend-symbol{grid-column:1/-1}
-.guide-legend-row.has-long-symbol .guide-legend-meaning{grid-column:1}
-.guide-legend-row.has-long-symbol .guide-legend-unit{grid-column:2}
-.guide-legend-row.has-long-symbol.has-long-unit .guide-legend-unit,.guide-legend-row.has-long-symbol .guide-legend-unit.is-unitless{grid-column:1/-1}
 .tutorial-single-topic .worked-details{margin:10px 0 0;border-radius:9px}
 .tutorial-single-topic .worked-details>summary{padding:12px 15px;line-height:1.45}
 .tutorial-layout.guide-solving .worked-details[open]>summary{scroll-margin-top:10px}
@@ -59,16 +44,15 @@
  .tutorial-single-topic .lesson{padding:13px}
  .tutorial-single-topic .lesson>h3{margin-bottom:10px}
  .tutorial-single-topic .formula-card:has(.fm-guide-diagrams){padding:12px}
- .tutorial-single-topic .guide-subtopic-navigation{gap:5px;grid-template-columns:36px minmax(0,1fr) 36px}
- .tutorial-single-topic .guide-subtopic-navigation .button{width:36px;min-height:42px}
- .tutorial-single-topic .guide-subtopic-select{padding-inline:7px}
+ .tutorial-single-topic .guide-subtopic-navigation{gap:6px}
+ .tutorial-single-topic .guide-subtopic-button{min-height:40px;padding:8px 7px}
  .tutorial-single-topic .fm-guide-diagrams .fm-multiple{grid-template-columns:minmax(0,1fr);gap:8px}
  .tutorial-single-topic .fm-guide-diagrams .fm-multiple>.fm-diagram+.fm-diagram{padding-top:8px;border-top:1px solid #dce7e1}
- .guide-legend-list{grid-template-columns:minmax(0,1fr)}
+ .tutorial-single-topic .guide-legend-list{grid-template-columns:minmax(0,1fr)}
  .tutorial-layout.guide-solving .worked-stepper-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto 54px;gap:6px;padding:8px}
  .tutorial-layout.guide-solving .worked-stepper-status{grid-column:1/-1;grid-row:1}
  .tutorial-layout.guide-solving .worked-stepper-controls>button{grid-row:2;height:54px;min-height:54px;line-height:1.25}
  .tutorial-layout.guide-solving .worked-stepper-controls>button:first-child{grid-column:1}
  .tutorial-layout.guide-solving .worked-stepper-controls>button:last-child{grid-column:2}
 }
-@media(prefers-reduced-motion:reduce){.guide-legend-row{transition:none}}
+@media(min-width:1281px){.tutorial-single-topic .guide-topic-navigation{display:none}}

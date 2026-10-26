@@ -117,7 +117,7 @@
     const math=String(expression).split(';').map(line=>`<div class="fm-equation-line">${typeset(line.trim().replace(/^\s*(?:Csillag|Delta):\s*/u,''),terms)}</div>`).join('');
     const used=terms.filter(t=>!t.omitCallout&&math.includes(`data-fm-symbol="${esc(t.symbol)}"`)&&!seen.has(t.symbol));
     used.forEach(t=>seen.add(t.symbol));
-    return `<figure class="fm-diagram" data-fm-diagram="${id}" aria-label="${esc(title||expression)}"><div class="fm-stage"><svg class="fm-leaders" aria-hidden="true" focusable="false"><defs><marker id="${id}-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 8 4 0 8" fill="none" stroke="context-stroke" stroke-width="1.4"/></marker></defs></svg><div class="fm-expression" role="math" aria-label="${esc(expression.replace(/[×*]/gu,'·'))}">${math}</div>${used.map((term,i)=>`<div class="fm-callout" data-fm-for="${esc(term.symbol)}" style="--fm-color:${term.color};--fm-order:${i}"><span class="fm-callout-symbol">${textMath(term.displaySymbol||term.symbol)}</span><span class="fm-callout-meaning">${esc(term.meaning)}</span><span class="fm-unit${noUnit(term.unit)?' is-unitless':''}">${esc(unit(term.unit))}</span></div>`).join('')}</div></figure>`;
+    return `<figure class="fm-diagram" data-fm-diagram="${id}" data-fm-definitions="${esc(JSON.stringify(symbols.map((term,index)=>({...term,color:palette[index%palette.length]}))))}" aria-label="${esc(title||expression)}"><div class="fm-stage"><svg class="fm-leaders" aria-hidden="true" focusable="false"><defs><marker id="${id}-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 8 4 0 8" fill="none" stroke="context-stroke" stroke-width="1.4"/></marker></defs></svg><div class="fm-expression" role="math" aria-label="${esc(expression.replace(/[×*]/gu,'·'))}">${math}</div>${used.map((term,i)=>`<div class="fm-callout" data-fm-for="${esc(term.symbol)}" style="--fm-color:${term.color};--fm-order:${i}"><span class="fm-callout-symbol">${textMath(term.displaySymbol||term.symbol)}</span><span class="fm-callout-meaning">${esc(term.meaning)}</span><span class="fm-unit${noUnit(term.unit)?' is-unitless':''}">${esc(unit(term.unit))}</span></div>`).join('')}</div></figure>`;
   }
 
   // Wide formula plates use the space beside the equation. Only the outer
@@ -174,7 +174,7 @@
   function layout(figure) {
     const stage=figure.querySelector('.fm-stage'),equation=figure.querySelector('.fm-expression'),svg=figure.querySelector('.fm-leaders');
     if(stage&&equation&&figure.dataset.fmPresentation==='compact'){
-      // The guide owns the compact legend. Its equation stays in normal flow
+      // The card owns the compact legend. Its equation stays in normal flow
       // and needs no measured callout positions or ResizeObserver feedback.
       if(figure.dataset.fmLayout!=='compact'){
         figure.dataset.fmLayout='compact';figure.classList.remove('is-compact');
@@ -253,24 +253,91 @@
   const resize=new ResizeObserver(entries=>entries.forEach(entry=>layout(entry.target)));
   let tooltip,tooltipTarget;
   const formulaSelection=new Map();
+  // Definitions come from the complete, existing source list, not only the
+  // callouts used by one clause. Keep the hidden guide source for worked data.
+  function compact(card){
+    if(!card||card.dataset.fmCompact==='true')return card;
+    const figures=[...card.querySelectorAll('.fm-diagram')];
+    if(!figures.length)return card;
+    const make=(tag,classes,text)=>{const node=document.createElement(tag);node.className=classes;if(text!==undefined)node.textContent=text;return node;};
+    const isGuide=card.matches('.formula-card'),alias=part=>isGuide?' guide-legend'+part:'';
+    const legend=make('details','fm-legend'+alias(''));
+    const summary=make('summary','','Jelölések és mértékegységek');
+    const definitions=make('dl','fm-legend-list'+alias('-list'));
+    const records=[],seen=new Set();
+    // Collect all clauses before deduplication: a symbol in a later equation
+    // must remain available even when the first clause already used its name.
+    for(const figure of figures){
+      let supplied=[];
+      try{supplied=JSON.parse(figure.dataset.fmDefinitions||'[]');}catch{}
+      if(!supplied.length)supplied=[...figure.querySelectorAll('.fm-callout')].map(node=>({symbol:node.dataset.fmFor,meaning:node.querySelector('.fm-callout-meaning')?.textContent||'',unit:node.querySelector('.fm-unit')?.textContent||'',color:node.style.getPropertyValue('--fm-color')}));
+      records.push(...supplied);
+      figure.dataset.fmPresentation='compact';
+    }
+    for(const term of records){
+      if(!term.symbol)continue;
+      const identity=JSON.stringify([term.symbol,term.meaning||'',term.unit||'']);
+      if(seen.has(identity))continue;seen.add(identity);
+      const row=make('div','fm-legend-row'+alias('-row'));
+      row.dataset.fmFor=term.symbol;
+      if(isGuide)row.dataset.guideSymbol=term.symbol;
+      row.dataset.fmKeys=JSON.stringify(expandTerms([term]).map(value=>key(value.symbol)));
+      row.style.setProperty('--fm-color',term.color||palette[0]);
+      const name=make('dt','fm-legend-symbol'+alias('-symbol'));
+      name.innerHTML=textMath(term.symbol);
+      row.classList.toggle('has-long-symbol',String(term.symbol).length>=7||/,\s|…/u.test(term.symbol));
+      const meaning=make('dd','fm-legend-meaning'+alias('-meaning'),term.meaning||'');
+      const units=make('dd','fm-legend-unit'+alias('-unit'),unit(term.unit));
+      units.classList.toggle('is-unitless',noUnit(term.unit));
+      row.classList.toggle('has-long-unit',/\s/u.test(units.textContent.trim())||units.textContent.trim().length>6);
+      row.append(name,meaning,units);definitions.append(row);
+    }
+    legend.append(summary,definitions);card.append(legend);
+    figures.forEach(figure=>{figure.querySelectorAll('.fm-callout').forEach(node=>node.remove());layout(figure);});
+    const activate=symbol=>definitions.querySelectorAll('.fm-legend-row').forEach(row=>row.classList.toggle('is-active',!!symbol&&JSON.parse(row.dataset.fmKeys).includes(key(symbol))));
+    card.addEventListener('pointerover',event=>activate(event.target.closest?.('[data-fm-symbol]')?.dataset.fmSymbol));
+    card.addEventListener('pointerleave',()=>activate(null));
+    card.addEventListener('focusin',event=>activate(event.target.closest?.('[data-fm-symbol]')?.dataset.fmSymbol));
+    card.addEventListener('focusout',event=>{if(!card.contains(event.relatedTarget))activate(null);});
+    card.addEventListener('pointerdown',event=>event.target.closest?.('.fm-symbol')?.focus({preventScroll:true}));
+    card.dataset.fmCompact='true';
+    if(isGuide)card.dataset.guideFormulaReady='true';
+    bindTooltips();
+    return card;
+  }
+
   function prepareNavigator(grid){
     if(grid.dataset.fmNavigator)return;
     const cards=[...grid.children].filter(el=>el.matches('.learn-formula'));
     if(cards.length<2)return;
     const id=grid.closest('[data-learn-section-root]')?.dataset.learnSectionRoot||'formulas';
-    const nav=document.createElement('nav');nav.className='fm-navigation';nav.setAttribute('aria-label','Számítási összefüggések');
-    nav.innerHTML='<button type="button" aria-label="Előző összefüggés">←</button><label><span>Összefüggés</span><select aria-label="Összefüggés kiválasztása"></select></label><button type="button" aria-label="Következő összefüggés">→</button>';
-    const select=nav.querySelector('select'),buttons=nav.querySelectorAll('button');
-    cards.forEach((card,i)=>select.add(new Option(`${i+1}. ${card.querySelector('h3').textContent}`,String(i))));
+    if(cards.length>2){
+      const nav=document.createElement('nav');nav.className='fm-navigation fm-select-navigation';nav.setAttribute('aria-label','Számítási összefüggések');
+      const select=document.createElement('select');select.setAttribute('aria-label','Összefüggés kiválasztása');
+      cards.forEach((card,index)=>{if(!card.id)card.id=`fm-card-${id}-${index+1}`;select.add(new Option(card.querySelector('h3')?.textContent||`${index+1}. képlet`,String(index)));});
+      select.setAttribute('aria-controls',cards.map(card=>card.id).join(' '));
+      const show=index=>{cards.forEach((card,i)=>{card.hidden=i!==index;});select.value=String(index);formulaSelection.set(id,index);cards[index].querySelectorAll('[data-fm-diagram]').forEach(layout);};
+      select.addEventListener('change',()=>show(Number(select.value)));nav.append(select);grid.before(nav);grid.dataset.fmNavigator='select';show(Math.min(formulaSelection.get(id)||0,cards.length-1));return;
+    }
+    const nav=document.createElement('nav');nav.className='fm-navigation fm-chip-navigation';nav.setAttribute('aria-label','Számítási összefüggések');
+    const buttons=cards.map((card,index)=>{
+      const button=document.createElement('button');button.type='button';button.dataset.fmIndex=String(index);
+      if(!card.id)card.id=`fm-card-${id}-${index+1}`;
+      button.setAttribute('aria-controls',card.id);
+      button.textContent=card.querySelector('h3')?.textContent||`${index+1}. képlet`;
+      button.setAttribute('aria-pressed','false');nav.append(button);return button;
+    });
     const show=index=>{
-      cards.forEach((card,i)=>{card.hidden=i!==index;});select.value=String(index);formulaSelection.set(id,index);
-      buttons[0].disabled=index===0;buttons[1].disabled=index===cards.length-1;
-      cards[index].querySelectorAll('[data-fm-diagram]').forEach(layout);
+      cards.forEach((card,i)=>{card.hidden=i!==index;buttons[i].setAttribute('aria-pressed',String(i===index));});
+      formulaSelection.set(id,index);cards[index].querySelectorAll('[data-fm-diagram]').forEach(layout);
     };
-    select.addEventListener('change',()=>show(Number(select.value)));
-    buttons[0].addEventListener('click',()=>show(Math.max(0,Number(select.value)-1)));
-    buttons[1].addEventListener('click',()=>show(Math.min(cards.length-1,Number(select.value)+1)));
-    grid.before(nav);grid.dataset.fmNavigator='true';show(Math.min(formulaSelection.get(id)||0,cards.length-1));
+    buttons.forEach((button,index)=>button.addEventListener('click',()=>show(index)));
+    nav.addEventListener('keydown',event=>{
+      const index=buttons.indexOf(event.target);if(index<0)return;
+      const target=event.key==='Home'?0:event.key==='End'?buttons.length-1:event.key==='ArrowRight'?(index+1)%buttons.length:event.key==='ArrowLeft'?(index+buttons.length-1)%buttons.length:null;
+      if(target===null)return;event.preventDefault();show(target);buttons[target].focus();
+    });
+    grid.before(nav);grid.dataset.fmNavigator='chips';show(Math.min(formulaSelection.get(id)||0,cards.length-1));
   }
   function bindTooltips(){
     if(tooltip)return;
@@ -292,6 +359,7 @@
   }
   function mount(root=document) {
     bindTooltips();
+    root.querySelectorAll('.learn-formula').forEach(compact);
     root.querySelectorAll('.learn-formula-grid').forEach(prepareNavigator);
     root.querySelectorAll('[data-fm-diagram]').forEach(figure=>{if(!watched.has(figure)){watched.add(figure);resize.observe(figure);}layout(figure);});
     document.fonts?.ready.then(()=>root.querySelectorAll('[data-fm-diagram]').forEach(layout));
@@ -342,6 +410,6 @@
     }).join('<br>');
     element.dataset.fmTypeset='true';
   }
-  window.VVFormula={diagram,typeset,mount,guide,formatDOM,key};
+  window.VVFormula={diagram,typeset,mount,guide,compact,formatDOM,key};
   document.addEventListener('DOMContentLoaded',()=>guide());
 })();
