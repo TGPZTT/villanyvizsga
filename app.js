@@ -276,6 +276,7 @@
     dialog.setAttribute('aria-label','Ábra nagyítása');
     dialog.innerHTML='<div class="figure-lightbox-toolbar"><button class="figure-lightbox-close" type="button">← Bezárás</button></div><img class="figure-lightbox-image" alt=""><p class="figure-lightbox-caption"></p>';
     document.body.append(dialog);
+    window.VV_LEARNING_WINDOW?.enhanceImageDialog(dialog,$('.figure-lightbox-image',dialog));
     $('.figure-lightbox-close',dialog).addEventListener('click',()=>dialog.close());
     dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close()});
     dialog.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();dialog.close()}});

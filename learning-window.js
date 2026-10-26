@@ -1,8 +1,77 @@
 (function () {
   'use strict';
-  const VERSION = '20261026r1';
+  const VERSION = '20261026r2';
   const esc = value => String(value).replace(/[&<>"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
   let dialog, frame, notice, returnTo, generation = 0;
+  let referenceDialog, referenceReturnTo;
+
+  function enhanceImageDialog(container, picture) {
+    if(picture.dataset.zoomEnhanced)return;
+    picture.dataset.zoomEnhanced='true';
+    const viewport=document.createElement('div');viewport.className='figure-zoom-viewport';viewport.tabIndex=0;
+    viewport.setAttribute('role','region');viewport.setAttribute('aria-label','Nagyítható ábra. Nagyítás után az ábra oldalra és lefelé mozgatható.');
+    picture.before(viewport);viewport.append(picture);
+    let toolbar=container.querySelector('.figure-lightbox-toolbar');
+    if(!toolbar){toolbar=document.createElement('div');toolbar.className='figure-lightbox-toolbar';const closeButton=container.querySelector('button');if(closeButton)toolbar.append(closeButton);container.prepend(toolbar);}
+    const controls=document.createElement('div');controls.className='figure-zoom-controls';
+    controls.innerHTML='<button type="button" data-image-zoom="out" aria-label="Kicsinyítés">−</button><button type="button" data-image-zoom="fit">Illesztés</button><button type="button" data-image-zoom="natural">100%</button><button type="button" data-image-zoom="in" aria-label="Nagyítás">+</button>';
+    toolbar.append(controls);container.classList.add('has-image-zoom');
+    let scale=1,fitted=true,drag=null;
+    const fit=()=>{if(!picture.naturalWidth)return;fitted=true;viewport.classList.remove('is-zoomed');picture.style.width='';picture.style.height='';viewport.scrollLeft=viewport.scrollTop=0;controls.querySelector('[data-image-zoom=fit]').setAttribute('aria-pressed','true');};
+    const zoom=target=>{
+      if(!picture.naturalWidth)return;
+      const oldWidth=picture.getBoundingClientRect().width,oldHeight=picture.getBoundingClientRect().height;
+      const cx=fitted ? .5 : (viewport.scrollLeft+viewport.clientWidth/2)/oldWidth;
+      const cy=fitted ? .5 : (viewport.scrollTop+viewport.clientHeight/2)/oldHeight;
+      scale=Math.max(.1,Math.min(3,target));fitted=false;viewport.classList.add('is-zoomed');
+      picture.style.width=Math.round(picture.naturalWidth*scale)+'px';picture.style.height='auto';
+      controls.querySelector('[data-image-zoom=fit]').setAttribute('aria-pressed','false');
+      requestAnimationFrame(()=>{viewport.scrollLeft=Math.max(0,cx*picture.getBoundingClientRect().width-viewport.clientWidth/2);viewport.scrollTop=Math.max(0,cy*picture.getBoundingClientRect().height-viewport.clientHeight/2);});
+    };
+    controls.addEventListener('click',event=>{const mode=event.target.closest('[data-image-zoom]')?.dataset.imageZoom;if(!mode)return;if(mode==='fit')fit();else if(mode==='natural')zoom(1);else zoom((fitted?picture.getBoundingClientRect().width/picture.naturalWidth:scale)*(mode==='in'?1.5:1/1.5));});
+    picture.addEventListener('load',fit);picture.addEventListener('dragstart',event=>event.preventDefault());
+    picture.addEventListener('dblclick',()=>fitted?zoom(1):fit());
+    viewport.addEventListener('pointerdown',event=>{if(fitted||event.pointerType==='touch'||event.button!==0)return;drag={x:event.clientX,y:event.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};viewport.setPointerCapture(event.pointerId);event.preventDefault();});
+    viewport.addEventListener('pointermove',event=>{if(drag){viewport.scrollLeft=drag.left+drag.x-event.clientX;viewport.scrollTop=drag.top+drag.y-event.clientY;}});
+    const endDrag=()=>{drag=null;};viewport.addEventListener('pointerup',endDrag);viewport.addEventListener('pointercancel',endDrag);
+    container.addEventListener('close',fit);
+    if(picture.complete&&picture.naturalWidth)fit();
+  }
+
+  function referenceMarkup(reference) {
+    return `<p class="learning-reference-intro">${esc(reference.intro || '')}</p>${(reference.sections || []).map(section => `<section class="learning-reference-section"><h3>${esc(section.title)}</h3>${(section.paragraphs || []).map(value=>`<p>${esc(value)}</p>`).join('')}${section.headers?.length ? `<div class="learning-reference-table" tabindex="0" role="region" aria-label="${esc(section.title)}"><table><thead><tr>${section.headers.map(value=>`<th scope="col">${esc(value)}</th>`).join('')}</tr></thead><tbody>${(section.rows || []).map(row=>`<tr>${row.map((value,index)=>index===0?`<th scope="row">${esc(value)}</th>`:`<td>${esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''}${(section.notes || []).map(value=>`<p class="learning-reference-note">${esc(value)}</p>`).join('')}</section>`).join('')}`;
+  }
+
+  async function openReference(href, trigger) {
+    const route = new URL(href,location.href).hash;
+    if (!route.startsWith('#reference/')) return;
+    if (!window.VV_LEARNING) await window.VV_LEARN?.setup({root:document.querySelector('#learnView')});
+    let id;
+    try { id = decodeURIComponent(route.slice('#reference/'.length)); } catch { return; }
+    const reference = window.VV_LEARNING?.referenceTables?.[id];
+    if (!reference) return;
+    if (!referenceDialog) {
+      referenceDialog = document.createElement('dialog');
+      referenceDialog.className = 'learning-reference-dialog';
+      referenceDialog.setAttribute('aria-labelledby','learningReferenceTitle');
+      referenceDialog.innerHTML = '<header class="learning-window-header"><h2 id="learningReferenceTitle"></h2><button type="button" class="button outline" autofocus>Bezárás ×</button></header><div class="learning-reference-body"></div>';
+      document.body.append(referenceDialog);
+      referenceDialog.querySelector('button').addEventListener('click',()=>referenceDialog.close());
+      referenceDialog.addEventListener('keydown',event=>{if(event.key==='Escape')event.stopPropagation();});
+      referenceDialog.addEventListener('cancel',event=>{event.preventDefault();event.stopPropagation();referenceDialog.close();});
+      referenceDialog.addEventListener('close',()=>{referenceReturnTo?.isConnected&&referenceReturnTo.focus({preventScroll:true});});
+      referenceDialog.addEventListener('click',event=>{
+        const box=referenceDialog.getBoundingClientRect();
+        if(event.target===referenceDialog&&(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom))referenceDialog.close();
+      });
+    }
+    referenceReturnTo = trigger || document.activeElement;
+    referenceDialog.dataset.referenceId = id;
+    referenceDialog.querySelector('h2').textContent = reference.title;
+    referenceDialog.querySelector('.learning-reference-body').innerHTML = referenceMarkup(reference);
+    if(!referenceDialog.open)referenceDialog.showModal();
+    referenceDialog.querySelector('.learning-reference-body').scrollTop=0;
+  }
 
   function close() { dialog?.close(); }
   function ensureDialog() {
@@ -34,7 +103,7 @@
   function childDocument() {
     const base = new URL('.', location.href).href;
     const styles = ['style.css','experience.css','learning.css','learning-visuals.css','learning-networks.css','learning-sort.css'];
-    const scripts = ['readable-text.js','question-labels.js','learning-visuals.js','learning-networks.js','learning-sort.js','learning.js'];
+    const scripts = ['readable-text.js','question-labels.js','learning-visuals.js','learning-networks.js','learning-sort.js','learning.js','learning-window.js'];
     return `<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="${esc(base)}">${styles.map(file=>`<link rel="stylesheet" href="${esc(file)}?v=${VERSION}">`).join('')}${scripts.map(file=>`<script defer src="${esc(file)}?v=${VERSION}"></script>`).join('')}<style>
       html,body{margin:0;background:#f5f7f8;min-width:0}body{padding:12px}#learnView{display:block}
       .learn-workspace{display:block!important}.learn-rail{display:none!important}.learn-lesson{margin:0!important}
@@ -94,6 +163,7 @@
               const button = doc.createElement('button'); button.textContent = 'Bezárás ×'; button.type = 'button';
               const image = doc.createElement('img'); image.alt = zoom.dataset.zoomCaption || 'Ábra nagyítása';
               imageDialog.append(button,image); doc.body.append(imageDialog);
+              child.VV_LEARNING_WINDOW.enhanceImageDialog(imageDialog,image);
               button.addEventListener('click',()=>imageDialog.close());
               imageDialog.addEventListener('close',()=>{imageDialog.remove();zoom.focus({preventScroll:true});});
               imageDialog.showModal();
@@ -112,7 +182,7 @@
             }
           },true);
           doc.addEventListener('keydown', event => {
-            if (event.key !== 'Escape' || doc.querySelector('.learning-image-dialog[open]')) return;
+            if (event.key !== 'Escape' || doc.querySelector('.learning-image-dialog[open],.learning-reference-dialog[open]')) return;
             const tip = doc.querySelector('.learn-floating-tooltip:not([hidden])');
             if (tip) return;
             event.preventDefault(); event.stopPropagation(); close();
@@ -136,10 +206,12 @@
   }
 
   document.addEventListener('click', event => {
+    const reference = event.target.closest('a[data-reference-window]');
+    if(reference){event.preventDefault();event.stopPropagation();openReference(reference.href,reference);return;}
     const link = event.target.closest('a[data-learning-window]');
     if (!link) return;
     event.preventDefault(); event.stopPropagation();
     open(link.href,link);
   },true);
-  window.VV_LEARNING_WINDOW = Object.freeze({open,close});
+  window.VV_LEARNING_WINDOW = Object.freeze({open,close,openReference,enhanceImageDialog});
 })();

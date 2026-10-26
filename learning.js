@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const KEY = 'villanyvizsga-learning-v1';
-  const VERSION = '20261026-r1';
+  const VERSION = '20261026-r2';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const norm = value => String(value ?? '').toLocaleLowerCase('hu').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -57,16 +57,16 @@
     "energy-csillag-delta":[709368519,1438327801],
     "energy-ho-atom":[1218790562,3688578289],
     "energy-megujulok":[null,2321434494],
-    "energy-napelem":[2050355853,2674978205],
-    "wires-anyag-ellenallas":[1904483961,null],
+    "energy-napelem":[3452752136,2590125238],
+    "wires-anyag-ellenallas":[1573421956,null],
     "wires-meretezes":[213183812,1572232642],
     "wires-feszultsegeses":[2625720462,null],
     "wires-harmonizalt":[1880144675,null],
     "wires-szinek":[1486663815,null],
     "wires-adat":[2257968083,null],
-    "wires-kotes":[3645268962,2892151928],
-    "wires-szerszamok":[615693975,4034600601],
-    "wires-kabelfektetes":[2260713286,1029838453],
+    "wires-kotes":[3880393037,4232464145],
+    "wires-szerszamok":[1415809165,4056813732],
+    "wires-kabelfektetes":[13898244,1759108571],
     "wires-oszlop":[2622334818,null],
     "switchgear-erintkezo-iv":[1567739996,2153555257],
     "switchgear-kapcsolok":[2558922200,3314124610],
@@ -76,7 +76,7 @@
     "switchgear-magneskapcsolo":[1556002481,1004657661],
     "switchgear-ontartas":[4149520065,null],
     "switchgear-relek":[null,3821462647],
-    "connection-fogalmak":[2989294224,1977829130],
+    "connection-fogalmak":[3044533733,3167732679],
     "connection-foldeles":[904383247,2440052932],
     "connection-csatlakozasi-mod":[703662534,3511527532],
     "connection-energia-meres":[968719829,2279506961],
@@ -98,22 +98,22 @@
     "installation-switches":[68012866,1323136836],
     "installation-alternate":[2520377036,683470287],
     "installation-boxes":[2002596566,null],
-    "installation-conduits":[265100490,3493679740],
+    "installation-conduits":[1171131159,2491992825],
     "installation-concealed":[null,1084758380],
     "installation-surface":[2123015921,932456721],
     "installation-sealed":[3668008756,3700715835],
     "installation-bath":[1947661501,4058488545],
-    "installation-special":[4210187215,null],
-    "auxiliary-bell":[3256627656,1646035194],
+    "installation-special":[1313569069,null],
+    "auxiliary-bell":[1689062016,305485218],
     "auxiliary-alarm":[135557553,null],
-    "auxiliary-bus":[2727115611,1359275887],
-    "lighting-quantities":[3788003180,2942254445],
-    "lighting-distance":[2397303005,null],
-    "lighting-color":[1630981011,null],
+    "auxiliary-bus":[2727115611,1834118475],
+    "lighting-quantities":[3788003180,3593252077],
+    "lighting-distance":[2311263669,null],
+    "lighting-color":[2360610412,null],
     "lighting-sources":[1669794269,null],
-    "lighting-tube":[152067593,1261926901],
+    "lighting-tube":[674833891,2246673207],
     "lighting-luminaire":[3144680612,3322662598],
-    "lighting-emergency":[1908482693,2717227223],
+    "lighting-emergency":[1756610644,2655667210],
     "lightning-hatas":[1538628911,333942302],
     "lightning-aramut":[null,275192751],
     "lightning-vedett-ter":[3426112897,null],
@@ -123,37 +123,37 @@
     "lightning-spd-adatok":[155811373,null],
     "lightning-eszkozok":[1273697694,null],
     "lightning-passive":[319861302,1952930078],
-    "lightning-withstand":[null,1101992114],
+    "lightning-withstand":[null,3236593039],
     "documentation-rajztipus":[3032618113,1432677369],
     "documentation-alaprajz":[1045958848,459433362],
     "documentation-terv":[143200306,null],
     "documentation-bemutatas":[null,923082733],
-    "work-safety-ot-lepes":[1083112336,null],
-    "work-safety-ellenorzes":[160607792,null],
+    "work-safety-ot-lepes":[3444501880,null],
+    "work-safety-ellenorzes":[1159469512,null],
     "work-safety-fam":[2349644057,null],
     "work-safety-vedoeszkoz":[2406239969,1014341648],
     "work-safety-magasban":[3586802541,360002989],
     "work-safety-baleset":[591489338,499091158],
     "work-safety-hulladek":[2248763972,1467595740],
     "work-safety-fire":[3568830510,1598217912],
-    "work-safety-workshop":[4059558143,null],
+    "work-safety-workshop":[2452724993,null],
     "machines-transformer":[3821672214,1179979086],
-    "machines-vector-group":[3784914028,3180256871],
+    "machines-vector-group":[1973166169,857541522],
     "machines-motor-types":[984546951,3433803038],
     "machines-slip":[3071928960,null],
     "machines-star-delta":[97963870,null],
     "machines-contactor":[243201890,2316798998],
-    "machines-reversing":[2558298708,527101165],
+    "machines-reversing":[3046321230,3912081507],
     "machines-starting":[3976512185,3327004459],
-    "machines-capacitor":[null,4252907234],
+    "machines-capacitor":[null,2438234741],
     "fundamentals-mennyisegek":[4205477521,3369898343],
     "fundamentals-ohm":[396253151,null],
     "fundamentals-soros":[2708505040,1960345009],
-    "fundamentals-parhuzamos":[3376282136,3828530864],
-    "fundamentals-energia":[1679719329,3439561530],
+    "fundamentals-parhuzamos":[2495245816,834700240],
+    "fundamentals-energia":[1376117582,3803880200],
     "fundamentals-hatasfok":[null,4276861779],
     "fundamentals-valtakozo":[1352769678,null],
-    "fundamentals-meter":[3263883374,3140751438],
+    "fundamentals-meter":[3415452307,3270450947],
     "fundamentals-conductance":[1080740966,null],
     "fundamentals-battery":[3599255095,2641664337],
     "fundamentals-current-transformer":[1097426436,null]
@@ -340,7 +340,9 @@
       return `<div class="learn-formula-expression">${math}</div>`;
     };
     const equations = String(formula.expression || '').split(';').map(expression => expression.trim()).filter(Boolean);
-    return `<div class="learn-formula"><div class="learn-formula-equations">${equations.map(equationMarkup).join('')}</div>${formula.note ? `<p>${esc(formula.note)}</p>` : ''}<div class="learn-formula-legend"><h4>Jelölések és mértékegységek</h4><dl>${legendTerms.map(term => `<div><dt>${mathText(term.symbol)}</dt><dd>${esc(term.meaning)} ${unit(term.unit) || '<span class="learn-unitless">mértékegység nélkül</span>'}</dd></div>`).join('')}</dl></div></div>`;
+    const title = formula.title || `${legendTerms[0]?.meaning || 'Villamos mennyiségek'} számítása`;
+    const wide = equations.some(expression => expression.length > 35) || legendTerms.length > 6 || equations.length > 2;
+    return `<section class="learn-formula${wide ? ' is-wide-formula' : ''}" aria-label="${esc(title)}"><h3 class="learn-formula-title">${esc(title)}</h3><div class="learn-formula-equations">${equations.map(equationMarkup).join('')}</div>${formula.note ? `<p>${esc(formula.note)}</p>` : ''}<div class="learn-formula-legend"><h4>Jelölések és mértékegységek</h4><dl>${legendTerms.map(term => `<div><dt>${mathText(term.symbol)}</dt><dd>${esc(term.meaning)} ${unit(term.unit) || '<span class="learn-unitless">mértékegység nélkül</span>'}</dd></div>`).join('')}</dl></div></section>`;
   }
 
   function cableTypesForLesson(lesson) {
@@ -364,7 +366,7 @@
 
   function figureData(figure) {
     if (typeof figure === 'string') figure = {path:figure};
-    return figure?.path ? {...figureMeta.get(figure.path),...figure} : null;
+    return figure?.path ? {...figureMeta.get(figure.originalPath),...figureMeta.get(figure.path),...figure} : null;
   }
 
   function legendMarkup(terms, className = 'learn-figure-legend') {
@@ -383,15 +385,18 @@
     return `<p class="learn-figure-credit">${info.author ? link(info.sourceUrl || figure.url,info.author) : ''}${info.author && info.license ? ' — ' : ''}${info.license ? link(info.licenseUrl,info.license) : ''}${info.changes ? `<span>${esc(info.changes)}</span>` : ''}</p>`;
   }
 
-  function singleFigureMarkup(source, extraClass = '', {showLegend = true, lesson = null} = {}) {
+  function singleFigureMarkup(source, extraClass = '', {showLegend = true, showCaption = true, captionOverride = null, lesson = null} = {}) {
     const figure = figureData(source);
     if (!figure) return '';
-    const caption = figure.caption || figure.alt || '';
+    const caption = captionOverride ?? figure.caption ?? figure.alt ?? '';
     const alt = figure.alt || caption;
     const dimensions = Number(figure.width) > 0 && Number(figure.height) > 0 ? `width="${Number(figure.width)}" height="${Number(figure.height)}"` : '';
     const terms = (figure.legend || figure.parts || []).filter(term => !lesson || !commonLegendKey(term) || commonFigureFirstUse.get(commonLegendKey(term)) === `${lesson.id}::${figure.path}`);
-    const legend = showLegend ? legendMarkup(terms) : '';
-    return `<figure class="learn-figure ${extraClass}"><a href="#" data-zoom-asset="${esc(figure.path)}" data-zoom-caption="${esc(caption)}" aria-label="${esc(alt)} nagyítása" aria-haspopup="dialog"><img data-asset-src="${esc(figure.path)}" alt="${esc(alt)}" ${dimensions} loading="lazy" decoding="async"></a><figcaption><div class="learn-figure-caption"><span>${richText(caption)}</span><button type="button" data-zoom-asset="${esc(figure.path)}" data-zoom-caption="${esc(caption)}" aria-haspopup="dialog">Nagyítás ↗</button></div>${legend ? `<div class="learn-figure-notes"><h4>Jelmagyarázat</h4>${legend}</div>` : ''}${attributionMarkup(figure)}</figcaption></figure>`;
+    const legend = showLegend && !figure.labelsEmbedded ? legendMarkup(terms) : '';
+    const legendNotes = legend ? `<div class="learn-figure-notes${figure.reconstructed ? ' is-compact-legend' : ''}" role="group" aria-label="Jelmagyarázat">${figure.reconstructed ? '' : '<h4>Jelmagyarázat</h4>'}${legend}</div>` : '';
+    const detail = figure.recommendedDisplay === 'wide-diagram';
+    const zoomSize = figure.zoomWidth ? ` data-zoom-width="${Number(figure.zoomWidth)}"` : '';
+    return `<figure class="learn-figure ${extraClass}${detail ? ' is-detailed-figure' : ''}"><a href="#" data-zoom-asset="${esc(figure.path)}" data-zoom-caption="${esc(caption)}"${zoomSize} aria-label="${esc(alt)} nagyítása" aria-haspopup="dialog"><img data-asset-src="${esc(figure.path)}" alt="${esc(alt)}" ${dimensions} loading="lazy" decoding="async"></a><figcaption><div class="learn-figure-caption">${showCaption && caption ? `<span>${richText(caption)}</span>` : ''}<button type="button" data-zoom-asset="${esc(figure.path)}" data-zoom-caption="${esc(caption)}"${zoomSize} aria-haspopup="dialog">Nagyítás ↗</button></div>${legendNotes}${attributionMarkup(figure)}</figcaption></figure>`;
   }
 
   function firstCableValue(value) {
@@ -408,29 +413,57 @@
   }
 
   function cableLegendTerms(type) {
-    const figure = figureData(type.figure);
-    const terms = [...(type.codeParts || []),...(figure?.legend || figure?.parts || [])];
-    const merged = new Map();
-    const plain = value => norm(value).replace(/[.;,:]/g,'').trim();
-    for (const term of terms) {
+    // Position matters: the two V or Y tokens describe different layers.
+    return (type.codeParts || []).flatMap(term => {
       const label = term.code || term.symbol || term.label || '';
       const meaning = term.meaning || term.description || term.detail || '';
-      if (!label || !meaning) continue;
-      const key = norm(label), previous = merged.get(key);
-      if (!previous) { merged.set(key,{label,meaning,unit:term.unit}); continue; }
-      const before = plain(previous.meaning), next = plain(meaning);
-      if (before.includes(next)) continue;
-      if (next.includes(before)) previous.meaning = meaning;
-      else if (!previous.meaning.includes(meaning)) previous.meaning += ` ${meaning}`;
-    }
-    return [...merged.values()];
+      if (label === 'RE / RM / SE / SM') {
+        const labels = label.split(' / '), meanings = meaning.replace(/\.$/u,'').split(' / ');
+        if (labels.length === meanings.length) return labels.map((label,index) => ({label,meaning:meanings[index],unit:term.unit}));
+      }
+      return label && meaning ? [{label,meaning,unit:term.unit}] : [];
+    });
+  }
+
+  function cableProse(value) {
+    return lineText(value).replace(/;\s*([\p{L}])/gu, (_, letter) => `. ${letter.toLocaleUpperCase('hu')}`);
+  }
+
+  function cableVoltageMarkup(value, compact = false) {
+    const match = String(value || '').match(/^(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(k?V)$/u);
+    if (!match) return richText(cableProse(value));
+    if (compact) return `<span class="learn-cable-voltage-summary" tabindex="0" data-learn-tooltip="${esc(`U₀ = ${match[1]} ${match[3]} a vezető és föld között. U = ${match[2]} ${match[3]} a vezetők között.`)}">U₀/U = <strong>${esc(match[1])}/${esc(match[2])} ${esc(match[3])}</strong></span>`;
+    return `<span class="learn-cable-voltage-line"><span>U₀ = <strong>${esc(match[1])} ${esc(match[3])}</strong></span><span>vezető–föld</span></span><span class="learn-cable-voltage-line"><span>U = <strong>${esc(match[2])} ${esc(match[3])}</strong></span><span>vezetők között</span></span>`;
+  }
+
+  function cableDesignationMarkup(type) {
+    const terms = cableLegendTerms(type);
+    if (!terms.length) return '';
+    return `<section class="learn-cable-designation" aria-label="${esc(type.name)} jelölése"><h4>A típusjel jelentése</h4><ul>${terms.map(term => {
+      const label = term.label.replace(/^(?:Első|Második|Utolsó)\s+/u, '');
+      const voltageCode = /^(?:03|05|07)$/u.test(label);
+      return `<li><strong class="learn-cable-code-token"${label !== term.label ? ` aria-label="${esc(term.label)}"` : ''}>${esc(label)}</strong><div>${voltageCode ? cableVoltageMarkup(type.nominalVoltage) : richText(cableProse(term.meaning))}</div></li>`;
+    }).join('')}</ul></section>`;
+  }
+
+  function cableConstructionMarkup(type, figure) {
+    if (!/\/cable-(?:h07v-r|mmfal|nayy-j|nhxh)-construction\.webp$/u.test(figure?.path || '')) return '';
+    const id = `learn-cutaway-${type.id}`;
+    const core = (x,y,r,fill,metal='Cu') => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="#697078" stroke-width="2"/><circle cx="${x}" cy="${y}" r="${r * .54}" fill="url(#${id}-${metal === 'Al' ? 'al' : 'cu'})" stroke="#756554" stroke-width="2"/><text x="${x}" y="${y + 7}" text-anchor="middle" fill="#263740" font-family="Arial,sans-serif" font-size="22" font-weight="700">${metal}</text>`;
+    let drawing = '';
+    if (type.id === 'h07v-r') drawing = `<circle cx="260" cy="250" r="176" fill="#343d42" stroke="#20292e" stroke-width="3"/>${[[260,174],[326,212],[326,288],[260,326],[194,288],[194,212],[260,250]].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="37" fill="url(#${id}-cu)" stroke="#976637" stroke-width="2"/>`).join('')}<text x="260" y="258" text-anchor="middle" fill="#503c2b" font-family="Arial,sans-serif" font-size="24" font-weight="700">Cu</text>`;
+    if (type.id === 'mmfal') drawing = `<path d="M125 175A75 75 0 0 1 200 238H200A75 75 0 0 1 350 238H350A75 75 0 1 1 350 262H350A75 75 0 0 1 200 262H200A75 75 0 1 1 125 175Z" fill="#e9e8dd" stroke="#969a8e" stroke-width="3"/>${core(125,250,53,'#3d86a8')}${core(275,250,53,'#343d42')}${core(425,250,53,`url(#${id}-pe)`)}`;
+    if (type.id === 'nayy') drawing = `<circle cx="260" cy="250" r="186" fill="#293035" stroke="#20292e" stroke-width="3"/><circle cx="260" cy="250" r="155" fill="#e4e1cb" stroke="#a7a893" stroke-width="2"/>${core(204,193,56,'#86664e','Al')}${core(316,193,56,'#343d42','Al')}${core(204,307,56,'#919a9e','Al')}${core(316,307,56,`url(#${id}-pe)`,'Al')}`;
+    if (type.id === 'nhxh') drawing = `<circle cx="260" cy="250" r="186" fill="#e78229" stroke="#ad5b22" stroke-width="3"/><circle cx="260" cy="250" r="161" fill="#e4e2cf" stroke="#b5b5a0" stroke-width="2"/>${core(260,153,45,'#855c3a')}${core(351,223,45,'#343d42')}${core(315,328,45,'#929c9e')}${core(204,328,45,'#4389ba')}${core(168,223,45,`url(#${id}-pe)`)}`;
+    const alt = figure.alt || `${type.name} keresztmetszete`;
+    return `<figure class="learn-figure learn-cable-figure learn-cable-cutaway"><a href="#" data-zoom-asset="${esc(figure.path)}" data-zoom-caption="${esc(figure.caption || type.name)}" aria-label="${esc(alt)} nagyítása" aria-haspopup="dialog"><svg viewBox="30 35 480 430" width="480" height="430" role="img" aria-labelledby="${id}-title"><title id="${id}-title">${esc(alt)}</title><defs><linearGradient id="${id}-cu" x2="1" y2="1"><stop stop-color="#edb87b"/><stop offset="1" stop-color="#ad642e"/></linearGradient><linearGradient id="${id}-al" x2="1" y2="1"><stop stop-color="#e7edf0"/><stop offset="1" stop-color="#97a3aa"/></linearGradient><pattern id="${id}-pe" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(30)"><rect width="20" height="20" fill="#32984a"/><rect width="9" height="20" fill="#f3dc39"/></pattern></defs>${drawing}</svg></a><figcaption><div class="learn-figure-caption"><button type="button" data-zoom-asset="${esc(figure.path)}" data-zoom-caption="${esc(figure.caption || type.name)}" aria-haspopup="dialog">Nagyítás ↗</button></div>${attributionMarkup(figure)}</figcaption></figure>`;
   }
 
   function cableVisibleData(type) {
     const figure = figureData(type.figure);
     return {name:type.name,aliases:type.aliases,conductorMaterial:type.conductorMaterial,nominalVoltage:type.nominalVoltage,
       structure:type.structure,application:firstCableValue(type.application),limitations:firstCableValue(type.limitations),
-      legend:cableLegendTerms(type),caption:figure?.caption};
+      legend:cableLegendTerms(type),caption:figure?.caption,display:type.display};
   }
 
   function commonLegendKey(term) {
@@ -465,7 +498,8 @@
     const candidates = lesson.figures?.length ? lesson.figures : lesson.interaction?.figurePath ? [{path:lesson.interaction.figurePath,alt:lesson.interaction.title || lesson.title,caption:lesson.interaction.caption || ''}] : [];
     const seen = new Set(excluded);
     return candidates.map(figureData).filter(figure => {
-      if (!figure || seen.has(figure.path) || networkReady && replaced[lesson.id]?.includes(figure.path) || lesson.table?.rows?.length && tableReplaced[lesson.id]?.includes(figure.path) || taughtElsewhere[lesson.id]?.includes(figure.path)) return false;
+      const originalPath = figure?.originalPath || figure?.path;
+      if (!figure || seen.has(figure.path) || seen.has(originalPath) || networkReady && replaced[lesson.id]?.includes(originalPath) || lesson.table?.rows?.length && tableReplaced[lesson.id]?.includes(originalPath) || taughtElsewhere[lesson.id]?.includes(originalPath)) return false;
       seen.add(figure.path); return true;
     });
   }
@@ -473,7 +507,9 @@
   function figureMarkup(lesson, excluded = new Set()) {
     const figures = lessonFigures(lesson,excluded);
     if (!figures.length) return '';
-    return `<div class="learn-media${lesson.id === 'energy-ho-atom' && figures.length === 2 ? ' is-plant-pair' : ''}" data-figure-count="${figures.length}">${figures.map(figure => singleFigureMarkup(figure,'',{lesson})).join('')}</div>`;
+    const pairableLessons = new Set(['energy-ho-atom','wires-kotes','wires-szerszamok','wires-oszlop','lighting-sources','machines-vector-group']);
+    const paired = figures.length > 1 && (pairableLessons.has(lesson.id) || figures.every(figure => figure.compactLayout === true));
+    return `<div class="learn-media${paired ? ' is-compact-pair' : ''}${figures.some(figure=>figure.recommendedDisplay==='wide-diagram') ? ' has-detailed-figure' : ''}" data-figure-count="${figures.length}">${figures.map(figure => singleFigureMarkup(figure,'',{lesson})).join('')}</div>`;
   }
 
   function cableTypesMarkup(lesson) {
@@ -483,12 +519,13 @@
     const picker = `<nav class="learn-cable-picker" aria-label="Vezeték- és kábeltípus kiválasztása"><p>Válassz típust</p><ul>${types.map(type => `<li><a href="#${cableRoute(lesson,type.id)}" data-learn-cable-select="${esc(type.id)}" ${type.id === selected.id ? 'aria-current="true"' : ''}>${esc(type.name)}</a></li>`).join('')}</ul></nav>`;
     return `<section class="learn-cable-catalog" aria-label="Vezeték- és kábeltípusok" data-learn-cable-selected="${esc(selected.id)}">${picker}${[selected].map(type => {
       const figure = figureData(type.figure);
-      const widePicture = figure && Number(figure.width) >= 900 && Number(figure.width) / Number(figure.height) > 1.7;
-      const picture = singleFigureMarkup(figure,`learn-cable-figure${widePicture ? ' is-wide' : ''}`,{showLegend:false});
+      const display = type.display;
+      const picture = cableConstructionMarkup(type,figure) || singleFigureMarkup(figure,'learn-cable-figure',{showLegend:false,showCaption:!display});
       const aliases = Array.isArray(type.aliases) ? type.aliases.filter(Boolean) : [];
-      const fields = [['Felépítés',type.structure],['Alkalmazás',firstCableValue(type.application)],['Korlát',firstCableValue(type.limitations)]];
-      const terms = cableLegendTerms(type);
-      return `<article class="learn-cable-card is-compact" data-learn-cable-type="${esc(type.id || type.name)}"><header><div><h3>${esc(type.name)}</h3>${aliases.length ? `<p class="learn-cable-aliases">${aliases.map(esc).join(', ')}</p>` : ''}</div><dl class="learn-cable-rating">${type.conductorMaterial ? `<div><dt>Vezetőanyag</dt><dd>${esc(type.conductorMaterial)}</dd></div>` : ''}${type.nominalVoltage ? `<div><dt>Névleges feszültség${/\d/.test(type.nominalVoltage) ? ' (U₀/U)' : ''}</dt><dd>${esc(type.nominalVoltage)}</dd></div>` : ''}</dl></header><div class="learn-cable-body ${picture ? 'has-picture' : ''}${widePicture ? ' has-wide-picture' : ''}">${picture}<dl class="learn-cable-description">${fields.filter(([,value])=>value).map(([label,value])=>`<div${label === 'Korlát' ? ' class="learn-cable-limits"' : ''}><dt>${label}</dt><dd>${richText(value)}</dd></div>`).join('')}</dl></div>${terms.length ? `<section class="learn-cable-codes"><h4>Jelölések</h4>${legendMarkup(terms,'learn-cable-code-list')}</section>` : ''}</article>`;
+      const fields = [['Felépítés',display ? display.constructionNote : type.structure],['Alkalmazás',display?.application || firstCableValue(type.application)],['Korlát',firstCableValue(type.limitations)]];
+      const hasVoltageCode = cableLegendTerms(type).some(term => /^(?:03|05|07)$/u.test(term.label));
+      const ratings = `<dl class="learn-cable-rating">${type.conductorMaterial ? `<div><dt>Vezetőanyag</dt><dd>${esc(type.conductorMaterial)}</dd></div>` : ''}${type.nominalVoltage && !hasVoltageCode ? `<div><dt>Névleges feszültség</dt><dd>${cableVoltageMarkup(type.nominalVoltage,true)}</dd></div>` : ''}</dl>`;
+      return `<article class="learn-cable-card is-compact is-comparison" data-learn-cable-type="${esc(type.id || type.name)}"><header><div><h3>${esc(type.name)}</h3>${aliases.length ? `<p class="learn-cable-aliases">${aliases.map(esc).join(', ')}</p>` : ''}</div>${ratings}</header><div class="learn-cable-body"><div class="learn-cable-image-column">${picture}</div><section class="learn-cable-specs" aria-label="Tulajdonságok és alkalmazás"><dl class="learn-cable-description">${fields.filter(([,value])=>value).map(([label,value])=>`<div${label === 'Korlát' ? ' class="learn-cable-limits"' : ''}><dt>${label}</dt><dd>${richText(cableProse(value))}</dd></div>`).join('')}</dl></section>${cableDesignationMarkup(type)}${display?.fireNote ? `<p class="learn-cable-fire-note">${richText(display.fireNote)}</p>` : ''}${display?.pictureNote ? `<p class="learn-cable-picture-note">${richText(display.pictureNote)}</p>` : ''}</div></article>`;
     }).join('')}</section>`;
   }
 
@@ -517,7 +554,7 @@
     if (cableTypes.length) {
       const note = cableLessonNote(lesson);
       const selected = selectedCableType(lesson);
-      const fireNotes = selected?.id === 'nhxh' ? cableFireNotes(lesson) : [];
+      const fireNotes = selected?.id === 'nhxh' && !selected.display ? cableFireNotes(lesson) : [];
       const intro = lesson.id === 'wires-tipusok' && note ? `${note} ${lesson.intro || ''}` : lesson.intro || '';
       return `<div class="learn-reading-layout learn-catalog-reading"><p class="learn-intro">${text(intro)}</p>${note && lesson.id !== 'wires-tipusok' ? `<p class="learn-catalog-note">${text(note)}</p>` : ''}${cableTypesMarkup(lesson)}${fireNotes.length ? `<div class="learn-text learn-cable-fire-notes">${fireNotes.map(note => `<p>${text(note)}</p>`).join('')}</div>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
     }
@@ -566,7 +603,8 @@
       && norm(lesson.commonMistake) !== norm(lesson.takeaway)
       ? `<p class="learn-pitfall">${text(lesson.commonMistake)}</p>` : '';
     const workbench = window.VVLearningVisuals?.render(lesson) || '';
-    return `<div class="learn-reading-layout">${introMarkup}${explanation}${formulas ? `<section class="learn-formulas-inline">${formulas}</section>` : ''}${takeaway}${pitfall}${workbench}${!workbench && lesson.interaction ? interactionMarkup(lesson) : ''}${figureMarkup(lesson)}${lesson.guideTarget ? `<a class="learn-guide-link" href="#guide/${encodeURIComponent(lesson.guideTarget)}">Kidolgozott számítás az útmutatóban →</a>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
+    const references = (lesson.referenceTables || []).filter(id => data.referenceTables?.[id]).map(id => `<a href="#reference/${encodeURIComponent(id)}" data-reference-window>${esc(data.referenceTables[id].title)} <span aria-hidden="true">↗</span></a>`).join('');
+    return `<div class="learn-reading-layout">${introMarkup}${explanation}${references ? `<nav class="learn-reference-links" aria-label="Megnyitható értéktáblázatok">${references}</nav>` : ''}${formulas ? `<section class="learn-formulas-inline learn-formula-grid" aria-label="Számítási összefüggések">${formulas}</section>` : ''}${takeaway}${pitfall}${workbench}${!workbench && lesson.interaction ? interactionMarkup(lesson) : ''}${figureMarkup(lesson)}${lesson.guideTarget ? `<a class="learn-guide-link" href="#guide/${encodeURIComponent(lesson.guideTarget)}">Kidolgozott számítás az útmutatóban →</a>` : ''}${relatedLessonsMarkup(lesson)}</div>`;
   }
 
   function sessionFor(lesson) {

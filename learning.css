@@ -803,7 +803,93 @@ body:has(#learnView.active) .topbar { background:#fff; border-color:#dfe5e8; }
 #learnView .learn-pitfall { padding:0; border:0; background:none; font-style:italic; }
 #learnView .learn-reading-layout > .learn-catalog-note { margin-inline:auto!important; padding:0; border:0; background:none; }
 #learnView .learn-media { align-self:center; }
+#learnView .learn-media.has-detailed-figure{max-width:none}
+#learnView .learn-media .learn-figure.is-detailed-figure img{display:block;width:100%;height:auto;max-width:1100px;max-height:none}
 #learnView .learn-cable-fire-notes { padding-top:10px; border-top:1px solid #dce3e7; }
+
+/* A selected cable is one comparison, with its picture, use and designation
+   alongside each other. The authored display notes contain only information
+   which is absent from the designation, rather than repeating the layers. */
+#learnView .learn-cable-card.is-comparison { container:cable-card / inline-size; }
+#learnView .learn-cable-card.is-comparison > header { display:flex; align-items:baseline; justify-content:flex-start; flex-wrap:wrap; gap:3px 12px; padding:10px 14px; }
+#learnView .learn-cable-card.is-comparison > header h3 { margin:0; font-size:21px; }
+#learnView .learn-cable-card.is-comparison .learn-cable-aliases { display:block; margin:0!important; font-size:15px; }
+#learnView .learn-cable-card.is-comparison .learn-cable-body { display:grid; grid-template-columns:minmax(0,1fr); align-items:start; gap:16px; padding:14px; }
+#learnView .learn-cable-image-column,
+#learnView .learn-cable-specs,
+#learnView .learn-cable-designation { min-width:0; }
+#learnView .learn-cable-card.is-comparison .learn-cable-figure { margin:0; border:0; border-radius:0; box-shadow:none; }
+#learnView .learn-cable-card.is-comparison .learn-cable-figure > a { min-height:0; max-height:none; padding:6px; }
+#learnView .learn-cable-card.is-comparison .learn-cable-figure img { width:auto; height:auto; max-width:100%; max-height:240px; margin:auto; border-radius:0; box-shadow:none; }
+#learnView .learn-cable-cutaway svg { display:block; width:auto; height:auto; max-width:100%; max-height:240px; margin:auto; }
+#learnView .learn-cable-card.is-comparison .learn-cable-figure figcaption { display:block; padding:0; border:0; background:#fff; }
+#learnView .learn-cable-card.is-comparison .learn-figure-caption { display:flex; flex-direction:column; align-items:stretch; gap:3px; }
+#learnView .learn-cable-card.is-comparison .learn-figure-caption > span { flex:auto; font-size:16px; line-height:1.5; }
+#learnView .learn-cable-card.is-comparison .learn-figure-caption button { align-self:flex-end; min-height:32px; }
+#learnView .learn-cable-card.is-comparison .learn-figure-credit { margin:3px 0; }
+#learnView .learn-cable-card.is-comparison .learn-cable-rating { display:grid; gap:8px; margin:9px 0 0; padding:9px 0 0; border-top:1px solid #dce3e7; }
+#learnView .learn-cable-card.is-comparison .learn-cable-rating > div { display:grid; gap:2px; min-width:0; }
+#learnView .learn-cable-card.is-comparison .learn-cable-rating dt { margin:0; color:#505b66; font-size:15px; font-weight:500; }
+#learnView .learn-cable-card.is-comparison .learn-cable-rating dd { margin:0; color:#202730; font-size:16px; font-weight:600; line-height:1.5; }
+#learnView .learn-cable-card.is-comparison > header .learn-cable-rating { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px 22px; margin:0 0 0 auto; padding:0; border:0; }
+#learnView .learn-cable-card.is-comparison > header .learn-cable-rating > div { max-width:100%; }
+#learnView .learn-cable-voltage-summary { border-bottom:1px dotted #777; cursor:help; }
+#learnView .learn-cable-voltage-line { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; line-height:1.5; }
+#learnView .learn-cable-voltage-line > :first-child { white-space:nowrap; }
+#learnView .learn-cable-voltage-line > :last-child { color:#505b66; font-weight:400; }
+#learnView .learn-cable-voltage-line strong { font-variant-numeric:tabular-nums; }
+#learnView .learn-cable-card.is-comparison .learn-cable-description { display:grid; gap:10px; }
+#learnView .learn-cable-card.is-comparison .learn-cable-description dt,
+#learnView .learn-cable-designation h4 { margin:0 0 3px; color:#273640; font:700 16px/1.4 'Segoe UI',Arial,sans-serif; }
+#learnView .learn-cable-card.is-comparison .learn-cable-description dd,
+#learnView .learn-cable-fire-note,
+#learnView .learn-cable-designation li > div { margin:0; color:#202730; font:400 16px/1.5 Georgia,'Times New Roman',serif; overflow-wrap:break-word; }
+#learnView .learn-cable-card.is-comparison .learn-cable-limits { padding:0 0 0 10px; border-left:2px solid #d4a06a; background:none; }
+#learnView .learn-cable-fire-note { grid-column:1 / -1; margin-top:0; padding-top:9px; border-top:1px solid #e4e9ec; }
+#learnView .learn-cable-picture-note { grid-column:1 / -1; margin:0; padding-top:9px; border-top:1px solid #e4e9ec; color:#505b66; font:400 16px/1.5 Georgia,'Times New Roman',serif; }
+#learnView .learn-cable-designation { border-top:1px solid #dce3e7; padding-top:12px; }
+#learnView .learn-cable-designation ul { list-style:none; display:grid; grid-template-columns:minmax(0,1fr); gap:6px; margin:9px 0 0; padding:0; }
+#learnView .learn-cable-designation li { display:flex; align-items:baseline; gap:8px; min-width:0; }
+#learnView .learn-cable-code-token { flex:0 0 auto; max-width:100%; padding:0; color:#844716; font:700 16px/1.5 'Segoe UI',Arial,sans-serif; overflow-wrap:break-word; }
+#learnView .learn-cable-designation li > div { min-width:0; }
+#learnView .learn-cable-designation li { flex-wrap:wrap; }
+#learnView .learn-cable-designation li > div { flex:1 1 120px; }
+@container cable-card (min-width:610px) {
+  #learnView .learn-cable-card.is-comparison .learn-cable-body { grid-template-columns:minmax(200px,.85fr) minmax(0,1.2fr); gap:14px 18px; }
+  #learnView .learn-cable-image-column { grid-column:1; grid-row:1 / span 2; }
+  #learnView .learn-cable-specs { grid-column:2; grid-row:1; }
+  #learnView .learn-cable-designation { grid-column:2; grid-row:2; }
+}
+@container cable-card (min-width:850px) {
+  #learnView .learn-cable-card.is-comparison .learn-cable-body { grid-template-columns:minmax(220px,.9fr) minmax(260px,1.15fr) minmax(235px,1fr); gap:18px; }
+  #learnView .learn-cable-image-column { grid-row:1; }
+  #learnView .learn-cable-designation { grid-column:3; grid-row:1; border-top:0; border-left:1px solid #dce3e7; padding:0 0 0 14px; }
+}
+@container cable-card (max-width:609px) {
+  #learnView .learn-cable-card.is-comparison > header .learn-cable-rating { width:100%; margin:4px 0 0; }
+}
+
+/* Titles explain what is calculated. Short, independent cards can share a row,
+   whereas equations with several terms retain the full available width. */
+#learnView .learn-reading-layout > .learn-formula-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; max-width:none; }
+#learnView .learn-formula-grid .learn-formula { min-width:0; margin:0; padding:12px 14px; }
+#learnView .learn-formula-title { margin:0 0 8px; color:#273640; font:700 17px/1.4 'Segoe UI',Arial,sans-serif; }
+#learnView .learn-formula-grid .learn-formula-legend h4 { margin:10px 0 0; font:600 15px/1.4 'Segoe UI',Arial,sans-serif; color:#505b66; }
+#learnView .learn-formula-grid .learn-formula-legend dl { margin-top:5px; }
+#learnView .learn-formula-grid .learn-formula-legend dl > div { min-width:0; grid-template-columns:minmax(0,max-content) minmax(0,1fr); gap:8px; }
+#learnView .learn-formula-grid .learn-formula-legend dd { min-width:0; }
+#learnView .learn-formula-grid .learn-formula-expression { font-size:23px; line-height:1.6; }
+#learnView .learn-reference-links { display:flex; flex-wrap:wrap; gap:6px 18px; width:100%; max-width:74ch; margin-inline:auto; }
+#learnView .learn-reference-links a { display:inline-flex; align-items:center; gap:6px; min-height:36px; color:#784414; font:600 16px/1.4 'Segoe UI',Arial,sans-serif; text-decoration:underline; text-underline-offset:3px; }
+@media (min-width:1100px) {
+  #learnView .learn-reading-layout > .learn-formula-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #learnView .learn-formula-grid .is-wide-formula { grid-column:1 / -1; }
+  #learnView .learn-formula-grid .learn-formula:last-child:nth-child(odd) { grid-column:1 / -1; }
+  #learnView .learn-formula-grid .is-wide-formula .learn-formula-legend dl,
+  #learnView .learn-formula-grid .learn-formula:last-child:nth-child(odd) .learn-formula-legend dl { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px 20px; }
+  #learnView .learn-media.is-compact-pair { max-width:none; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
+  #learnView .learn-media.is-compact-pair .learn-figure img { max-height:290px; }
+}
 @media (min-width:1100px) {
   #learnView :is(.learn-intro,.learn-text > p,.learn-key-rule,.learn-pitfall,.learn-catalog-note) {
     text-align:justify; text-justify:inter-word; hyphens:auto;
@@ -828,3 +914,10 @@ body:has(#learnView.active) .topbar { background:#fff; border-color:#dfe5e8; }
   #learnView .learn-tabs { gap:15px; }
   #learnView :is(.learn-intro,.learn-text > p,.learn-key-rule,.learn-pitfall,.learn-catalog-note) { text-align:left; }
 }
+
+/* Retain unexplained letters and dimensions without a second caption block. */
+#learnView .learn-figure-notes.is-compact-legend { margin-top:7px; padding-top:7px; }
+#learnView .is-compact-legend .learn-figure-legend { gap:5px 18px; margin:0; }
+#learnView .is-compact-legend .learn-figure-legend > div { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; }
+#learnView .is-compact-legend .learn-figure-legend dt { flex:0 1 auto; max-width:100%; margin:0; }
+#learnView .is-compact-legend .learn-figure-legend dd { flex:1 1 170px; min-width:0; margin:0; }

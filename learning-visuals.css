@@ -213,3 +213,48 @@
 
 #learnView .lv-workbench .lv-observation p{font:400 16px/1.5 Georgia,'Times New Roman',serif;color:#202730;margin:4px 0 0}
 #learnView .lv-workbench .lv-observation strong,#learnView .lv-ohm-control>label{color:#202730}
+.lv-technical.lv-wire-colors{max-width:740px;margin:0 auto;background:transparent}
+.lv-technical.lv-wire-colors>svg{display:block;width:100%;max-height:150px;min-width:0}
+.lv-wire-colors text{font:600 23px 'Segoe UI',Arial,sans-serif;fill:#25303a;text-anchor:middle}
+@media(max-width:650px){.lv-technical.lv-wire-colors>svg{min-height:95px;max-height:130px}}
+
+/* A comparison keeps both states in view. Space comes from columns and from
+   removing repeated headings, rather than from smaller instructional type. */
+.lv-conductor-comparison{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 20px}
+.lv-conductor-row{align-content:start;gap:3px;padding:4px 0}
+.lv-conductor-row+.lv-conductor-row{border-left:1px solid #ded6cc;padding-left:16px}
+.lv-conductor-shape{grid-template-columns:26px minmax(0,1fr)}
+.lv-conductor-formula{grid-column:1/-1;margin-top:0}
+.lv-conductor-length{margin-top:-3px}
+.lv-workbench .lv-observation-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+#learnView .lv-workbench .lv-observation p{margin:0}
+.lv-workbench .lv-observation{border-radius:4px;padding:9px 11px}
+.lv-workbench .lv-observation-dot{margin-top:6px;width:8px;height:8px;flex-basis:8px}
+.lv-workbench .lv-node:not(.lv-text-node){display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;justify-items:start;text-align:left;gap:5px 8px;padding:8px 10px}
+.lv-workbench .lv-node:not(.lv-text-node) .lv-component{width:40px;height:40px;border:0;border-radius:0;background:transparent;grid-row:1 / span 2}
+.lv-workbench .lv-node:not(.lv-text-node) .lv-component svg{width:40px;height:40px}
+.lv-workbench .lv-node:not(.lv-text-node) strong{grid-column:2}
+.lv-workbench .lv-node:not(.lv-text-node) .lv-node-value{grid-column:2}
+.lv-workbench .lv-node strong{overflow-wrap:normal;hyphens:auto}
+.lv-illustration-tabs{background:#f8f4ed;padding:3px;gap:3px}
+.lv-illustration-tabs [role=tab]{min-height:42px;padding:7px 10px;font-size:16px}
+.lv-illustration-tabs [role=tab][aria-selected=true]{background:#fff;border-color:#d5b693;box-shadow:inset 0 -2px #b87739}
+.lv-tabbed .lv-workbench{padding:10px 12px}
+.lv-state-controls{align-items:stretch}
+.lv-state-controls button{flex:0 1 auto}
+.lv-workbench .lv-state-controls svg{width:22px;height:22px}
+.lv-workbench .lv-sequence .lv-node:not(:last-child):after{top:50%;transform:translateY(-50%)}
+.lv-workbench .lv-step-controls{padding-top:5px}
+.lv-technical .lv-current-trace{stroke:#b85c1a;stroke-width:3;stroke-dasharray:9 6;pointer-events:none}
+.lv-technical .lv-light-reference{fill:none;stroke:#aeb6bd;stroke-width:1.5;stroke-dasharray:4 4}
+.lv-workbench .lv-state-controls .lv-play{margin:0;border-style:dashed}
+@media(prefers-reduced-motion:reduce){.lv-workbench .lv-state-controls .lv-play{display:none}}
+@media(max-width:650px){
+ .lv-conductor-comparison{grid-template-columns:minmax(0,1fr);gap:8px}
+ .lv-conductor-row+.lv-conductor-row{border-left:0;border-top:1px solid #ded6cc;padding:8px 0 0}
+ .lv-conductor-shape svg{max-height:82px}
+ .lv-workbench .lv-node:not(.lv-text-node){grid-template-columns:32px minmax(0,1fr);padding:7px;gap:4px 6px}
+ .lv-workbench .lv-node:not(.lv-text-node) .lv-component,.lv-workbench .lv-node:not(.lv-text-node) .lv-component svg{width:32px;height:32px}
+ .lv-workbench .lv-state-controls button{flex:1 1 auto}
+ .lv-illustration-tabs [role=tab]{font-size:16px;line-height:1.35}
+}
