@@ -336,7 +336,7 @@
     const terms=formula.symbols || [];
     const title=formula.title || `${terms[0]?.meaning || 'Villamos mennyiségek'} számítása`;
     const equations=String(formula.expression || '').split(';').map(s=>s.trim()).filter(Boolean);
-    return `<section class="learn-formula${String(formula.expression).length>45 || terms.length>5 ? ' is-wide-formula' : ''}" aria-label="${esc(title)}"><h3 class="learn-formula-title">${esc(title)}</h3>${formula.description ? `<p class="learn-formula-description">${richText(formula.description)}</p>` : ''}<div class="learn-formula-equations">${window.VVFormula.diagram(equations.join('; '),terms,title)}</div>${formula.note ? `<p>${esc(formula.note)}</p>` : ''}</section>`;
+    return `<section class="learn-formula${String(formula.expression).length>45 || terms.length>5 ? ' is-wide-formula' : ''}" aria-label="${esc(title)}"><h3 class="learn-formula-title">${esc(title)}</h3>${formula.description ? `<p class="learn-formula-description">${richText(formula.description)}</p>` : ''}<div class="learn-formula-equations">${window.VVFormula.diagram(equations.join('; '),terms,title)}</div>${formula.note ? `<p>${richText(formula.note)}</p>` : ''}</section>`;
   }
 
   function cableTypesForLesson(lesson) {
@@ -360,6 +360,8 @@
 
   function figureData(figure) {
     if (typeof figure === 'string') figure = {path:figure};
+    const presentation=window.VV_LEARNING?.figurePresentation?.[figure?.path];
+    if(presentation)figure={...figure,...presentation};
     return figure?.path ? {...figureMeta.get(figure.originalPath),...figureMeta.get(figure.path),...figure} : null;
   }
 
@@ -842,5 +844,5 @@
 
   window.addEventListener('storage',event=>{if(event.key===KEY){progress=readProgress();if(host?.getClientRects().length)renderRoute(location.hash);}});
 
-  window.VV_LEARN = Object.freeze({setup, renderRoute, capture: captureInputs, currentRoute: () => lastRoute, linksForQuestion: id => (reverseMap.get(String(id)) || []).slice(0,3).map(lesson => ({id:lesson.id,title:lesson.title,chapterTitle:lesson.chapter.title,href:href(lesson)})), questionIds: () => current ? relatedQuestions(current).map(q => q.id) : [], stats: () => ({chapters:chapters.length,lessons:lessons.length,topics:allGroups().length,linkedQuestions:reverseMap.size,read:countRead(lessons)})});
+  window.VV_LEARN = Object.freeze({setup, renderRoute, capture: captureInputs, currentRoute: () => lastRoute, linksForQuestion: id => (reverseMap.get(String(id)) || []).map(lesson => ({id:lesson.id,title:lesson.title,chapterTitle:lesson.chapter.title,href:href(lesson)})), questionIds: () => current ? relatedQuestions(current).map(q => q.id) : [], stats: () => ({chapters:chapters.length,lessons:lessons.length,topics:allGroups().length,linkedQuestions:reverseMap.size,read:countRead(lessons)})});
 })();

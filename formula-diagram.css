@@ -57,7 +57,7 @@
 @media(prefers-reduced-motion:reduce){.fm-diagram *{animation:none!important;transition:none!important}}
 
 /* A formula plate, with short callouts around the actual glyphs. */
-.fm-stage{display:block;min-height:0;padding:0;max-width:640px}
+.fm-stage{display:block;min-height:0;padding:0;max-width:980px}
 .learn-formula-grid[data-fm-navigator]{grid-template-columns:minmax(0,1fr)!important}
 .fm-tooltip{position:fixed;z-index:100000;max-width:min(320px,calc(100vw - 16px));padding:9px 12px;border-radius:7px;background:#253640;color:#fff;font:15px/1.4 Arial,sans-serif;box-shadow:0 4px 16px #0003;pointer-events:none}
 .fm-tooltip[hidden]{display:none!important}

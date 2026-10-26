@@ -56,6 +56,7 @@
     const low=['low','uncertain','review','unknown','none'].includes(String(confidence).toLowerCase())||q.review===true;
     const figurePaths=(Array.isArray(q.figurePaths)?q.figurePaths:[]).filter(Boolean);
     if(!figurePaths.length&&q.figurePath)figurePaths.push(q.figurePath);
+    for(let j=0;j<figurePaths.length;j++)figurePaths[j]=raw.figurePresentation?.[figurePaths[j]]?.path||figurePaths[j];
     const sourceTopic=q.topic||q.category||'Egyéb',prompt=q.prompt||q.question||'';
     return {...q,id:String(q.id||`q-${i+1}`),sourceId:q.sourceId||src?.id||file,sourceTitle:q.sourceTitle||src?.title||file,sourceFile:file,sourcePath:q.sourcePath||src?.path||'',year,page,number:q.number||q.taskNumber||`${i+1}`,section:q.section||'',sourceTopic,topic:questionCategory(sourceTopic,prompt,categorizationType),type,options,answer,explanation:q.explanation||q.solution||'',points:Number(q.points)||2,review:low||answer===null||answer==='',requiresFigure:!!q.requiresFigure,figurePath:figurePaths[0]||'',figurePaths,figureCaptions:Array.isArray(q.figureCaptions)?q.figureCaptions:[],prompt};
   }).filter(q=>!q.drawing&&q.prompt.trim());

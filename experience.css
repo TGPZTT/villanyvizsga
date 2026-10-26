@@ -1797,3 +1797,7 @@ main:not(:has(#guideView)):has(.guide-solving) { padding-top: 10px; padding-bott
 .learning-image-dialog.has-image-zoom[open]{display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;width:calc(100vw - 20px);height:calc(100dvh - 20px);max-height:94dvh;max-width:96vw}
 .learning-image-dialog .figure-zoom-viewport img{max-width:100%;max-height:100%}
 @media(max-width:460px){.figure-zoom-controls{gap:4px}.figure-zoom-controls button{padding:6px 8px}.figure-lightbox-caption{font-size:14px}}
+
+/* Long question topics wrap within the header without reducing type size. */
+.question-top .tags{min-width:0;max-width:100%}
+.question-top .tags .chip{max-width:100%;white-space:normal;overflow-wrap:break-word}

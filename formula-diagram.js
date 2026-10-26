@@ -112,12 +112,63 @@
     return `<figure class="fm-diagram" data-fm-diagram="${id}" aria-label="${esc(title||expression)}"><div class="fm-stage"><svg class="fm-leaders" aria-hidden="true" focusable="false"><defs><marker id="${id}-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 8 4 0 8" fill="none" stroke="context-stroke" stroke-width="1.4"/></marker></defs></svg><div class="fm-expression" role="math" aria-label="${esc(expression.replace(/[×*]/gu,'·'))}">${math}</div>${used.map((term,i)=>`<div class="fm-callout" data-fm-for="${esc(term.symbol)}" style="--fm-color:${term.color};--fm-order:${i}"><span class="fm-callout-symbol">${textMath(term.displaySymbol||term.symbol)}</span><span class="fm-callout-meaning">${esc(term.meaning)}</span><span class="fm-unit${noUnit(term.unit)?' is-unitless':''}">${esc(unit(term.unit))}</span></div>`).join('')}</div></figure>`;
   }
 
+  // Wide formula plates use the space beside the equation. Only the outer
+  // symbols receive side labels, so their leaders never pass through a term.
+  function sideLayout(figure,assignments,initial,width) {
+    if(assignments.length<2||width<740)return false;
+    const sideWidth=Math.min(178,(width-initial.width)/2-30);
+    if(sideWidth<138)return false;
+    const stage=figure.querySelector('.fm-stage'),equation=figure.querySelector('.fm-expression'),svg=figure.querySelector('.fm-leaders');
+    const ordered=[...assignments].sort((a,b)=>a.x-b.x),left=ordered.shift(),right=ordered.pop();
+    const middle=ordered,centerLeft=sideWidth+22,centerWidth=width-2*centerLeft;
+    const banks=[middle.filter(a=>a.above),middle.filter(a=>!a.above)];
+    const rows=banks.map(items=>{
+      for(const a of items)Object.assign(a.label.style,{position:'absolute',width:Math.min(195,centerWidth/Math.max(1,items.length)-14)+'px',maxWidth:'none',left:'0',top:'0'});
+      return {items,height:items.length?Math.max(...items.map(a=>a.label.getBoundingClientRect().height)):0};
+    });
+    for(const a of [left,right])Object.assign(a.label.style,{position:'absolute',width:sideWidth+'px',maxWidth:'none',top:'0'});
+    const sideHeight=Math.max(left.label.getBoundingClientRect().height,right.label.getBoundingClientRect().height);
+    const equationTop=Math.max(rows[0].height?rows[0].height+30:8,(sideHeight-initial.height)/2+8);
+    equation.style.top=equationTop+'px';
+    const equationBox=equation.getBoundingClientRect();
+    const sideTop=equationTop+(equationBox.height-sideHeight)/2;
+    left.label.style.left='0';right.label.style.left=(width-sideWidth)+'px';
+    for(const a of [left,right])a.label.style.top=(sideTop+(sideHeight-a.label.getBoundingClientRect().height)/2)+'px';
+    rows.forEach((row,bank)=>row.items.forEach((a,i)=>{
+      const cell=centerWidth/row.items.length,box=a.label.getBoundingClientRect();
+      a.label.style.left=(centerLeft+cell*(i+.5)-box.width/2)+'px';
+      a.label.style.top=(bank?equationTop+equationBox.height+32:rows[0].height-box.height)+'px';
+    }));
+    const height=Math.max(equationTop+equationBox.height+(rows[1].height?32+rows[1].height:18),sideTop+sideHeight+8);
+    stage.style.height=Math.ceil(height)+'px';figure.dataset.fmLayout='sides';
+    const origin=stage.getBoundingClientRect(),local=el=>{const r=el.getBoundingClientRect();return {left:r.left-origin.left,right:r.right-origin.left,top:r.top-origin.top,bottom:r.bottom-origin.top,width:r.width,height:r.height};};
+    const eq=local(equation),pathFor=(a,kind)=>{
+      const label=local(a.label),target=local(a.target),x=target.left+target.width/2;
+      let d;
+      if(kind==='left'){
+        const y=target.top+target.height/2,lane=eq.left-13;
+        d=`M${label.right+4} ${label.top+label.height/2}H${lane}V${y}H${target.left-5}`;
+      }else if(kind==='right'){
+        const above=!!a.target.closest('.fm-numerator'),lane=eq.right+13,y=above?eq.top-9:eq.bottom+9;
+        d=`M${label.left-4} ${label.top+label.height/2}H${lane}V${y}H${x}V${above?target.top-5:target.bottom+5}`;
+      }else{
+        const above=a.above,y=above?eq.top-12:eq.bottom+16;
+        d=`M${label.left+label.width/2} ${above?label.bottom+3:label.top-3}V${y}H${x}V${above?target.top-5:target.bottom+5}`;
+      }
+      return `<path d="${d}" fill="none" stroke="${getComputedStyle(a.label).getPropertyValue('--fm-color').trim()}" stroke-width="1.3" marker-end="url(#${figure.dataset.fmDiagram}-arrow)"/>`;
+    };
+    svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+    svg.querySelectorAll(':scope > path').forEach(path=>path.remove());
+    svg.insertAdjacentHTML('beforeend',pathFor(left,'left')+pathFor(right,'right')+middle.map(a=>pathFor(a,'middle')).join(''));
+    return true;
+  }
+
   function layout(figure) {
     const stage=figure.querySelector('.fm-stage'),equation=figure.querySelector('.fm-expression'),svg=figure.querySelector('.fm-leaders');
     if(!stage || !stage.getClientRects().length || !stage.clientWidth)return;
     const labels=[...stage.querySelectorAll('.fm-callout')],width=stage.clientWidth;
     figure.classList.remove('is-compact');
-    equation.style.cssText='position:absolute;left:50%;top:0;transform:translateX(-50%);margin:0;max-width:100%;';
+    equation.style.cssText='position:absolute;left:50%;top:0;transform:translateX(-50%);margin:0;width:max-content;max-width:100%;';
     const initial=equation.getBoundingClientRect();
     const assignments=labels.map((label,index)=>{
       const target=[...equation.querySelectorAll('[data-fm-symbol]')].find(el=>el.dataset.fmSymbol===label.dataset.fmFor);
@@ -130,6 +181,8 @@
       const inRadicand=!!target.closest('.fm-radicand');
       return {label,target,x:b.left+b.width/2-initial.left,above:!inRadicand&&(inNumerator||(!inDenominator&&index%2===0))};
     }).filter(Boolean);
+    if(sideLayout(figure,assignments,initial,width))return;
+    figure.dataset.fmLayout='vertical';
     const banks=[assignments.filter(a=>a.above).sort((a,b)=>a.x-b.x),assignments.filter(a=>!a.above).sort((a,b)=>a.x-b.x)];
     const bankLayouts=banks.map(bank=>{
       const columns=Math.max(1,Math.min(width<480?2:4,bank.length));

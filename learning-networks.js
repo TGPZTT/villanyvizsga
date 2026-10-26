@@ -35,7 +35,7 @@
   }
   function network(spec,index) {
     const {item,type,mode,focus}=scheme(spec,index),fault=mode==='fault';
-    let draw='<rect x="710" y="37" width="145" height="233" rx="4" class="ln-case"/>';
+    let draw='<rect x="710" y="37" width="145" height="233" rx="4" class="ln-case"/><path d="M840 134V190M838 134h4M838 190h4" class="ln-enclosure-detail"/><g class="ln-enclosure-detail"><circle cx="719" cy="46" r="2.5"/><circle cx="846" cy="46" r="2.5"/><circle cx="719" cy="260" r="2.5"/><circle cx="846" cy="260" r="2.5"/></g>';
     draw+=path('M90 70V220','ln-source-bus')+coil(70)+coil(120)+coil(170);
     draw+=path('M200 70H765V105','ln-phase ln-l1')+path('M200 120H400','ln-phase ln-l2')+path('M200 170H400','ln-phase ln-l3');
     draw+='<rect x="751" y="105" width="28" height="65" class="ln-load"/>'+path('M765 170V220',type==='IT'||type==='IT-Z'?'ln-phase ln-l2':'ln-n');
@@ -75,7 +75,7 @@
       else trace+='V290H650V305';
       draw+=path(trace,'ln-fault-trace ln-trace');
       if(type==='TT')draw+=path('M650 348H90V325','ln-soil-path')+caption(spec,'earthPath',370,341,'ln-small');
-      draw+=caption(spec,'fault',820,92,'ln-small','end');
+      draw+=caption(spec,'fault',815,320,'ln-small','end');
     }else if(mode==='normal'){
       let trace='M200 70H765V105';
       draw+=path(trace,'ln-current-trace ln-trace')+path('M765 170V220','ln-current-trace ln-trace');
@@ -105,7 +105,7 @@
   function bonding(spec,index){
     const item=spec.items[index]||{},selected=item.selectedPath||['pe','extraneous','bond'][index];
     let d='<rect x="346" y="224" width="220" height="16" rx="3" class="ln-earth-bar"/>';
-    d+=text(456,275,'MET')+caption(spec,'bar',456,303,'ln-small');
+    d+=text(456,207,'MET')+caption(spec,'bar',426,282,'ln-small','end');
     d+='<rect x="85" y="70" width="160" height="110" rx="4" class="ln-case"/><path d="M125 98h80v55h-80z" class="ln-load"/>';
     d+='<path d="M690 65h45v110h-45zM678 90h70M678 150h70" class="ln-metal-pipe"/>';
     d+=protective('M165 180V232H346','pe',selected==='pe')+protective('M713 175V232H566','pe',selected==='extraneous'||selected==='bond');

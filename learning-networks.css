@@ -29,3 +29,5 @@
 .ln-diagram .ln-metal-pipe{fill:#dce1e4;stroke:#65737c;stroke-width:2.7}
 @media(max-width:650px){.ln-diagram svg{min-height:260px;max-height:300px}.ln-diagram text{font-size:25px}.ln-diagram .ln-small{font-size:20px}.ln-diagram .ln-caption{font-size:19px}}
 @media(prefers-reduced-motion:reduce){.ln-diagram *{animation:none!important;transition:none!important}}
+
+.ln-diagram .ln-enclosure-detail{fill:none;stroke:#a1adb5;stroke-width:1.5}
