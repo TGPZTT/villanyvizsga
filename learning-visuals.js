@@ -184,6 +184,16 @@
     return `<div class="lv-spectrum" data-lv-diagram>${(spec.items||[]).map((item,i)=>`<button type="button" class="${i===index?'is-active':''}" data-lv-index="${i}" aria-pressed="${index===i}" style="--lv-band:${esc(item.color||colors[i%colors.length])}"><span class="lv-band"></span>${glyph(item.glyph||'lamp',item.color)}<strong>${esc(item.label)}</strong>${item.value!==undefined?`<small>${esc(item.value)} ${esc(item.unit||'')}</small>`:''}</button>`).join('')}</div>`;
   }
   function controls(spec,index){return `<div class="lv-state-controls">${spec.items.map((item,i)=>`<button type="button" data-lv-index="${i}" aria-pressed="${index===i}">${esc(item.label)}</button>`).join('')}${spec.variant==='wave'?'<button type="button" class="lv-play" data-lv-play aria-pressed="false">Egy periódus lejátszása</button>':''}</div>`;}
+  function currentTransformer(spec,index){
+    const primary=spec.items.find(item=>item.target==='source')||spec.items[0];
+    const core=spec.items.find(item=>item.target==='core')||spec.items[1];
+    const secondary=spec.items.find(item=>item.target==='secondary')||spec.items[2];
+    const labels=spec.labels||{},primaryLines=(labels.primaryLines||[primary.label]).flatMap(line=>String(line).split(/\s+/u));
+    // The straight conductor is the pass-through primary. The only wound
+    // conductor is the secondary, closed through the ammeter. Its return stays
+    // above the primary, so a wire crossing cannot imply a galvanic junction.
+    return `<div class="lv-technical lv-current-transformer" tabindex="0" role="region" aria-label="${esc(spec.title)}" data-lv-diagram data-model="current-transformer" data-lv-active="${esc(spec.items[index]?.target||'')}" style="--lv-ct-primary:${esc(primary.color||colors[0])};--lv-ct-secondary:${esc(secondary.color||colors[5])};--lv-ct-core:${esc(core.color||colors[1])}"><svg viewBox="0 0 310 214" role="img" aria-label="${esc(spec.title)}"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path class="lv-ct-primary" data-transformer-part="primary" d="M10 115H300"/><ellipse class="lv-ct-core" data-transformer-part="core" cx="139" cy="106" rx="45" ry="63"/><path class="lv-ct-secondary" data-transformer-part="secondary-winding" d="M159 58c44 0 44 12 0 12 44 0 44 12 0 12 44 0 44 12 0 12"/><path class="lv-ct-secondary" data-transformer-part="secondary-loop" d="M159 58H272V60M272 94V102H210V94H159"/><circle class="lv-ct-meter" data-transformer-part="ammeter" cx="272" cy="77" r="17"/><text class="lv-ct-meter-label" x="272" y="85">A</text><text class="lv-ct-primary-label" x="54" y="30">${primaryLines.map((line,i)=>i?`<tspan x="54" dy="25">${esc(line)}</tspan>`:esc(line)).join('')}</text><path class="lv-ct-primary-pointer" data-transformer-part="primary-callout" d="M54 ${36+25*(primaryLines.length-1)}V115"/><text class="lv-ct-secondary-label" x="250" y="35">${esc(labels.secondary||secondary.label)}</text><path class="lv-ct-core-pointer" data-transformer-part="core-callout" d="M139 181V169"/><text class="lv-ct-core-label" x="139" y="205">${esc(labels.core||core.label)}</text></g></svg></div>${controls(spec,index)}`;
+  }
   const ohmNumber=value=>new Intl.NumberFormat('hu-HU',{maximumFractionDigits:3}).format(value);
   const ohmRelation=value=>Math.abs(value-Number(value.toFixed(3)))>1e-10?'≈':'=';
   function ohmDiagram(spec,key){
@@ -357,7 +367,7 @@
       if(!open)drawing+=`<path d="M145 85H220m-10-8 10 8-10 8" class="lv-current-arrow" fill="none" style="stroke-width:${index===2?6:3}"/>`;
       drawing+=text(175,50,open?'I = 0':index===2?'I ↑':'I');
     }else if(v==='current-transformer'){
-      drawing=line('M70 155H680','lv-source')+'<ellipse cx="350" cy="155" rx="85" ry="110" fill="none" stroke="#a48e7a" stroke-width="17"/><path d="M420 90c35 0 35 20 0 20 35 0 35 20 0 20 35 0 35 20 0 20" fill="none" stroke="#765594"/>'+line('M420 90H580V143M580 207V245H480V150H420','lv-secondary')+'<circle cx="580" cy="175" r="32" fill="#fff"/>'+text(580,185,'A');
+      return currentTransformer(spec,index);
     }else if(v==='rcd-balance'){
       const leak=index>0,tripped=index===2;
       drawing=line(tripped?'M65 95H170M170 95l30-20M220 95H660V145M660 205V255H220M170 255H65M170 255l30 20':'M65 95H660V145M660 205V255H65','lv-source')+line('M635 145h50v60h-50z','lv-load')+'<ellipse cx="330" cy="175" rx="65" ry="125" fill="none" stroke="#a18b74" stroke-width="12"/>';

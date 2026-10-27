@@ -274,3 +274,23 @@
 }
 .lv-drawing-dialog{padding:10px;border:1px solid #b9c5ca;border-radius:10px;background:#fff;color:#263640}
 .lv-drawing-dialog::backdrop{background:#102a32a8}
+
+/* The CT primary passes through the core. Both circuits stay visible in every
+   selection. Only the chosen part gains weight, without hiding the other one. */
+.lv-technical.lv-current-transformer{max-width:360px;margin:0 auto;overflow:visible}
+.lv-technical.lv-current-transformer>svg{min-width:0;min-height:0;max-height:none}
+.lv-technical.lv-current-transformer text{font:600 22px 'Segoe UI',Arial,sans-serif;text-anchor:middle;stroke:none}
+.lv-current-transformer .lv-ct-primary{stroke:var(--lv-ct-primary);stroke-width:4}
+.lv-current-transformer .lv-ct-secondary{stroke:var(--lv-ct-secondary);stroke-width:3}
+.lv-technical.lv-current-transformer .lv-ct-core{stroke:#8b949c;stroke-width:12;fill:none}
+.lv-current-transformer .lv-ct-meter{fill:#fff;stroke:var(--lv-ct-secondary);stroke-width:2.5}
+.lv-current-transformer .lv-ct-primary-label{fill:var(--lv-ct-primary)}
+.lv-current-transformer .lv-ct-secondary-label,.lv-current-transformer .lv-ct-meter-label{fill:var(--lv-ct-secondary)}
+.lv-current-transformer .lv-ct-core-label{fill:#505e68}
+.lv-current-transformer .lv-ct-primary-pointer{stroke:var(--lv-ct-primary);stroke-width:1.5}
+.lv-current-transformer .lv-ct-core-pointer{stroke:#505e68;stroke-width:1.5}
+.lv-current-transformer[data-lv-active=source] .lv-ct-primary{stroke-width:6}
+.lv-current-transformer[data-lv-active=secondary] .lv-ct-secondary{stroke-width:5}
+.lv-technical.lv-current-transformer[data-lv-active=core] .lv-ct-core{stroke:var(--lv-ct-core);stroke-width:15}
+.lv-current-transformer[data-lv-active=core] .lv-ct-core-label,.lv-current-transformer[data-lv-active=core] .lv-ct-core-pointer{fill:var(--lv-ct-core);stroke:var(--lv-ct-core)}
+.lv-current-transformer[data-lv-active=core] .lv-ct-core-label{stroke:none}
