@@ -306,36 +306,63 @@
     return card;
   }
 
+  const formulaButtonLabels={
+    'energy-csillag-delta':['Csillag','Delta'],
+    'wires-anyag-ellenallas':['Vezető ellenállása'],
+    'wires-meretezes':['Feszültségesés','Veszteségi P','Terhelhetőség','Védelmi feltétel'],
+    'wires-feszultsegeses':['Hurokellenállás','Feszültségesés','Háromfázisú méretezés'],
+    'switchgear-tularam':['Joule-hő'],
+    'connection-energia-meres':['Villamos energia'],
+    'protection-tt-it':['TT védelmi feltétel'],
+    'protection-loop':['Hurokimpedancia','Kioldóáram','Testzárlati áram','L–N zárlati áram','ÁVK-s modell'],
+    'lighting-distance':['Megvilágítás','Fényhasznosítás','Átlagos megvilágítás','Távolság hatása'],
+    'machines-transformer':['Áttétel','Egyfázisú áram','Háromfázisú áram'],
+    'machines-motor-types':['Egyfázisú áram','Háromfázisú áram'],
+    'machines-slip':['Szinkron fordulatszám','Szlip'],
+    'fundamentals-ohm':['Ohm törvénye'],
+    'fundamentals-soros':['Soros eredő'],
+    'fundamentals-parhuzamos':['Két ellenállás','Több ellenállás'],
+    'fundamentals-energia':['Villamos energia'],
+    'fundamentals-hatasfok':['Hatásfok'],
+    'fundamentals-teljesitmenyek':['Egyfázisú P és S','Meddő teljesítmény','Háromfázisú teljesítmény'],
+    'fundamentals-meter':['Skála leolvasása'],
+    'fundamentals-conductance':['Vezetés'],
+    'fundamentals-battery':['Kapocsfeszültség'],
+    'fundamentals-current-transformer':['Áramváltó']
+  };
   function prepareNavigator(grid){
     if(grid.dataset.fmNavigator)return;
     const cards=[...grid.children].filter(el=>el.matches('.learn-formula'));
     if(cards.length<2)return;
     const id=grid.closest('[data-learn-section-root]')?.dataset.learnSectionRoot||'formulas';
-    if(cards.length>2){
-      const nav=document.createElement('nav');nav.className='fm-navigation fm-select-navigation';nav.setAttribute('aria-label','Számítási összefüggések');
-      const select=document.createElement('select');select.setAttribute('aria-label','Összefüggés kiválasztása');
-      cards.forEach((card,index)=>{if(!card.id)card.id=`fm-card-${id}-${index+1}`;select.add(new Option(card.querySelector('h3')?.textContent||`${index+1}. képlet`,String(index)));});
-      select.setAttribute('aria-controls',cards.map(card=>card.id).join(' '));
-      const show=index=>{cards.forEach((card,i)=>{card.hidden=i!==index;});select.value=String(index);formulaSelection.set(id,index);cards[index].querySelectorAll('[data-fm-diagram]').forEach(layout);};
-      select.addEventListener('change',()=>show(Number(select.value)));nav.append(select);grid.before(nav);grid.dataset.fmNavigator='select';show(Math.min(formulaSelection.get(id)||0,cards.length-1));return;
-    }
     const nav=document.createElement('nav');nav.className='fm-navigation fm-chip-navigation';nav.setAttribute('aria-label','Számítási összefüggések');
     const buttons=cards.map((card,index)=>{
       const button=document.createElement('button');button.type='button';button.dataset.fmIndex=String(index);
       if(!card.id)card.id=`fm-card-${id}-${index+1}`;
       button.setAttribute('aria-controls',card.id);
-      button.textContent=card.querySelector('h3')?.textContent||`${index+1}. képlet`;
+      const title=card.querySelector('h3')?.textContent.trim()||`${index+1}. képlet`;
+      const label=formulaButtonLabels[id]?.[index]||title;
+      button.textContent=label;
+      button.setAttribute('aria-label',label===title?title:`${label}: ${title}`);
+      button.title=title;
+      card.dataset.fmTitleRedundant=String(label===title);
       button.setAttribute('aria-pressed','false');nav.append(button);return button;
     });
     const show=index=>{
-      cards.forEach((card,i)=>{card.hidden=i!==index;buttons[i].setAttribute('aria-pressed',String(i===index));});
+      index=Math.max(0,Math.min(cards.length-1,Number(index)||0));
+      cards.forEach((card,i)=>{
+        const selected=i===index;card.hidden=!selected;
+        buttons[i].setAttribute('aria-pressed',String(selected));
+        buttons[i].classList.toggle('is-selected',selected);
+        buttons[i].tabIndex=selected?0:-1;
+      });
       formulaSelection.set(id,index);cards[index].querySelectorAll('[data-fm-diagram]').forEach(layout);
     };
     buttons.forEach((button,index)=>button.addEventListener('click',()=>show(index)));
     nav.addEventListener('keydown',event=>{
       const index=buttons.indexOf(event.target);if(index<0)return;
       const target=event.key==='Home'?0:event.key==='End'?buttons.length-1:event.key==='ArrowRight'?(index+1)%buttons.length:event.key==='ArrowLeft'?(index+buttons.length-1)%buttons.length:null;
-      if(target===null)return;event.preventDefault();show(target);buttons[target].focus();
+      if(target===null)return;event.preventDefault();show(target);buttons[target].focus({preventScroll:true});
     });
     grid.before(nav);grid.dataset.fmNavigator='chips';show(Math.min(formulaSelection.get(id)||0,cards.length-1));
   }
