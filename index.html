@@ -9,31 +9,40 @@
   <link rel="icon" href="favicon.ico?v=20260929" sizes="16x16 32x32 48x48">
   <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20260929" sizes="any">
   <link rel="stylesheet" href="style.css?v=20260929">
-  <link rel="stylesheet" href="experience.css?v=20261027r10">
-  <link rel="stylesheet" href="learning.css?v=20261027r10">
-  <link rel="stylesheet" href="learning-visuals.css?v=20261027r10">
-  <link rel="stylesheet" href="learning-networks.css?v=20261027r10">
-  <link rel="stylesheet" href="learning-sort.css?v=20261027r10">
-  <script defer src="readable-text.js?v=20261027r10"></script>
-  <script defer src="question-labels.js?v=20261027r10"></script>
-  <script defer src="exam-selection.js?v=20261027r10"></script>
-  <script defer src="formula-diagram.js?v=20261027r10"></script>
-  <script defer src="worked-board.js?v=20261027r10"></script>
-  <script defer src="guide-navigation.js?v=20261027r10"></script>
-  <script defer src="learning-spd.js?v=20261027r10"></script>
-  <script defer src="learning-comparisons.js?v=20261027r10"></script>
-  <script defer src="learning-labs.js?v=20261027r10"></script>
-  <script defer src="learning-visuals.js?v=20261027r10"></script>
-  <script defer src="learning-networks.js?v=20261027r10"></script>
-  <script defer src="learning-sort.js?v=20261027r10"></script>
-  <script defer src="learning.js?v=20261027r10"></script>
-  <script defer src="learning-window.js?v=20261027r10"></script>
-  <script defer src="unlock.js?v=20261027r10"></script>
-  <link rel="stylesheet" href="formula-diagram.css?v=20261027r10">
-  <link rel="stylesheet" href="learning-labs.css?v=20261027r10">
-  <link rel="stylesheet" href="learning-comparisons.css?v=20261027r10">
-  <link rel="stylesheet" href="learning-spd.css?v=20261027r10">
-  <link rel="stylesheet" href="guide-layout.css?v=20261027r10">
+  <link rel="stylesheet" href="experience.css?v=20261028r11">
+  <link rel="stylesheet" href="learning.css?v=20261028r11">
+  <link rel="stylesheet" href="learning-visuals.css?v=20261028r11">
+  <link rel="stylesheet" href="learning-networks.css?v=20261028r11">
+  <link rel="stylesheet" href="learning-sort.css?v=20261028r11">
+  <script defer src="readable-text.js?v=20261028r11"></script>
+  <script defer src="question-labels.js?v=20261028r11"></script>
+  <script defer src="exam-selection.js?v=20261028r11"></script>
+  <script defer src="formula-diagram.js?v=20261028r11"></script>
+  <script defer src="worked-board.js?v=20261028r11"></script>
+  <script defer src="guide-navigation.js?v=20261028r11"></script>
+  <script defer src="learning-spd.js?v=20261028r11"></script>
+  <script defer src="learning-comparisons.js?v=20261028r11"></script>
+  <script defer src="learning-labs.js?v=20261028r11"></script>
+  <script defer src="learning-visuals.js?v=20261028r11"></script>
+  <script defer src="learning-networks.js?v=20261028r11"></script>
+  <script defer src="learning-sort.js?v=20261028r11"></script>
+  <script defer src="learning.js?v=20261028r11"></script>
+  <script defer src="learning-window.js?v=20261028r11"></script>
+  <script defer src="dashboard-art.js?v=20261028r11"></script>
+  <script defer src="dashboard.js?v=20261028r11"></script>
+  <script defer src="selection-flow.js?v=20261028r11"></script>
+  <script defer src="navigation-chrome.js?v=20261028r11"></script>
+  <script defer src="unlock.js?v=20261028r11"></script>
+  <link rel="stylesheet" href="formula-diagram.css?v=20261028r11">
+  <link rel="stylesheet" href="learning-labs.css?v=20261028r11">
+  <link rel="stylesheet" href="learning-comparisons.css?v=20261028r11">
+  <link rel="stylesheet" href="learning-spd.css?v=20261028r11">
+  <link rel="stylesheet" href="guide-layout.css?v=20261028r11">
+  <link rel="stylesheet" href="dashboard.css?v=20261028r11">
+  <link rel="stylesheet" href="dashboard-art.css?v=20261028r11">
+  <link rel="stylesheet" href="selection-flow.css?v=20261028r11">
+  <link rel="stylesheet" href="navigation-chrome.css?v=20261028r11">
+  <link rel="stylesheet" href="answer-states.css?v=20261028r11">
 </head>
 <body>
   <section id="unlockScreen" class="unlock-screen" aria-labelledby="unlockTitle">
@@ -67,32 +76,7 @@
     <div class="main-column">
       <button id="menuToggle" class="menu-toggle" type="button" aria-label="Menü megnyitása" aria-controls="mainNav" aria-expanded="false">☰</button>
       <main id="main" tabindex="-1">
-        <section id="homeView" class="view active" aria-labelledby="homeTitle">
-          <div class="hero">
-            <div class="hero-copy">
-              <h1 id="homeTitle">Villanyszerelő írásbeli</h1>
-              <p>Feladatok és versenyfeladatok, megoldásokkal és rövid magyarázatokkal.</p>
-              <div class="hero-actions"><button class="button primary" data-go="learn">Tananyag</button><button class="button light" data-go="bank">Feladatbank</button><button class="button light" data-go="exam">Mintavizsga</button></div>
-            </div>
-            <div class="hero-visual" aria-hidden="true">
-              <svg class="hero-schematic" viewBox="0 0 440 280" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M76 104V120M76 176V224H364V104H276M172 104H76" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <rect x="172" y="82" width="104" height="44" rx="4" stroke="currentColor" stroke-width="2"/>
-                <circle cx="76" cy="148" r="28" stroke="currentColor" stroke-width="2"/>
-                <path d="M70 148H82M76 142V154M137 70H315M305 64L315 70L305 76" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <text x="219" y="73" text-anchor="middle">R</text><text x="24" y="155">U</text><text x="321" y="76">I</text>
-              </svg>
-              <div class="hero-formula">U = R · I</div>
-            </div>
-          </div>
-          <div class="metrics" id="homeMetrics"></div>
-          <div class="section-head"><h2>Tanulási módok</h2></div>
-          <div class="route-grid"><button class="route-card" data-go="bank"><span class="route-symbol blue" aria-hidden="true">▦</span><span class="route-title">Feladatbank</span><span class="route-text">Feladatsorok, témák és típusok szerint.</span><span class="route-link">Megnyitás →</span></button><button class="route-card" data-go="practice"><span class="route-symbol amber" aria-hidden="true">✎</span><span class="route-title">Gyakorlás</span><span class="route-text">Rövid feladatsor azonnali magyarázattal.</span><span class="route-link">Indítás →</span></button><button class="route-card" data-go="exam"><span class="route-symbol green" aria-hidden="true">◷</span><span class="route-title">Mintavizsga</span><span class="route-text">Időzített feladatsor, végleges válaszokkal.</span><span class="route-link">Indítás →</span></button></div>
-          <div class="section-head"><h2>Feladatsorok</h2><button class="text-button" data-go="bank">Összes feladatsor →</button></div><div id="sourceOverview" class="source-overview"></div>
-          <div class="callout"><div><h2>Számolási útmutató</h2><p>Gyakori feladattípusok, szükséges képletek és kidolgozott példák.</p></div><button class="button dark" data-go="guide">Útmutató megnyitása</button></div>
-
-          <section class="progress-reset" aria-labelledby="progressResetTitle"><div class="progress-reset-copy"><h2 id="progressResetTitle">Mentett eredmények</h2><p>A korábbi gyakorlások eredményei törölhetők.</p></div><button id="reset-progress-btn" class="text-button" type="button" aria-controls="reset-progress-confirm" aria-expanded="false">Eredmények törlése</button><div id="reset-progress-confirm" class="progress-reset-confirm" hidden><p>Az ezen az eszközön mentett gyakorlási állapot törlődik. A feladatok megmaradnak.</p><div class="progress-reset-actions"><button id="reset-progress-yes" class="button dark" type="button">Igen, törlöm</button><button id="reset-progress-cancel" class="button outline" type="button">Mégse</button></div></div></section>
-        </section>
+        <section id="homeView" class="view active" aria-labelledby="homeTitle"><h1 id="homeTitle">Villanyvizsga</h1><div id="homeMetrics"></div></section>
         <section id="bankView" class="view" aria-labelledby="bankTitle"><div class="page-intro"><div class="kicker">Feladatsorok és témák</div><h1 id="bankTitle">Feladatbank</h1><p>Keress a kérdések között, vagy szűrj feladatsorra, témára és típusra. Az ábrás feladatoknál az ábra is megnyitható.</p></div><div id="bankManagerEntry" class="bank-manager-entry"><p>Gyakorlási jelölések: <strong id="manageProgressCount">0</strong></p><button id="manageProgress" class="button outline" type="button" aria-expanded="false" aria-controls="progressManagerPanel">Eredmények kezelése</button></div>
 <section id="progressManagerPanel" class="progress-manager" aria-labelledby="progressManagerTitle" hidden>
   <header class="progress-manager-head"><div><h2 id="progressManagerTitle" tabindex="-1">Eredmények kezelése</h2><p id="progressManagerSummary"></p></div><button id="progressClose" class="button outline" type="button">← Vissza a feladatbankhoz</button></header>

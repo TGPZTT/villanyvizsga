@@ -19,7 +19,17 @@
   const focusControl=()=>`<button type="button" class="learn-task-toggle" data-learn-action="task-emphasis" aria-pressed="${taskEmphasis}" title="A jelölést a feladatok és a versenyfeladatok határozzák meg. A géppel generált kérdések nem befolyásolják."><span aria-hidden="true">${taskEmphasis?'●':'○'}</span> Feladatokban szereplő részek</button>`;
   const taskMark=lesson=>taskCount(lesson)?`<span class="learn-task-mark" role="img" aria-label="Feladatban előforduló ismeret" title="${taskCount(lesson)} feladat megoldásához szükséges ismeretet tartalmaz."><span aria-hidden="true">●</span></span>`:'';
   let searchTimer;
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch {} };
+  const save = reason => {
+    try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch {}
+    if (reason) document.dispatchEvent(new CustomEvent('vv-learning-progress', {detail:{reason}}));
+  };
+  const resetProgress = ({render = true} = {}) => {
+    progress = {read:{}, checks:{}, lastLesson:''};
+    sessions.clear();
+    resetOpen = false;
+    save('reset');
+    if (render && host?.getClientRects().length) renderRoute(location.hash);
+  };
   const lessonRoute = lesson => `learn/${encodeURIComponent(lesson.chapter.id)}/${encodeURIComponent(lesson.id)}`;
   const href = lesson => `#${lessonRoute(lesson)}`;
   const countRead = list => list.filter(lesson => !!progress.read[lesson.id]).length;
@@ -626,7 +636,9 @@
     let input = '';
     if (['choice','multi'].includes(check.type)) input = `<div class="learn-options">${state.optionOrder.map((optionIndex,index) => { const option=check.options[optionIndex];
       const id = String(option.id), selected = state.values.includes(id), right = correct.includes(id);
-      return `<label class="learn-option ${state.submitted && right ? 'is-right' : ''} ${state.submitted && selected && !right ? 'is-wrong' : ''}"><span class="learn-option-top"><input type="${check.type === 'multi' ? 'checkbox' : 'radio'}" name="learning-answer" data-learn-option="${esc(id)}" ${selected ? 'checked' : ''} ${state.submitted ? 'disabled' : ''}><span class="learn-option-letter">${String.fromCharCode(65 + index)}</span><span>${esc(option.text)}</span>${state.submitted && (right || selected) ? `<b class="learn-result-icon" aria-label="${right ? 'Helyes lehetőség' : 'Téves választás'}">${right ? '✓' : '×'}</b>` : ''}</span>${state.submitted ? `<span class="learn-option-note">${selected ? '<strong>Ezt jelölted. </strong>' : ''}${right ? '<strong>Helyes lehetőség. </strong>' : ''}${esc(option.feedback || option.reason || '')}</span>` : ''}</label>`;
+      const answerState = !state.submitted ? '' : selected ? right ? 'correct-selected' : 'wrong-selected' : right ? 'correct-omitted' : 'correct-rejected';
+      const status = { 'correct-selected':['is-right','✓','Helyesen jelölted'], 'wrong-selected':['is-wrong','×','Tévesen jelölted'], 'correct-omitted':['is-missed','!','Kimaradt helyes válasz'] }[answerState];
+      return `<label class="learn-option ${status?.[0] || ''}"${answerState ? ` data-answer-state="${answerState}"` : ''}><span class="learn-option-top"><input type="${check.type === 'multi' ? 'checkbox' : 'radio'}" name="learning-answer" data-learn-option="${esc(id)}" ${selected ? 'checked' : ''} ${state.submitted ? 'disabled' : ''}><span class="learn-option-letter">${String.fromCharCode(65 + index)}</span><span>${esc(option.text)}</span>${status ? `<span class="answer-state-feedback"><b class="answer-state-icon" aria-hidden="true">${status[1]}</b><span class="answer-state-label">${status[2]}</span></span>` : ''}</span>${state.submitted ? `<span class="learn-option-note">${esc(option.feedback || option.reason || '')}</span>` : ''}</label>`;
     }).join('')}</div>`;
     if (check.type === 'match') input = `<div class="learn-match">${(check.pairs || []).map((pair,index) => {
       const right = Number(state.pairs[index]) === index && state.pairs[index] !== '';
@@ -740,7 +752,12 @@
     if (check.type === 'order') state.correct = state.order.every((value,index) => value === index);
     if (check.type === 'number') state.correct = Math.abs(Number(state.number.replace(',','.')) - Number(check.correct)) <= Number(check.tolerance ?? 0.01) + Number.EPSILON;
     state.submitted = true; state.notice = '';
-    progress.checks[current.id] = {correct:state.correct, at:Date.now()}; save(); renderLesson(current); $('.learn-check-explanation',host)?.focus({preventScroll:true});
+    const checkedAt = Date.now();
+    progress.checks[current.id] = {correct:state.correct, at:checkedAt};
+    // A completed checkpoint and the manual read button mark the same lesson.
+    // Failed or incomplete retries must never erase an existing read marker.
+    if (state.correct && !progress.read[current.id]) progress.read[current.id] = checkedAt;
+    save('check'); renderLesson(current); $('.learn-check-explanation',host)?.focus({preventScroll:true});
   }
 
   function captureInputs() {
@@ -812,14 +829,14 @@
       if (target.hasAttribute('data-learn-state')) { const widths=new Map($$('[data-learn-channel]',host).map(element=>[element.dataset.learnChannel,element.style.width]));models.get(current.id).index = Number(target.dataset.learnState); renderLesson(current); $(`[data-learn-state="${target.dataset.learnState}"]`, host)?.focus({preventScroll:true});if(!matchMedia('(prefers-reduced-motion:reduce)').matches)$$('[data-learn-channel]',host).forEach(element=>{const old=widths.get(element.dataset.learnChannel);if(old)element.animate([{width:old},{width:element.style.width}],{duration:650,easing:'cubic-bezier(.2,.7,.2,1)'});}); return; }
       switch (target.dataset.learnAction) {
         case 'task-emphasis': taskEmphasis=!taskEmphasis;try{localStorage.setItem('vv-learning-task-emphasis',taskEmphasis?'on':'off')}catch{} if(current)renderLesson(current);else overview();$('[data-learn-action=task-emphasis]',host)?.focus({preventScroll:true});break;
-        case 'mark': if (progress.read[current.id]) delete progress.read[current.id]; else progress.read[current.id] = Date.now(); save(); renderLesson(current); $('[data-learn-action="mark"]', host)?.focus({preventScroll:true}); break;
+        case 'mark': if (progress.read[current.id]) delete progress.read[current.id]; else progress.read[current.id] = Date.now(); save('mark'); renderLesson(current); $('[data-learn-action="mark"]', host)?.focus({preventScroll:true}); break;
         case 'hint': { const state = sessionFor(current); state.hint = !state.hint; renderLesson(current); $('[data-learn-action="hint"]', host)?.focus({preventScroll:true}); break; }
         case 'check': evaluateCheck(); break;
         case 'retry': sessions.delete(checkId(current)); renderLesson(current); break;
         case 'search-open': history.replaceState(null,'','#learn'); lastRoute = 'learn'; overview(); $('#learnSearch',host)?.focus({preventScroll:true}); $('#learnSearch',host)?.scrollIntoView({block:'center'}); break;
         case 'reset-toggle': resetOpen = !resetOpen; overview(); break;
         case 'reset-cancel': resetOpen = false; overview(); break;
-        case 'reset-confirm': progress = {read:{},checks:{},lastLesson:''}; sessions.clear(); save(); resetOpen = false; overview(); $('#learnSearch', host)?.focus({preventScroll:true}); break;
+        case 'reset-confirm': resetProgress({render:false}); overview(); $('#learnSearch', host)?.focus({preventScroll:true}); break;
       }
     });
     setupTooltips();
@@ -842,7 +859,7 @@
     if (!root) return Promise.resolve();
     if (host !== root) { host = root; setupEvents(); }
     questionMap = new Map(questions.map(question => [String(question.id), question]));
-    if (source) { ingest(source); renderRoute(location.hash); return Promise.resolve(); }
+    if (source) { ingest(source); renderRoute(location.hash); document.dispatchEvent(new CustomEvent('vv-learning-ready')); return Promise.resolve(); }
     if (data) return Promise.resolve();
     if (!loading) loading = fetch(`learning-data.json?v=${VERSION}`, {cache:'no-store'}).then(response => { if (!response.ok) throw new Error('Learning unavailable'); return response.json(); }).then(source => { window.VV_LEARNING = source; ingest(source); renderRoute(location.hash); document.dispatchEvent(new CustomEvent('vv-learning-ready')); }).catch(() => { if (/^#learn(?:\/|$)/.test(location.hash)) host.innerHTML = '<p class="learn-asset-error">A tananyag nem tölthető be. Frissítsd az oldalt.</p>'; });
     return loading;
@@ -850,5 +867,5 @@
 
   window.addEventListener('storage',event=>{if(event.key===KEY){progress=readProgress();if(host?.getClientRects().length)renderRoute(location.hash);}});
 
-  window.VV_LEARN = Object.freeze({setup, renderRoute, capture: captureInputs, currentRoute: () => lastRoute, linksForQuestion: id => (reverseMap.get(String(id)) || []).map(lesson => ({id:lesson.id,title:lesson.title,chapterTitle:lesson.chapter.title,href:href(lesson)})), questionIds: () => current ? relatedQuestions(current).map(q => q.id) : [], stats: () => ({chapters:chapters.length,lessons:lessons.length,topics:allGroups().length,linkedQuestions:reverseMap.size,read:countRead(lessons)})});
+  window.VV_LEARN = Object.freeze({setup, renderRoute, resetProgress, capture: captureInputs, currentRoute: () => lastRoute, linksForQuestion: id => (reverseMap.get(String(id)) || []).map(lesson => ({id:lesson.id,title:lesson.title,chapterTitle:lesson.chapter.title,href:href(lesson)})), questionIds: () => current ? relatedQuestions(current).map(q => q.id) : [], stats: () => ({chapters:chapters.length,lessons:lessons.length,topics:allGroups().length,linkedQuestions:reverseMap.size,read:countRead(lessons)})});
 })();
