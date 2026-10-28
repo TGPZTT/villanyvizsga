@@ -53,10 +53,10 @@
   const sourceTitle=id=>window.VV_LABELS.sourceOptionLabel(id);
   let questions=[],status=()=> 'new',onBankChange=()=>{},searchMatch=()=>true,step=0,ready=false;
   const bank={topics:new Set(),sources:new Set(),kinds:new Set(),type:'',status:''};
-  const practice={topics:new Set(),sources:new Set(),kinds:new Set(['papers']),retry:false,count:10};
+  const practice={topics:new Set(),kinds:new Set(['papers']),retry:false,count:10};
   const topicCounts=pool=>new Map(TOPICS.map(([id])=>[id,pool.filter(q=>topicFor(q)===id).length]));
-  const match=(q,f,{ignoreTopics=false,ignoreSources=false}={})=>(!f.kinds.size||f.kinds.has(kind(q)))&&(ignoreTopics||!f.topics.size||f.topics.has(topicFor(q)))&&(ignoreSources||!f.sources.size||f.sources.has(q.sourceId))&&(!f.retry||status(q)==='retry');
-  const pool=()=>practice.kinds.size?questions.filter(q=>match(q,practice)):[];
+  const match=(q,f,{ignoreTopics=false,ignoreSources=false}={})=>(!f.kinds.size||f.kinds.has(kind(q)))&&(ignoreTopics||!f.topics.size||f.topics.has(topicFor(q)))&&(ignoreSources||!f.sources?.size||f.sources.has(q.sourceId))&&(!f.retry||status(q)==='retry');
+  const pool=()=>practice.kinds.size?questions.filter(q=>match(q,practice,{ignoreSources:true})):[];
   function choices(f,context){
     if(context==='practice'&&!f.kinds.size)return '<p class="sf-empty">Előbb válassz legalább egy feladatcsoportot.</p>';
     const counts=topicCounts(questions.filter(q=>match(q,f,{ignoreTopics:true})&&(context!=='bank'||bankOtherMatches(q))));
@@ -73,7 +73,7 @@
     let d=$('#bankSelectionDialog');if(!d){d=document.createElement('dialog');d.id='bankSelectionDialog';d.className='sf-dialog';document.body.append(d);d.addEventListener('click',e=>{if(e.target===d)d.close()});d.addEventListener('close',()=>{$(`[data-bank-picker="${d.dataset.picker}"]`)?.focus()})}
     d.dataset.picker=which;
     const topics=which==='topics';
-    d.innerHTML=`<header><h2>${topics?'Témák kiválasztása':'Feladatsorok kiválasztása'}</h2><button class="sf-icon-button" type="button" data-close aria-label="Bezárás">×</button></header><p>Többet is kijelölhetsz. Üres kijelöléssel minden ${topics?'téma':'feladatsor'} szerepel.</p>${!topics?'<label class="sf-dialog-search">Keresés a feladatsorok között<input type="search" id="bankSourceSearch" autocomplete="off" placeholder="Például: 10. feladatsor…"></label>':''}<div class="sf-dialog-list ${topics?'sf-topic-grid':''}">${topics?choices(bank,'bank'):sourceChoices(bank,'bank')}</div><footer><button type="button" class="text-button" data-empty>Kijelölés törlése</button><span class="sf-dialog-total" role="status" aria-live="polite"></span><button type="button" class="button dark" data-close>Kész</button></footer>`;
+    d.innerHTML=`<header><h2>${topics?'Témák kiválasztása':'Feladatsorok kiválasztása'}</h2><button class="sf-icon-button" type="button" data-close aria-label="Szűrő bezárása"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><p>Többet is kijelölhetsz. Üres kijelöléssel minden ${topics?'téma':'feladatsor'} szerepel.</p>${!topics?'<label class="sf-dialog-search">Keresés a feladatsorok között<input type="search" id="bankSourceSearch" autocomplete="off" placeholder="Például: 10. feladatsor…"></label>':''}<div class="sf-dialog-list ${topics?'sf-topic-grid':''}">${topics?choices(bank,'bank'):sourceChoices(bank,'bank')}</div><footer><button type="button" class="text-button" data-empty>Kijelölés törlése</button><span class="sf-dialog-total" role="status" aria-live="polite"></span><button type="button" class="button dark" data-close>Kész</button></footer>`;
     const total=()=>{$('.sf-dialog-total',d).textContent=`${bankCount()} feladat`};total();
     $$('[data-close]',d).forEach(b=>b.addEventListener('click',()=>d.close()));
     $('[data-empty]',d).addEventListener('click',()=>{bank[which].clear();$$('input[type=checkbox]',d).forEach(i=>i.checked=false);$$('.is-picked',d).forEach(x=>x.classList.remove('is-picked'));updateBank();total()});
@@ -101,16 +101,20 @@
     root.addEventListener('change',e=>{if(!e.target.matches('[name="bankKind"],#modernBankType,#modernBankStatus'))return;if(e.target.name==='bankKind'){toggle(bank.kinds,e.target.value,e.target.checked);bank.sources.forEach(id=>{if(bank.kinds.size&&!questions.some(q=>q.sourceId===id&&bank.kinds.has(kind(q))))bank.sources.delete(id)})}if(e.target.id==='modernBankType')bank.type=e.target.value;if(e.target.id==='modernBankStatus')bank.status=e.target.value;updateBank()});
     $('#clearFilters').addEventListener('click',()=>{bank.topics.clear();bank.sources.clear();bank.kinds.clear();bank.type='';bank.status='';$$('input[type=checkbox]',root).forEach(i=>i.checked=false);$$('select',root).forEach(s=>s.value='');updateBank()});
   }
+  function practiceSelectionTools(group){
+    const selected=group==='kinds'?practice.kinds:practice.topics;
+    const values=group==='kinds'?['papers','generated','competition']:TOPICS.filter(([id])=>questions.some(q=>practice.kinds.has(kind(q))&&topicFor(q)===id)).map(([id])=>id);
+    return `<div class="sf-selection-tools" role="group" aria-label="${group==='kinds'?'Feladatcsoportok kijelölése':'Témák kijelölése'}"><button type="button" data-practice-all="${group}" ${values.length&&values.every(id=>selected.has(id))?'disabled':''}>Mind kijelölése</button><button type="button" data-practice-clear="${group}" ${!selected.size?'disabled':''}>Kijelölés törlése</button></div>`;
+  }
   function practiceRender(){
     const root=$('#practiceFlow');if(!root)return;
     // The launch control has existing application listeners. Move, never recreate it.
     const launch=$('#startPractice');if(launch)$('#practiceSetup .sf-legacy').append(launch);
-    const titles=['Feladatok','Témák','Feladatsorok','Indítás'],available=pool().length;
-    root.innerHTML=`<nav class="sf-steps" aria-label="Gyakorlás összeállítása">${titles.map((t,i)=>`<button type="button" data-step="${i}" ${i===step?'aria-current="step"':''}><span>${i+1}</span><span class="sf-step-name">${i===2?'Feladat<wbr>sorok':t}</span></button>`).join('')}</nav><div class="sf-step-content" data-current-step="${step}"><h2 tabindex="-1">${['Miből szeretnél gyakorolni?','Melyik témákból kérsz feladatot?','Melyik feladatsorokból válogassunk?','A gyakorlás beállításai'][step]}</h2>${step===0?`<div class="sf-kind-grid">${sourceKinds(practice,'practice')}</div><p class="sf-help">Legalább egy feladatcsoportot válassz.</p>`:step===1?`<p class="sf-help">Több témát is választhatsz. Üres kijelöléssel minden téma szerepel.</p><div class="sf-topic-grid">${choices(practice,'practice')}</div>`:step===2?`<p class="sf-help">Több feladatsort is választhatsz. Üres kijelöléssel az összes elérhető feladatsorból válogatunk.</p><label class="sf-dialog-search">Keresés a feladatsorok között<input id="practiceSourceSearch" type="search" autocomplete="off" placeholder="Például: 10. feladatsor…"></label><div class="sf-source-grid">${sourceChoices(practice,'practice')}</div>`:`<div class="sf-finish"><div><h3>Feladatok száma</h3><div class="sf-counts" role="group" aria-label="Feladatok száma">${[10,20,30].map(n=>`<button type="button" data-count="${n}" aria-pressed="${practice.count===n}">${n}</button>`).join('')}</div><label class="sf-retry"><input type="checkbox" name="practiceRetry" ${practice.retry?'checked':''}>Csak a korábban elrontott feladatok</label></div><div class="sf-recap"><strong>Az összeállításod</strong><p>${[...practice.kinds].map(k=>({papers:'Feladatok',generated:'Géppel generált',competition:'Versenyfeladatok'}[k])).join(', ')}</p><p>${practice.topics.size?`${practice.topics.size} kiválasztott téma`:'Minden téma'}. ${practice.sources.size?`${practice.sources.size} kiválasztott feladatsor`:'Minden elérhető feladatsor'}.</p><b>${Math.min(practice.count,available)} feladat kerül a gyakorlásba.</b></div></div>`}</div><footer class="sf-flow-footer"><button type="button" class="button outline" data-back ${step===0?'disabled':''}>Előző</button><span class="sf-pool" role="status" aria-live="polite"><strong>${available}</strong> elérhető feladat</span><div class="sf-start-slot"></div>${step<3?`<button type="button" class="button dark" data-next ${!practice.kinds.size?'disabled':''}>Tovább <span aria-hidden="true">→</span></button>`:''}</footer>`;
-    if(step===3){$('.sf-start-slot',root).append($('#startPractice'));$('#startPractice').hidden=false;$('#startPractice').disabled=!available;$('#startPractice').textContent='Gyakorlás indítása';}else{$('#startPractice').hidden=true;$('#practiceSetup').append($('#startPractice'))}
-    $('#practiceSourceSearch',root)?.addEventListener('input',e=>{$('.sf-source-grid',root).innerHTML=sourceChoices(practice,'practice',e.target.value)});
+    const titles=['Feladatok','Témák','Indítás'],available=pool().length;
+    root.innerHTML=`<nav class="sf-steps" aria-label="Gyakorlás összeállítása">${titles.map((t,i)=>`<button type="button" data-step="${i}" ${i===step?'aria-current="step"':''}><span>${i+1}</span><span class="sf-step-name">${t}</span></button>`).join('')}</nav><div class="sf-step-content" data-current-step="${step}"><h2 tabindex="-1">${['Miből szeretnél gyakorolni?','Melyik témákból kérsz feladatot?','A gyakorlás beállításai'][step]}</h2>${step===0?`${practiceSelectionTools('kinds')}<div class="sf-kind-grid">${sourceKinds(practice,'practice')}</div><p class="sf-help">Legalább egy feladatcsoportot válassz.</p>`:step===1?`<p class="sf-help">Több témát is választhatsz. Üres kijelöléssel minden téma szerepel.</p>${practiceSelectionTools('topics')}<div class="sf-topic-grid">${choices(practice,'practice')}</div>`:`<div class="sf-finish"><div><h3>Feladatok száma</h3><div class="sf-counts" role="group" aria-label="Feladatok száma">${[10,20,30].map(n=>`<button type="button" data-count="${n}" aria-pressed="${practice.count===n}">${n}</button>`).join('')}</div><label class="sf-retry"><input type="checkbox" name="practiceRetry" ${practice.retry?'checked':''}>Csak a korábban elrontott feladatok</label></div><div class="sf-recap"><strong>Az összeállításod</strong><p>${[...practice.kinds].map(k=>({papers:'Feladatok',generated:'Géppel generált',competition:'Versenyfeladatok'}[k])).join(', ')||'Nincs kiválasztott feladatcsoport.'}</p><p>${practice.topics.size?`${practice.topics.size} kiválasztott téma`:'Minden téma'}.</p><b>${Math.min(practice.count,available)} feladat kerül a gyakorlásba.</b></div></div>`}</div><footer class="sf-flow-footer"><button type="button" class="button outline" data-back ${step===0?'disabled':''}>Előző</button><span class="sf-pool" role="status" aria-live="polite"><strong>${available}</strong> elérhető feladat</span><div class="sf-start-slot"></div>${step<2?`<button type="button" class="button dark" data-next ${!practice.kinds.size?'disabled':''}>Tovább <span aria-hidden="true">→</span></button>`:''}</footer>`;
+    if(step===2){$('.sf-start-slot',root).append($('#startPractice'));$('#startPractice').hidden=false;$('#startPractice').disabled=!available;$('#startPractice').textContent='Gyakorlás indítása';}else{$('#startPractice').hidden=true;$('#practiceSetup').append($('#startPractice'))}
     $('#practiceCount').value=String(practice.count);$('#retryOnly').checked=practice.retry;
-    if(!available&&step===3)$('.sf-finish',root).insertAdjacentHTML('afterend','<p class="sf-no-results" role="status">Ezekkel a feltételekkel nincs feladat. Lépj vissza, vagy kapcsold ki az elrontottakra szűrést.</p>');
+    if(!available&&step===2)$('.sf-finish',root).insertAdjacentHTML('afterend','<p class="sf-no-results" role="status">Ezekkel a feltételekkel nincs feladat. Lépj vissza, vagy kapcsold ki az elrontottakra szűrést.</p>');
   }
   function updatePracticeCounts(){
     const n=pool().length;$('.sf-pool strong',$('#practiceFlow')).textContent=n;
@@ -122,14 +126,24 @@
     while(setup.firstChild)legacy.append(setup.firstChild);setup.append(legacy);
     const root=document.createElement('div');root.id='practiceFlow';setup.prepend(root);
     // Keep the existing results manager reachable without making it another setup step.
-    const manager=document.createElement('div');manager.className='sf-manager-link';manager.innerHTML='<span>A megjelölt feladatokat a feladatbankban szerkesztheted.</span>';manager.append($('#clearWrongTasks'));setup.append(manager);
-    $('#clearWrongTasks').textContent='Eredmények kezelése';
-    root.addEventListener('click',e=>{const s=e.target.closest('[data-step]'),back=e.target.closest('[data-back]'),next=e.target.closest('[data-next]'),count=e.target.closest('[data-count]');if(s||back||next){if(next&&!practice.kinds.size)return;step=s?Number(s.dataset.step):step+(next?1:-1);practiceRender();$('.sf-step-content h2',root).focus({preventScroll:true})}if(count){practice.count=Number(count.dataset.count);practiceRender();root.querySelector('[data-count="'+practice.count+'"]')?.focus({preventScroll:true})}});
+    const manager=document.createElement('div');manager.className='sf-manager-link';manager.innerHTML='';manager.append($('#clearWrongTasks'));setup.append(manager);
+    $('#clearWrongTasks').textContent='Korábbi feladatok és eredmények';
+    root.addEventListener('click',e=>{
+      const all=e.target.closest('[data-practice-all]'),clear=e.target.closest('[data-practice-clear]');
+      if(all||clear){
+        const group=all?.dataset.practiceAll||clear.dataset.practiceClear,selected=practice[group];selected.clear();
+        if(all)(group==='kinds'?['papers','generated','competition']:TOPICS.filter(([id])=>questions.some(q=>practice.kinds.has(kind(q))&&topicFor(q)===id)).map(([id])=>id)).forEach(id=>selected.add(id));
+        practiceRender();root.querySelector(`[data-practice-${all?'clear':'all'}="${group}"]`)?.focus({preventScroll:true});return;
+      }
+      const s=e.target.closest('[data-step]'),back=e.target.closest('[data-back]'),next=e.target.closest('[data-next]'),count=e.target.closest('[data-count]');
+      if(s||back||next){if(next&&!practice.kinds.size)return;step=Math.max(0,Math.min(2,s?Number(s.dataset.step):step+(next?1:-1)));practiceRender();$('.sf-step-content h2',root).focus({preventScroll:true})}
+      if(count){practice.count=Number(count.dataset.count);practiceRender();root.querySelector('[data-count="'+practice.count+'"]')?.focus({preventScroll:true})}
+    });
     root.addEventListener('change',e=>{
-      const i=e.target;if(i.name==='practiceKind'){toggle(practice.kinds,i.value,i.checked);practice.sources.forEach(id=>{if(!questions.some(q=>q.sourceId===id&&practice.kinds.has(kind(q))))practice.sources.delete(id)});i.closest('label').classList.toggle('is-picked',i.checked)}
+      const i=e.target;if(i.name==='practiceKind'){toggle(practice.kinds,i.value,i.checked);i.closest('label').classList.toggle('is-picked',i.checked)}
       if(i.name==='practiceTopic'){toggle(practice.topics,i.value,i.checked);i.closest('label').classList.toggle('is-picked',i.checked)}
-      if(i.name==='practiceSource')toggle(practice.sources,i.value,i.checked);
       if(i.name==='practiceRetry'){practice.retry=i.checked;practiceRender();root.querySelector('[name=practiceRetry]')?.focus({preventScroll:true})}
+      if(i.name==='practiceKind'||i.name==='practiceTopic'){const group=i.name==='practiceKind'?'kinds':'topics';$$('.sf-selection-tools',root).forEach(tools=>{const button=$('[data-practice-all]',tools);if(button?.dataset.practiceAll===group)tools.outerHTML=practiceSelectionTools(group)})}
       updatePracticeCounts();
     });practiceRender();
   }

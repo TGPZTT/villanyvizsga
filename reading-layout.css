@@ -1,0 +1,66 @@
+/* Keep Hungarian technical words intact. Hard hyphens and mathematical signs
+   remain part of the text. This stylesheet does not change type sizes. */
+#learnView,
+#learnView *,
+#guideView,
+#guideView *,
+body[data-view="guide"],
+body[data-view="guide"] *,
+.learning-reference-dialog,
+.learning-reference-dialog * {
+  -webkit-hyphens: none !important;
+  hyphens: none !important;
+}
+
+/* Prefer spaces between complete words. An unusually long token may still
+   wrap when it would otherwise extend beyond the available reading column. */
+#learnView :is(.learn-intro, .learn-definition-opening, .learn-text p,
+  .learn-text li, .learn-key-rule, .learn-pitfall, .learn-catalog-note,
+  .lc-detail, .learn-figure-legend dt, .learn-figure-legend dd),
+#guideView :is(.formula-card p, .board-instruction, .worked-source),
+.learning-reference-body :is(p, li) {
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Tables and narrow formula labels retain an emergency wrapping opportunity.
+   The browser uses it only when a complete word cannot fit in its own column. */
+#learnView :is(.learn-table-wrap th, .learn-table-wrap td,
+  .learn-cell-value, .fm-callout-meaning, .fm-legend-meaning),
+#guideView :is(.fm-callout-meaning, .fm-legend-meaning),
+.learning-reference-table :is(th, td, .learn-cell-value) {
+  min-width: 0;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+[data-learn-section-root="installation-bath"] .learn-table-wrap :is(th, td):first-child {
+  width: 4.5rem;
+  min-width: 4.5rem;
+  white-space: nowrap;
+}
+#learnView [data-learn-section-root="installation-bath"] .learn-media {
+  width: 100%;
+  max-width: none;
+}
+#learnView [data-learn-section-root="installation-bath"] .learn-figure > a {
+  min-height: 0;
+  max-height: none;
+  padding: 8px;
+}
+#learnView [data-learn-section-root="installation-bath"] .learn-figure img {
+  width: 100%;
+  max-height: none;
+  box-shadow: none;
+}
+
+/* Narrow reading columns use natural spacing rather than stretched lines.
+   Existing desktop justification is retained at wider viewport sizes. */
+@media (max-width: 1099px) {
+  #learnView :is(.learn-intro, .learn-definition-opening, .learn-text > p,
+    .learn-text .learn-points > li, .learn-key-rule, .learn-pitfall,
+    .learn-catalog-note),
+  .learning-reference-body :is(p, li) {
+    text-align: start;
+  }
+}

@@ -109,7 +109,7 @@
   const displayTopic=q=>window.VV_SELECTION?.topicLabel(q)||q.topic;
   const attemptStatus=q=>progress[q.id]?.status||'new';
   let view='home',bankPage=0,practice=null,exam=null,timerId=null,questionState=null;
-  const progressManager={open:false,selected:new Set(),pending:null,returnView:'bank'};
+  const progressManager={selected:new Set(),pending:null,returnView:'bank'};
 
   function routeTo(route,replace=false){
     const next=route?`#${route}`:'';
@@ -125,9 +125,11 @@
       if(root&&!$('#examNavigationNotice',root))root.insertAdjacentHTML('afterbegin','<div id="examNavigationNotice" class="feedback review" role="status">A folyamatban lévő próbából a „Próba megszakítása” gombbal léphetsz ki.</div>');
       return;
     }
+
     if(view==='question'&&target!=='question')captureQuestionResponse();
     if(view==='practice'&&practice&&target!=='practice'){const active=practice.list[practice.index];practice.responses[active.id]=selectedFrom($('#practiceSession'),active)}
     if(view==='learn'&&target!=='learn')window.VV_LEARN?.capture();
+    if(view==='progress'&&target!=='progress')cancelProgressRemoval();
     view=target;
     $$('.view').forEach(e=>e.classList.toggle('active',e.id===`${target}View`));
     $$('.nav-link[data-view]').forEach(e=>e.classList.toggle('active',e.dataset.view===target));
@@ -136,6 +138,7 @@
     if(updateHash)routeTo(target==='home'?'':target,replaceHash);
     if(scroll)window.scrollTo({top:0,behavior:'instant'});
     if(target==='bank')renderBank();
+    if(target==='progress')renderProgressManager();
     if(target==='home')renderHome();
     if(target==='practice')renderWrongTasks();
     if(target==='learn')window.VV_LEARN?.renderRoute(location.hash.startsWith('#learn')?location.hash:'#learn');
@@ -145,7 +148,7 @@
   function topicNames(){return [...new Set(qlist.map(q=>q.topic))].sort((a,b)=>a.localeCompare(b,'hu'))}
   function resetSavedResults(){
     Object.keys(progress).forEach(id=>delete progress[id]);
-    try{localStorage.removeItem(KEY)}catch{}
+    try{localStorage.removeItem(KEY);localStorage.removeItem(EXAM_HISTORY_KEY);localStorage.removeItem(EXAM_EXPOSURE_KEY)}catch{}
     questionState=null;practice=null;
     if(exam?.submitted)resetExam();
     $('#practiceSession')?.classList.add('hidden');$('#practiceSetup')?.classList.remove('hidden');$('#practiceView')?.classList.remove('practice-running');
@@ -171,7 +174,7 @@
   }
   function progressManagerQuestions(){
     const query=norm($('#progressSearch')?.value),status=$('#progressStatusFilter')?.value||'',scope=$('#progressScopeFilter')?.value||'';
-    return labelledQuestions().filter(q=>(!status||attemptStatus(q)===status)&&(!scope||(scope==='papers'?isExamPaper(q):isContest(q)))&&(!query||norm(`${q.prompt} ${sourceLabel(q)} ${q.number} ${q.topic}`).includes(query))).sort((a,b)=>(progress[b.id]?.at||0)-(progress[a.id]?.at||0)||a.id.localeCompare(b.id));
+    return labelledQuestions().filter(q=>(!status||attemptStatus(q)===status)&&(!scope||(scope==='generated'?q.sourceId.startsWith('generated-exam-'):scope==='papers'?isExamPaper(q)&&!q.sourceId.startsWith('generated-exam-'):isContest(q)))&&(!query||norm(`${q.prompt} ${sourceLabel(q)} ${q.number} ${q.topic}`).includes(query))).sort((a,b)=>(progress[b.id]?.at||0)-(progress[a.id]?.at||0)||a.id.localeCompare(b.id));
   }
   function cancelProgressRemoval({focus=false}={}){
     progressManager.pending=null;
@@ -190,8 +193,9 @@
   }
   function renderProgressManager(){
     updateProgressManagerCount();
-    if(!progressManager.open)return;
+    if(view!=='progress')return;
     const list=progressManagerQuestions(),all=labelledQuestions(),correct=all.filter(q=>attemptStatus(q)==='correct').length;
+    $$('.progress-manager-help,.progress-manager-filters,.progress-selection-toolbar,.progress-manager-footer',$('#progressManagerPanel')).forEach(element=>element.hidden=!all.length);
     setText('#progressManagerSummary',`${all.length} megjelölt feladat: ${correct} sikerült, ${all.length-correct} újragyakorlandó.`);
     setText('#progressVisibleCount',`${list.length} találat`);
     $('#progressManagerList').innerHTML=list.length?list.map(q=>{
@@ -202,25 +206,21 @@
   }
   function openProgressManager(status='',returnView='bank'){
     if(exam&&!exam.submitted){navigate('bank');return}
-    progressManager.open=true;progressManager.returnView=returnView;progressManager.selected.clear();
+    progressManager.returnView=returnView;progressManager.selected.clear();
     $('#progressStatusFilter').value=status;$('#progressScopeFilter').value='';$('#progressSearch').value='';
-    $('#progressManagerPanel').hidden=false;$('#bankCatalog').hidden=true;$('#bankManagerEntry').hidden=true;
-    $('#manageProgress').setAttribute('aria-expanded','true');
     setText('#progressClose',returnView==='practice'?'← Vissza a gyakorláshoz':'← Vissza a feladatbankhoz');
-    setText('#progressManagerNotice','');cancelProgressRemoval();navigate('bank');
+    setText('#progressManagerNotice','');cancelProgressRemoval();navigate('progress');
     $('#progressManagerTitle').focus({preventScroll:true});
   }
   function closeProgressManager(){
-    progressManager.open=false;progressManager.selected.clear();cancelProgressRemoval();
-    $('#progressManagerPanel').hidden=true;$('#bankCatalog').hidden=false;$('#bankManagerEntry').hidden=false;
-    $('#manageProgress').setAttribute('aria-expanded','false');
+    progressManager.selected.clear();cancelProgressRemoval();
     const target=progressManager.returnView;navigate(target);
     (target==='practice'?$('#clearWrongTasks'):$('#manageProgress'))?.focus({preventScroll:true});
   }
   function setProgressLabels(ids,status){
     const known=ids.filter(id=>byId.has(id));
     known.forEach(id=>progress[id]={...progress[id],status,at:Date.now()});save();cancelProgressRemoval();
-    renderWrongTasks();renderHome();renderBank();
+    renderWrongTasks();renderHome();renderBank();renderProgressManager();
     setText('#progressManagerNotice',`${known.length} feladat jelölése: ${status==='correct'?'Sikerült':'Újragyakorlás'}.`);
   }
   function requestProgressRemoval(ids,all=false){
@@ -231,7 +231,7 @@
   }
   function setupProgressManager(){
     $('#manageProgress')?.addEventListener('click',()=>openProgressManager());
-    $('#clearWrongTasks')?.addEventListener('click',()=>openProgressManager('retry','practice'));
+    $('#clearWrongTasks')?.addEventListener('click',()=>openProgressManager('','practice'));
     $('#progressClose')?.addEventListener('click',closeProgressManager);
     ['#progressStatusFilter','#progressScopeFilter','#progressSearch'].forEach(id=>$(id)?.addEventListener(id==='#progressSearch'?'input':'change',()=>{progressManager.selected.clear();cancelProgressRemoval();renderProgressManager()}));
     $('#progressSelectAll')?.addEventListener('change',event=>{progressManager.selected=new Set(event.target.checked?progressManagerQuestions().map(q=>q.id):[]);cancelProgressRemoval();updateProgressSelection()});
@@ -243,7 +243,7 @@
     $('#progressRemoveCancel')?.addEventListener('click',()=>cancelProgressRemoval({focus:true}));
     $('#progressRemoveYes')?.addEventListener('click',()=>{
       const ids=progressManager.pending||[];ids.forEach(id=>delete progress[id]);save();cancelProgressRemoval();progressManager.selected.clear();
-      renderWrongTasks();renderHome();renderBank();setText('#progressManagerNotice',`${ids.length} feladat jelölését töröltük.`);$('#progressManagerTitle').focus({preventScroll:true});
+      renderWrongTasks();renderHome();renderBank();renderProgressManager();setText('#progressManagerNotice',`${ids.length} feladat jelölését töröltük.`);$('#progressManagerTitle').focus({preventScroll:true});
     });
     $('#progressManagerList')?.addEventListener('change',event=>{
       const check=event.target.closest('[data-progress-select]'),select=event.target.closest('[data-progress-status]');
@@ -253,7 +253,7 @@
     $('#progressManagerList')?.addEventListener('click',event=>{
       const remove=event.target.closest('[data-progress-remove]'),question=event.target.closest('[data-progress-question]');
       if(remove)requestProgressRemoval([remove.dataset.progressRemove]);
-      if(question)openQuestion(byId.get(question.dataset.progressQuestion));
+      if(question)openQuestion(byId.get(question.dataset.progressQuestion),{origin:'progress'});
     });
   }
   let figureReturnFocus=null,figurePreviousOverflow='',figureRequest=0;
@@ -303,7 +303,6 @@
     fillSelect($('#topicFilter'),topicNames(),'Minden téma');
     updatePracticeFilters();
     $('#practiceScope')?.addEventListener('change',updatePracticeFilters);
-    $('#practiceSource')?.addEventListener('change',updatePracticeTopicChoices);
     $('#practiceTopicList')?.addEventListener('change',updatePracticeTopicSummary);
     $('#practiceTopicsAll')?.addEventListener('click',()=>{$$('#practiceTopicList input').forEach(input=>input.checked=true);updatePracticeTopicSummary()});
     $('#practiceTopicsClear')?.addEventListener('click',()=>{$$('#practiceTopicList input').forEach(input=>input.checked=false);updatePracticeTopicSummary()});
@@ -315,19 +314,15 @@
     if(summary)summary.textContent=selected===0?'Minden téma':selected===total?`Mind a ${total} téma`:`${selected} téma kijelölve`;
   }
   function updatePracticeTopicChoices(){
-    const scope=$('#practiceScope')?.value||'papers',source=$('#practiceSource')?.value||'';
+    const scope=$('#practiceScope')?.value||'papers';
     const selected=new Set($$('#practiceTopicList input:checked').map(input=>input.value));
-    const pool=qlist.filter(q=>inSourceScope(q,scope)&&(!source||q.sourceId===source));
+    const pool=qlist.filter(q=>inSourceScope(q,scope));
     const topics=[...new Set(pool.map(q=>q.topic))].sort((a,b)=>a.localeCompare(b,'hu'));
     const root=$('#practiceTopicList');
     root.innerHTML=topics.map(topic=>{const count=pool.filter(q=>q.topic===topic).length;return `<label class="practice-topic-option"><input type="checkbox" value="${esc(topic)}" ${selected.has(topic)?'checked':''}><span>${esc(topic)}</span><small>${count}</small></label>`}).join('');
     updatePracticeTopicSummary();
   }
   function updatePracticeFilters(){
-    const scope=$('#practiceScope')?.value||'papers',list=qlist.filter(q=>inSourceScope(q,scope)),sourceSelect=$('#practiceSource'),oldSource=sourceSelect.value;
-    const groups=[...new Map(list.map(q=>[q.sourceId,sourceLabel(q)])).entries()].sort((a,b)=>window.VV_LABELS.compareSources(a[0],b[0]));
-    sourceSelect.innerHTML='<option value="">Minden feladatsor</option>'+groups.map(([id,label])=>`<option value="${esc(id)}">${esc(window.VV_LABELS.sourceOptionLabel(id))}</option>`).join('');
-    if(groups.some(([id])=>id===oldSource))sourceSelect.value=oldSource;
     updatePracticeTopicChoices();$('#practicePoolNotice')?.remove();
   }
   function filteredBankQuestions(){
@@ -337,7 +332,6 @@
     return list;
   }
   function renderBank(){
-    renderProgressManager();
     const list=filteredBankQuestions();
     setText('#resultCount',`${list.length} feladat található`);
     const size=40,pages=Math.max(1,Math.ceil(list.length/size));bankPage=Math.min(bankPage,pages-1);
@@ -483,9 +477,9 @@
     if(!q||exam&&!exam.submitted)return;
     const reuse=questionState&&(view==='question'||view==='learn'&&questionState.ids[questionState.index]===q.id)&&questionState.ids.includes(q.id);
     if(!reuse){
-      const homeView=['exam','learn'].includes(origin)?origin:'bank';
+      const homeView=['exam','learn','progress'].includes(origin)?origin:'bank';
       const learningIds=homeView==='learn'?window.VV_LEARN?.questionIds()||[]:[];
-      const list=homeView==='learn'?learningIds.map(id=>byId.get(id)).filter(Boolean):homeView==='exam'&&exam?.list?exam.list:progressManager.open?progressManagerQuestions():filteredBankQuestions();
+      const list=homeView==='learn'?learningIds.map(id=>byId.get(id)).filter(Boolean):homeView==='exam'&&exam?.list?exam.list:homeView==='progress'?progressManagerQuestions():filteredBankQuestions();
       const ids=list.map(item=>item.id);
       if(!ids.includes(q.id))ids.unshift(q.id);
       questionState={ids,index:ids.indexOf(q.id),origin:homeView,originId:q.id,returnScroll:fromRoute?0:window.scrollY,returnPage:bankPage,learnReturnRoute:homeView==='learn'?window.VV_LEARN?.currentRoute()||'learn':'',responses:{},shown:{},hints:{},feedback:{}};
@@ -523,7 +517,8 @@
     navigate(origin,{replaceHash:true,scroll:false});
     requestAnimationFrame(()=>{
       window.scrollTo({top:returnScroll,behavior:'instant'});
-      if(origin==='bank')(progressManager.open?$(`[data-progress-question="${CSS.escape(stateReturnId)}"]`):$(`#bankList .bank-item[data-id="${CSS.escape(stateReturnId)}"]`))?.focus({preventScroll:true});
+      if(origin==='bank')$(`#bankList .bank-item[data-id="${CSS.escape(stateReturnId)}"]`)?.focus({preventScroll:true});
+      if(origin==='progress')$(`[data-progress-question="${CSS.escape(stateReturnId)}"]`)?.focus({preventScroll:true});
     });
   }
   function renderQuestionPage(routeMode='none',resetScroll=false){
@@ -539,7 +534,7 @@
     const next=`<button type="button" class="question-nav-button next" data-question-step="1" ${hasNext?'':'disabled'} aria-label="Következő találat">Következő →</button>`;
     const jumpOptions=state.ids.map((id,i)=>{const item=byId.get(id);return `<option value="${i}" ${i===state.index?'selected':''}>${i+1}. ${esc(window.VV_LABELS.questionLabel(item))}</option>`}).join('');
     const status=attemptStatus(q)==='correct'?'Sikerült':attemptStatus(q)==='retry'?'Újra gyakorlom':'Még nem gyakorolt';
-    root.innerHTML=`<div class="question-workspace"><header class="question-workspace-nav"><button id="questionBack" class="question-back" type="button">← ${state.origin==='exam'?'Vizsga áttekintése':state.origin==='learn'?'Tananyag':'Feladatbank'}</button><span class="question-workspace-counter">${ordinal}. találat a szűrt ${total} feladatból</span></header><div class="question-workspace-layout"><article class="question-workspace-main">${questionBody(q,'bank',response,shown)}</article><aside class="question-workspace-side" aria-label="Feladat adatai és vezérlés"><div class="question-side-card"><span class="question-side-kicker">FELADAT ADATAI</span><div class="question-side-detail"><span>Téma</span><b>${esc(displayTopic(q))}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(window.VV_LABELS.questionLabel(q))}</b></div><div class="question-side-detail"><span>Típus · pont</span><b>${esc(typeLabel(q))} · ${q.points} pont</b></div><div class="question-side-detail"><span>Gyakorlási állapot</span><b>${status}</b></div></div><div class="question-side-nav"><label for="questionJump">Ugrás a szűrt találatok között</label><select id="questionJump" aria-label="Ugrás egy másik találatra">${jumpOptions}</select><div class="question-side-nav-buttons">${prev}${next}</div></div><div class="question-side-actions">${isAuto(q)?'<button id="questionCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="questionShow" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!isAuto(q)&&shown?'<button id="questionGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="questionRetry" class="button outline" type="button">Újra gyakorlom</button></div><div id="questionFeedback" role="status" aria-live="polite">${feedbackHtml}</div></aside></div></div>`;
+    root.innerHTML=`<div class="question-workspace"><header class="question-workspace-nav"><button id="questionBack" class="question-back" type="button">← ${state.origin==='exam'?'Vizsga áttekintése':state.origin==='learn'?'Tananyag':state.origin==='progress'?'Korábbi eredmények':'Feladatbank'}</button><span class="question-workspace-counter">${ordinal}. találat a szűrt ${total} feladatból</span></header><div class="question-workspace-layout"><article class="question-workspace-main">${questionBody(q,'bank',response,shown)}</article><aside class="question-workspace-side" aria-label="Feladat adatai és vezérlés"><div class="question-side-card"><span class="question-side-kicker">FELADAT ADATAI</span><div class="question-side-detail"><span>Téma</span><b>${esc(displayTopic(q))}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(window.VV_LABELS.questionLabel(q))}</b></div><div class="question-side-detail"><span>Típus · pont</span><b>${esc(typeLabel(q))} · ${q.points} pont</b></div><div class="question-side-detail"><span>Gyakorlási állapot</span><b>${status}</b></div></div><div class="question-side-nav"><label for="questionJump">Ugrás a szűrt találatok között</label><select id="questionJump" aria-label="Ugrás egy másik találatra">${jumpOptions}</select><div class="question-side-nav-buttons">${prev}${next}</div></div><div class="question-side-actions">${isAuto(q)?'<button id="questionCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="questionShow" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!isAuto(q)&&shown?'<button id="questionGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="questionRetry" class="button outline" type="button">Újra gyakorlom</button></div><div id="questionFeedback" role="status" aria-live="polite">${feedbackHtml}</div></aside></div></div>`;
     $('#questionFeedbackMobile',root).innerHTML=feedbackHtml;
     restoreNumericResponse(root,q,response);
     bindOptions(root);
@@ -611,12 +606,12 @@
     hydrateAssets(root);
   }
   function startPractice(){
-    const scope=$('#practiceScope')?.value||'papers',topics=new Set($$('#practiceTopicList input:checked').map(input=>input.value)),source=$('#practiceSource').value,retryOnly=$('#retryOnly').checked,count=Number($('#practiceCount').value);
-    const pool=window.VV_SELECTION?window.VV_SELECTION.practicePool():qlist.filter(q=>inSourceScope(q,scope)&&(!topics.size||topics.has(q.topic))&&(!source||q.sourceId===source)&&(!retryOnly||attemptStatus(q)==='retry'));
+    const scope=$('#practiceScope')?.value||'papers',topics=new Set($$('#practiceTopicList input:checked').map(input=>input.value)),retryOnly=$('#retryOnly').checked,count=Number($('#practiceCount').value);
+    const pool=window.VV_SELECTION?window.VV_SELECTION.practicePool():qlist.filter(q=>inSourceScope(q,scope)&&(!topics.size||topics.has(q.topic))&&(!retryOnly||attemptStatus(q)==='retry'));
     if(!pool.length){
       const setup=$('#practiceSetup');let notice=$('#practicePoolNotice',setup);
       if(!notice){setup.insertAdjacentHTML('beforeend','<p id="practicePoolNotice" class="feedback review" role="alert"></p>');notice=$('#practicePoolNotice',setup)}
-      notice.textContent='Ezzel a témával, feladatsorral és gyakorlási állapottal nincs elérhető feladat. Válassz más feltételeket.';
+      notice.textContent='Ezzel a témával és gyakorlási állapottal nincs elérhető feladat. Válassz más feltételeket.';
       return;
     }
     $('#practicePoolNotice')?.remove();
@@ -649,8 +644,28 @@
     return all.filter(q=>selected.has(examSource(q)));
   }
   const EXAM_HISTORY_KEY='villanyvizsga-exam-history-v1';
-  function examHistory(){try{const rows=JSON.parse(localStorage.getItem(EXAM_HISTORY_KEY));return Array.isArray(rows)?rows.filter(row=>Array.isArray(row.ids)).slice(-8):[]}catch{return []}}
-  function selectExam(pool,count){return window.VV_EXAM_PICKER.select(pool,count,{areas:EXAM_AREAS,areaOf:examArea,history:examHistory()})}
+  const EXAM_EXPOSURE_KEY='villanyvizsga-exam-exposure-v1';
+  function examHistory(){try{const rows=JSON.parse(localStorage.getItem(EXAM_HISTORY_KEY));return Array.isArray(rows)?rows.filter(row=>row&&Array.isArray(row.ids)).slice(-8):[]}catch{return []}}
+  function examExposure(){
+    const byId=Object.create(null),known=new Set(qlist.map(q=>String(q.id)));
+    try{
+      const saved=JSON.parse(localStorage.getItem(EXAM_EXPOSURE_KEY));
+      if(saved&&Number.isSafeInteger(saved.runs)&&saved.runs>=0&&saved.runs<Number.MAX_SAFE_INTEGER&&saved.byId&&typeof saved.byId==='object'&&!Array.isArray(saved.byId)){
+        for(const [id,row] of Object.entries(saved.byId)){
+          if(known.has(id)&&row&&Number.isSafeInteger(row.count)&&row.count>0&&row.count<=saved.runs&&Number.isSafeInteger(row.last)&&row.last>0&&row.last<=saved.runs)byId[id]={count:row.count,last:row.last};
+        }
+        return {runs:saved.runs,byId};
+      }
+    }catch{}
+    let runs=0;
+    for(const row of examHistory()){
+      const ids=[...new Set(row.ids.map(String))].filter(id=>known.has(id));if(!ids.length)continue;
+      runs++;
+      for(const id of ids)byId[id]={count:(byId[id]?.count||0)+1,last:runs};
+    }
+    return {runs,byId};
+  }
+  function selectExam(pool,count,exposure=examExposure()){return window.VV_EXAM_PICKER.select(pool,count,{areas:EXAM_AREAS,areaOf:examArea,history:examHistory(),catalog:qlist,exposure})}
   function examNotice(message){
     const setup=$('#examSetup');let notice=$('#examPoolNotice',setup);
     if(!notice){setup.insertAdjacentHTML('beforeend','<p id="examPoolNotice" class="feedback review" role="alert"></p>');notice=$('#examPoolNotice',setup)}
@@ -665,9 +680,11 @@
       return;
     }
     $('#examPoolNotice')?.remove();
-    const selection=selectExam(pool,count),list=selection.questions;
-    if(list.length<count){examNotice(`A hasonló feladatok kiszűrése után a kijelölt forrásokból ${list.length} különböző kérdés választható. ${list.length>=15?'Válassz 15 kérdést, vagy jelölj ki további forrást.':'Jelölj ki másik vagy további forrást.'}`);return;}
-    try{localStorage.setItem(EXAM_HISTORY_KEY,JSON.stringify([...examHistory(),{at:Date.now(),scope:sources.join('+'),sources,ids:list.map(q=>q.id)}].slice(-8)))}catch{}
+    const exposure=examExposure(),selection=selectExam(pool,count,exposure),list=selection.questions;
+    if(list.length<count){examNotice(`Most ${list.length} kellően eltérő kérdésből álló feladatsort sikerült összeállítani. ${list.length>=15?'Válassz 15 kérdést, vagy jelölj ki további forrást.':'Jelölj ki másik vagy további forrást.'}`);return;}
+    exposure.runs++;
+    for(const id of new Set(list.map(q=>String(q.id))))exposure.byId[id]={count:(exposure.byId[id]?.count||0)+1,last:exposure.runs};
+    try{localStorage.setItem(EXAM_EXPOSURE_KEY,JSON.stringify(exposure));localStorage.setItem(EXAM_HISTORY_KEY,JSON.stringify([...examHistory(),{at:Date.now(),scope:sources.join('+'),sources,ids:list.map(q=>q.id)}].slice(-8)))}catch{}
     exam={list,index:0,phase:'main',responses:{},drafts:{},skipped:[],remaining:90*60,deadline:Date.now()+90*60*1000,submitted:false,revealed:false,endReason:''};
     $('#examSetup').classList.add('hidden');$('#examSession').classList.remove('hidden');$('#examView').classList.add('exam-running');document.body.classList.add('exam-running');
     renderExam();clearInterval(timerId);timerId=setInterval(tickExam,250);
@@ -689,7 +706,7 @@
     const positionTotal=second?exam.skipped.length:exam.list.length;
     const pending=exam.phase==='ready'?0:second?exam.skipped.length-exam.index:exam.skipped.length;
     const current=interactive?examCurrent():null;
-    const topic=current?`<div class="exam-szev-rail-card topic"><span>Téma</span><strong>${esc(current.topic)}</strong><small>Gyakorló besorolás: ${esc(EXAM_AREAS.find(area=>area.id===examArea(current))?.label||'—')}</small></div>`:'';
+    const topic=current?`<div class="exam-szev-rail-card topic"><span>Téma</span><strong>${esc(displayTopic(current))}</strong><small>Gyakorló besorolás: ${esc(EXAM_AREAS.find(area=>area.id===examArea(current))?.label||'—')}</small></div>`:'';
     const actions=interactive?`<div class="exam-szev-actions">${second?'':`<button id="examSkip" class="button outline" type="button">Átlépem a feladatot</button>`}<button id="examNext" class="button primary" type="button">${exam.index===positionTotal-1?'Tovább a lezáráshoz':'Következő feladat'} <span aria-hidden="true">→</span></button></div><div id="examWarning" class="exam-szev-warning" role="alert" hidden><strong>Nincs megadott válasz.</strong><p>Ha így lépsz tovább, ez a feladat véglegesen 0 pontot ér. Visszalépni később nem lehet. ${second?'Ebben a körben már nem lehet újra átlépni.':'Az „Átlépem a feladatot” gombbal egyszer még visszatérhetsz rá.'}</p><div><button id="examEmptyCancel" class="button outline" type="button">Vissza a feladathoz</button><button id="examEmptyConfirm" class="button dark" type="button">Igen, továbblépek</button></div></div>`:'';
     return `<aside class="exam-szev-rail" aria-label="Vizsga állapota és vezérlés"><div class="exam-szev-rail-card time"><span>Hátralévő idő</span><strong id="examTimer" class="timer ${exam.remaining<600?'low':''}" aria-live="off">${formatTime(exam.remaining)}</strong><small>A próba közben az idő nem áll meg.</small></div><div class="exam-szev-rail-card"><span>${second?'Visszatérő feladat':'Aktuális feladat'}</span><strong>${position} <em>/ ${positionTotal}</em></strong><small>${second?'Átlépett feladatok köre':'Első kör · nincs visszalépés'}</small></div><div class="exam-szev-rail-card"><span>Átlépett feladat</span><strong>${pending}</strong><small>${second?'Ezeket már nem lehet újra átlépni.':'Az első kör után még egyszer visszatérnek.'}</small></div>${topic}${actions}</aside>`;
   }
@@ -832,9 +849,9 @@
       if(route.startsWith('question/')){
         let id='';try{id=decodeURIComponent(route.slice(9))}catch{}
         const q=byId.get(id);
-        if(q){if(view!=='question'||questionState?.ids[questionState.index]!==id)openQuestion(q,{fromRoute:true,origin:view==='learn'?'learn':questionState?.origin||'bank'});return}
+        if(q){if(view!=='question'||questionState?.ids[questionState.index]!==id)openQuestion(q,{fromRoute:true,origin:['learn','progress'].includes(view)?view:questionState?.origin||'bank'});return}
       }
-      const target=route.startsWith('learn/')?'learn':route.startsWith('guide/')?'guide':['home','bank','practice','exam','guide','learn'].includes(route)?route:'home';
+      const target=route.startsWith('learn/')?'learn':route.startsWith('guide/')?'guide':['home','bank','practice','exam','guide','learn','progress'].includes(route)?route:'home';
       if(view!==target)navigate(target,{updateHash:false});
       if(target==='learn')window.VV_LEARN?.renderRoute('#'+route);
     };
@@ -842,7 +859,7 @@
     window.addEventListener('storage',event=>{
       if(event.key!==KEY)return;
       const incoming=seed();Object.keys(progress).forEach(id=>delete progress[id]);Object.assign(progress,incoming);
-      renderWrongTasks();if(view==='home')renderHome();if(view==='bank')renderBank();
+      renderWrongTasks();if(view==='home')renderHome();if(view==='bank')renderBank();if(view==='progress')renderProgressManager();
     });
     window.addEventListener('beforeunload',event=>{if(exam&&!exam.submitted){event.preventDefault();event.returnValue=''}});
     followHash();

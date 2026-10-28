@@ -1,0 +1,139 @@
+/* Quiet page surfaces. Semantic answer colours, diagrams, navigation and art keep their own palette. */
+:root {
+  --vv-canvas: #f6f7f6;
+  --vv-canvas-paper: #fafbf9;
+  --vv-canvas-sage: #f1f5f2;
+  --vv-canvas-blue: #f0f4f6;
+  --vv-canvas-sand: #f5f3ee;
+  --vv-surface-paper: #fff;
+}
+body:has(#homeView.active) .main-column {
+  background: linear-gradient(145deg, var(--vv-canvas-sage), var(--vv-canvas-paper) 56%, #f1f4f2);
+}
+body:has(#bankView.active) .main-column {
+  background: linear-gradient(135deg, var(--vv-canvas-blue), var(--vv-canvas-paper) 56%, #f0f4f2);
+}
+body:has(#practiceView.active) .main-column {
+  background: linear-gradient(135deg, var(--vv-canvas-sand), var(--vv-canvas-paper) 52%, var(--vv-canvas-blue));
+}
+body:has(#examView.active) .main-column {
+  background: linear-gradient(145deg, var(--vv-canvas-blue), var(--vv-canvas-paper) 56%, #f3f4f0);
+}
+body:has(#progressView.active) .main-column {
+  background: linear-gradient(145deg, #f2f1ec, var(--vv-canvas-paper) 52%, var(--vv-canvas));
+}
+body:has(#learnView.active) .main-column {
+  background: linear-gradient(145deg, var(--vv-canvas-sand), #fbfaf7 56%, #f4f5f1);
+}
+body:has(#questionView.active) .main-column {
+  background: linear-gradient(145deg, var(--vv-canvas), var(--vv-canvas-paper) 56%, #f2f5f3);
+}
+body[data-view="guide"] .main-column, body:has(#guideView.active) .main-column {
+  background: linear-gradient(145deg, #f3f6f3, var(--vv-canvas-paper) 56%, #f1f4f3);
+}
+#practiceView .sf-practice-setup, #examView .exam-setup {
+  border-color: #d4dedc;
+  box-shadow: 0 12px 34px #26434b0b;
+}
+#practiceView .sf-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#practiceView .sf-steps button { min-width: 0; }
+.sf-selection-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.sf-selection-tools button {
+  min-height: 44px;
+  padding: 5px 10px;
+  border: 1px solid #c5d8d6;
+  border-radius: 8px;
+  background: #fff;
+  color: #31545e;
+  font: 700 14px var(--sans);
+  cursor: pointer;
+}
+.sf-selection-tools button:hover:not(:disabled) { background: #edf6f5; border-color: #6a9c9f; }
+.sf-selection-tools button:disabled { opacity: .48; cursor: default; }
+.sf-selection-tools button:focus-visible, .sf-dialog .sf-icon-button:focus-visible {
+  outline: 3px solid #c78924;
+  outline-offset: 3px;
+}
+#practiceView .sf-manager-link { justify-content: flex-end; background: #f9fcfb; }
+#practiceView .sf-recap { background: #f4f5f2; }
+#bankView .bank-manager-entry { background: #f5faf8; border-color: #d2e1dc; }
+.sf-dialog .sf-icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  flex: 0 0 44px;
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  color: #244d58;
+}
+.sf-dialog .sf-icon-button svg { display: block; width: 20px; height: 20px; }
+.sf-dialog .sf-icon-button path { stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+#progressView { color: #173b46; }
+#progressView [hidden] { display: none !important; }
+#progressView .progress-manager {
+  background: var(--vv-surface-paper);
+  border-color: #d6ded7;
+  box-shadow: 0 12px 36px #29443e0a;
+}
+#progressView .progress-manager-head {
+  padding: 15px 17px;
+  border: 1px solid #d8e0d9;
+  border-radius: 11px;
+  background: #f0f3f0;
+}
+#progressView .progress-manager-head > div { flex: 1 1 320px; min-width: 0; }
+#progressView .progress-manager-head h1 {
+  margin: 0 0 7px;
+  color: #173b46;
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -.5px;
+}
+#progressView .progress-manager-head p,
+#progressView .progress-manager-help,
+#progressView .progress-manager-footer p { color: #4a6265; }
+#progressView .progress-manager-filters label { min-width: 0; }
+#progressView .progress-manager-filters input,
+#progressView .progress-manager-filters select { min-width: 0; border-color: #cdd8d3; }
+#progressView .progress-selection-toolbar { background: #f5f7f3; border-color: #dce3d9; }
+#progressView .progress-manager-row { background: #fff; border-color: #dbe3da; }
+#progressView .progress-manager-empty { background: #f7f9f5; border-color: #cdd7cf; }
+#progressView .progress-manager-footer { border-color: #dde4de; }
+#progressView .progress-row-actions select { min-width: 0; }
+#progressView .progress-bulk-actions .button,
+#progressView .progress-manager-footer .text-button,
+#progressView .progress-row-remove { min-height: 44px; }
+#progressView .progress-select-all { min-height: 44px; }
+#progressView .progress-row-select { display: grid; place-items: center; min-height: 44px; }
+@media (max-width: 540px) {
+  #progressView .progress-manager-head { padding: 12px; }
+  #progressView .progress-manager-row { padding: 10px; gap: 8px; }
+  #progressView .progress-row-actions { grid-template-columns: auto minmax(120px, 1fr); }
+  #progressView .progress-status-label { justify-self: start; }
+  #progressView .progress-row-actions .progress-row-remove { grid-column: 1 / -1; justify-self: start; }
+  #practiceView .sf-manager-link .button { width: 100%; }
+}
+@media (max-width: 360px) {
+  #progressView .progress-row-actions { grid-template-columns: minmax(0, 1fr); }
+  #progressView .progress-status-label { justify-self: start; }
+  #progressView .progress-row-remove { justify-self: start; }
+}
+/* Topic names are text headings, distinct from the large exam counters. */
+#examView .exam-szev-rail-card.topic > strong {
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.4;
+  letter-spacing: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
