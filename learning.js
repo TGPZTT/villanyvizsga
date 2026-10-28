@@ -16,8 +16,8 @@
   const taskEmphasis=true;
   const taskCount=lesson=>lesson.sourceTaskCount||0;
   const taskMarkerIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>';
-  const focusControl=()=>`<span class="learn-task-legend" title="A Feladathoz jelölés a meglévő feladatokhoz szükséges részeket mutatja. A géppel generált kérdések nem befolyásolják.">${taskMarkerIcon}<span>Feladatokhoz szükséges</span></span>`;
-  const taskMark=lesson=>taskCount(lesson)?`<span class="learn-task-mark" aria-label="Feladathoz szükséges ismeret. ${taskCount(lesson)} kapcsolódó feladat." title="${taskCount(lesson)} feladat megoldásához szükséges ismeretet tartalmaz.">${taskMarkerIcon}<span>Feladathoz</span></span>`:'';
+  const focusControl=()=>`<span class="learn-task-legend" title="A Vizsgaanyag jelölés a meglévő feladatsorok megoldásához szükséges részeket mutatja. A géppel generált kérdések nem befolyásolják.">${taskMarkerIcon}<span>Vizsgaanyag</span></span>`;
+  const taskMark=lesson=>taskCount(lesson)?`<span class="learn-task-mark" aria-label="Vizsgaanyag. ${taskCount(lesson)} kapcsolódó feladat." title="${taskCount(lesson)} feladat megoldásához szükséges ismeretet tartalmaz.">${taskMarkerIcon}<span>Vizsgaanyag</span></span>`:'';
   let searchTimer;
   const save = reason => {
     try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch {}
