@@ -45,12 +45,17 @@
   }
   function setup(host){
     const hero=host.querySelector('.vv-dash-hero'),svg=hero?.querySelector('.r12-workbench');if(!hero||!svg||hero.dataset.r12MotionReady)return;
-    hero.dataset.r12MotionReady='true';const reduced=matchMedia('(prefers-reduced-motion:reduce)');let raf=0,start=0;
+    hero.dataset.r12MotionReady='true';const reduced=matchMedia('(prefers-reduced-motion:reduce)');let raf=0,last=0,elapsed=0,inView=false;
     const primary=svg.querySelector('[data-header-wave=primary]'),secondary=svg.querySelector('[data-header-wave=secondary]'),needle=svg.querySelector('[data-header-needle]'),led=svg.querySelector('[data-header-led]'),traces=[...svg.querySelectorAll('[data-header-trace]')];
     const frame=p=>{const phase=p*Math.PI*2,angle=(-66+18*Math.sin(phase)+5*Math.sin(phase*2))*Math.PI/180;primary.setAttribute('transform',`translate(${-48*p} 0)`);secondary.setAttribute('transform',`translate(${-48*p} 0)`);needle.setAttribute('x2',String(66+36*Math.cos(angle)));needle.setAttribute('y2',String(62+36*Math.sin(angle)));led.setAttribute('opacity',String(.6+.4*Math.sin(phase*2)**2));traces.forEach((t,i)=>{t.setAttribute('stroke-dashoffset',String(-p));t.setAttribute('opacity',String(Math.sin(Math.PI*p)**2*(i?.5:.85)))})};
-    const play=()=>{if(reduced.matches||!hero.getClientRects().length||raf)return;start=performance.now();const tick=now=>{const p=Math.min(1,(now-start)/4800);frame(p);if(p<1)raf=requestAnimationFrame(tick);else raf=0};raf=requestAnimationFrame(tick)};
-    hero.addEventListener('pointerenter',play);window.addEventListener('hashchange',()=>requestAnimationFrame(play));
-    reduced.addEventListener('change',()=>{if(reduced.matches){cancelAnimationFrame(raf);raf=0;frame(0)}});frame(0);requestAnimationFrame(play);
+    const canPlay=()=>!reduced.matches&&!document.hidden&&inView&&hero.isConnected&&hero.getClientRects().length;
+    const stop=()=>{cancelAnimationFrame(raf);raf=0;last=0};
+    // Each part returns to the same pose after 4.8 seconds, so the cycle joins seamlessly.
+    const tick=now=>{raf=0;if(!canPlay()){last=0;return}if(last)elapsed+=now-last;last=now;frame((elapsed%4800)/4800);raf=requestAnimationFrame(tick)};
+    const sync=()=>{if(canPlay()){if(!raf)raf=requestAnimationFrame(tick)}else stop()};
+    const visibility=new IntersectionObserver(([entry])=>{inView=entry.isIntersecting;sync()});visibility.observe(hero);
+    document.addEventListener('visibilitychange',sync);
+    reduced.addEventListener('change',()=>{if(reduced.matches){stop();elapsed=0;frame(0)}else sync()});frame(0);
   }
   window.VV_DASH_ART=Object.freeze({header,setup,projection:()=>({origin:[18,188],x:X,y:Y,z:Z,project})});
 })();
