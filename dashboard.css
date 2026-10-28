@@ -142,4 +142,18 @@ body:has(#homeView.active) .main-column{background:radial-gradient(ellipse at 80
 .dash-guide-fraction,.dash-guide-underline{stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .8s ease .2s}
 .dash-guide-fraction{stroke-dashoffset:0}
 .vv-dash-portal.is-active .dash-guide-fraction,.vv-dash-portal.is-active .dash-guide-underline{stroke-dashoffset:0}
-@media(prefers-reduced-motion:reduce){.vv-dash-object *{transition:none!important}.dash-book-cover,.dash-book-page,.dash-bank-back,.dash-bank-middle,.dash-guide-numerator,.dash-guide-denominator{transform:none!important}.dash-bank-checks path,.dash-practice-mark,.dash-guide-fraction,.dash-guide-underline{stroke-dashoffset:0!important}}
+@media(prefers-reduced-motion:reduce){.vv-dash-object *{transition:none!important}.dash-book-cover,.dash-book-page,.dash-bank-back,.dash-bank-middle,.dash-guide-numerator,.dash-guide-denominator{transform:none!important}.dash-bank-checks path,.dash-guide-fraction,.dash-guide-underline{stroke-dashoffset:0!important}}
+
+/* Three quiet families distinguish routes without a spectrum of accents. */
+.vv-dash-portal--learn{background:linear-gradient(160deg,#fffdf8 48%,#f3ead9);border-color:#d2c4aa}
+.vv-dash-portal--bank{background:linear-gradient(160deg,#fcfdff 48%,#eaf0f8);border-color:#bbcbdc}
+.vv-dash-portal--guide{background:linear-gradient(160deg,#fffdf8 48%,#f4ecdb);border-color:#d5c5a5}
+.vv-dash-practice-pair{background:linear-gradient(120deg,#dce9e0,#e8f1e9);border-color:#adc8b8}
+.vv-dash-practice-pair .vv-dash-portal{background:linear-gradient(165deg,#fcfefa 48%,#e8f2eb);border-color:#c2d6c8}
+
+.dash-guide-equation .dash-guide-resistance,.dash-guide-equation .dash-guide-current{transform:none!important}
+.dash-guide-ruler{transform:translateY(15px);transition:transform .95s cubic-bezier(.22,.7,.2,1)!important}
+.vv-dash-portal.is-active .dash-guide-ruler{transform:translateY(0px)}
+.dash-guide-equation .dash-guide-underline{transition:stroke-dashoffset .3s ease}
+.vv-dash-portal.is-active .dash-guide-equation .dash-guide-underline{transition:stroke-dashoffset .65s ease .9s}
+@media(prefers-reduced-motion:reduce){.dash-guide-ruler{transform:none!important}.dash-guide-equation .dash-guide-underline{stroke-dashoffset:0!important}}

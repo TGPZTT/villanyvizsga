@@ -1,66 +1,7 @@
-/* A warm, precisely drawn electrical workbench. Nothing in this scene is a control. */
-.vv-dash-hero {
-  border-color:#80654e;
-  background:linear-gradient(112deg,#2d2724 0%,#3d3029 58%,#4a372a 100%);
-  box-shadow:0 15px 30px #49311d16;
-  color:#fff4e4;
-}
-.vv-dash-hero h1 { color:#fff6e8; }
-.vv-dash-hero-copy>p { color:#dbcbb9; }
-.vv-dash-learning-progress strong { color:#f2e1cb; }
-.vv-dash-learning-progress>div>span { color:#d6bfa4; }
-.vv-dash-progress { background:#e4c9a51e; }
-.vv-dash-progress>span { background:linear-gradient(90deg,#c8844d,#efd4a5); }
-.vv-dash-hero-art {
-  isolation:isolate;
-  background:radial-gradient(ellipse at 55% 47%,#c48b5a1a,transparent 72%);
-}
-.vv-dash-instrument.vv-dash-workbench {
-  display:block;
-  width:100%;
-  max-width:540px;
-  max-height:275px;
-  overflow:visible;
-  transform:none;
-  shape-rendering:geometricPrecision;
-}
-.vdh-meter-needle {
-  transform-box:view-box;
-  transform-origin:77px 52px;
-  animation:vdh-needle-read 18s cubic-bezier(.45,0,.35,1) infinite;
-}
-.vdh-screen-wave {
-  animation:vdh-wave-read 18s linear infinite;
-}
-.vdh-screen-scan { animation:vdh-screen-read 12s linear infinite; }
-.vdh-current-trace {
-  stroke-dasharray:12 300;
-  stroke-dashoffset:15;
-  animation:vdh-current-read 13s linear infinite;
-}
-.vdh-power { animation:vdh-power-read 10s ease-in-out infinite; }
-.vv-dash-motion {
-  border-color:#d4af7c52;
-  background:#382a20d9;
-  color:#ead3b1;
-}
-.vv-dash-motion:hover { border-color:#f3d1a6a6; background:#533c2a; color:#fff4de; }
-.vv-dash-hero.is-paused .vv-dash-workbench * { animation-play-state:paused!important; }
-@keyframes vdh-needle-read {
-  0%,100%{transform:rotate(-11deg)}
-  22%{transform:rotate(6deg)}
-  46%{transform:rotate(2deg)}
-  72%{transform:rotate(-5deg)}
-}
-@keyframes vdh-wave-read { to { transform:translateX(-48px); } }
-@keyframes vdh-screen-read { 0%{transform:translateX(0)} 100%{transform:translateX(90px)} }
-@keyframes vdh-current-read { to { stroke-dashoffset:-297; } }
-@keyframes vdh-power-read { 0%,100%{opacity:.65} 50%{opacity:1} }
-@media(max-width:620px) {
-  .vv-dash-hero-art { height:165px; }
-  .vv-dash-instrument.vv-dash-workbench { width:300px; max-width:100%; height:auto; max-height:none; transform:none; }
-}
-@media(prefers-reduced-motion:reduce) {
-  .vv-dash-workbench * { animation:none!important; transition:none!important; }
-  .vdh-current-trace { stroke-dasharray:none; opacity:.4; }
-}
+/* The instruments share one orthographic camera and remain sharp at every size. */
+.vv-dash-hero{background:linear-gradient(112deg,#10333d,#184951 64%,#22585a);border-color:#467775;color:#f7f8ed;box-shadow:0 14px 30px #123b4215}
+.vv-dash-hero h1{color:#f5f9f0}.vv-dash-learning-progress strong{color:#e2eee5}.vv-dash-learning-progress>div>span{color:#bad3cb}.vv-dash-progress{background:#b3d4c51f}.vv-dash-progress>span{background:linear-gradient(90deg,#d8b77a,#9bd1b9)}
+.vv-dash-hero-art{isolation:isolate;background:radial-gradient(ellipse at 52% 50%,#8dbda617,transparent 70%)}
+.vv-dash-instrument.r12-workbench{display:block;width:100%;max-width:540px;max-height:300px;overflow:visible;transform:none;shape-rendering:geometricPrecision}
+.r12-workbench path,.r12-workbench polygon,.r12-workbench line{vector-effect:none}
+@media(max-width:620px){.vv-dash-hero-art{height:180px}.vv-dash-instrument.r12-workbench{width:320px;max-width:100%;height:auto;max-height:none;transform:none}}

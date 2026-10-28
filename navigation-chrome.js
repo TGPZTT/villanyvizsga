@@ -35,6 +35,6 @@
     // Guide pages are standalone and have no app initializer.
     if(motion.matches)document.body.classList.add('nav-reduced-motion');
   }
-  window.VV_NAV=Object.freeze({setup});
+  window.VV_NAV=Object.freeze({setup,icon:view=>svg(paths[view]||paths.home)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
 })();

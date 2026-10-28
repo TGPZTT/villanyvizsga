@@ -1,136 +1,56 @@
-(function () {
+(function(){
   'use strict';
-  // Decorative instrument scene. It makes no quantitative teaching claims.
-  const point = (x,y) => `${x.toFixed(2)} ${y.toFixed(2)}`;
-  const dialTicks = Array.from({length:25},(_,i) => {
-    const angle = Math.PI + i * Math.PI / 24, major = i % 4 === 0;
-    const inner = major ? 35 : 39;
-    return `<path d="M${point(77+Math.cos(angle)*inner,52+Math.sin(angle)*inner)}L${point(77+Math.cos(angle)*43,52+Math.sin(angle)*43)}" stroke-width="${major?1.6:.7}"/>`;
-  }).join('');
-  const wave = Array.from({length:161},(_,i) => {
-    const x = -42 + i * 1.25, y = 33 - Math.sin((x-14)*Math.PI/24)*11;
-    return `${i?'L':'M'}${point(x,y)}`;
-  }).join('');
-  const screw = (x,y,r=2.7) => `<g transform="translate(${x} ${y})"><circle r="${r+1}" fill="#302d2a" opacity=".34"/><circle r="${r}" fill="url(#vdh-steel)" stroke="#998774" stroke-width=".5"/><path d="m-${r*.55} 0h${r*1.1}" stroke="#645a52" stroke-width=".8"/></g>`;
-  function header() {
-    return `<svg class="vv-dash-instrument vv-dash-workbench" viewBox="0 0 520 280" fill="none" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id="vdh-base" x1="80" y1="80" x2="380" y2="260" gradientUnits="userSpaceOnUse"><stop stop-color="#464a4d"/><stop offset=".5" stop-color="#28313a"/><stop offset="1" stop-color="#19232e"/></linearGradient>
-        <linearGradient id="vdh-copper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2c58f"/><stop offset=".3" stop-color="#ce8b53"/><stop offset=".55" stop-color="#f3c998"/><stop offset="1" stop-color="#8c4e2e"/></linearGradient>
-        <linearGradient id="vdh-body" x1="196" y1="87" x2="351" y2="211" gradientUnits="userSpaceOnUse"><stop stop-color="#eee6d7"/><stop offset=".45" stop-color="#d5cbb9"/><stop offset="1" stop-color="#b2a592"/></linearGradient>
-        <linearGradient id="vdh-side" x1="351" y1="113" x2="396" y2="155" gradientUnits="userSpaceOnUse"><stop stop-color="#9b8d79"/><stop offset=".5" stop-color="#c4b69f"/><stop offset="1" stop-color="#7d705f"/></linearGradient>
-        <linearGradient id="vdh-top" x1="236" y1="66" x2="340" y2="110" gradientUnits="userSpaceOnUse"><stop stop-color="#fff7e6"/><stop offset=".55" stop-color="#e5dac5"/><stop offset="1" stop-color="#c3b49d"/></linearGradient>
-        <linearGradient id="vdh-steel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff4db"/><stop offset=".4" stop-color="#a99c88"/><stop offset=".6" stop-color="#eee3d1"/><stop offset="1" stop-color="#807262"/></linearGradient>
-        <linearGradient id="vdh-glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff" stop-opacity=".3"/><stop offset=".45" stop-color="#ffffff" stop-opacity=".02"/><stop offset=".7" stop-color="#ffffff" stop-opacity=".12"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
-        <linearGradient id="vdh-screen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#172a3c"/><stop offset="1" stop-color="#0c1726"/></linearGradient>
-        <radialGradient id="vdh-light"><stop stop-color="#f2c895" stop-opacity=".16"/><stop offset="1" stop-color="#e7ab71" stop-opacity="0"/></radialGradient>
-        <pattern id="vdh-screen-grid" width="12" height="11" patternUnits="userSpaceOnUse"><path d="M12 0H0v11" stroke="#8299b4" stroke-opacity=".2" stroke-width=".6"/></pattern>
-        <clipPath id="vdh-screen-clip"><rect x="12" y="12" width="90" height="42" rx="2"/></clipPath>
-        <clipPath id="vdh-dial-clip"><rect x="13" y="10" width="129" height="49" rx="5"/></clipPath>
-        <filter id="vdh-desk-shadow" x="-30%" y="-80%" width="160%" height="260%"><feGaussianBlur stdDeviation="6"/></filter>
-      </defs>
-      <ellipse cx="278" cy="248" rx="190" ry="15" fill="#0b0705" opacity=".32" filter="url(#vdh-desk-shadow)"/>
-      <ellipse cx="280" cy="166" rx="213" ry="101" fill="url(#vdh-light)"/>
-      <g class="vdh-board">
-        <path d="m42 158 182 89v12L42 170Z" fill="#101923" stroke="#796957" stroke-width=".5"/>
-        <path d="m224 247 266-88v12l-266 88Z" fill="#18222d" stroke="#88735d" stroke-width=".5"/>
-        <path d="m42 158 266-88 182 89-266 88Z" fill="url(#vdh-base)" stroke="#9d8c78" stroke-width="1.1"/>
-        <path d="m54 158 254-84 169 84-254 84Z" stroke="#52616b" stroke-width=".65"/>
-        <g stroke="#bc8151" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m71 158 38-13 60 30 51-17 61 30 64-22"/>
-          <path d="m84 169 40-13 61 30 48-16 62 30 60-21"/>
-          <path d="m100 179 40-13 61 30 39-13 62 30 59-20"/>
-          <path d="m174 213 47-15 48 23 73-24 22-33 55-18"/>
-          <path d="m299 91 23 12 52-17m-1 29 58 28 23-8m-54 28 53-17"/>
-        </g>
-        <path class="vdh-current-trace" d="m71 158 38-13 60 30 51-17 61 30 64-22" stroke="#ffe2a8" stroke-width="2.5" stroke-linecap="round"/>
-        <g fill="url(#vdh-copper)" stroke="#3d281a" stroke-width=".6">
-          <ellipse cx="71" cy="158" rx="4.5" ry="2.6"/><ellipse cx="84" cy="169" rx="4.5" ry="2.6"/><ellipse cx="100" cy="179" rx="4.5" ry="2.6"/>
-          <ellipse cx="174" cy="213" rx="4.5" ry="2.6"/><ellipse cx="345" cy="166" rx="4.5" ry="2.6"/><ellipse cx="361" cy="193" rx="4.5" ry="2.6"/><ellipse cx="419" cy="146" rx="4.5" ry="2.6"/>
-        </g>
-        <g stroke="#f8d7ab" stroke-width=".6" opacity=".65"><path d="m48 161 176 86m7-1 251-83"/></g>
-        <g fill="#6c716f" stroke="#c8ba9f" stroke-width=".6"><ellipse cx="61" cy="158" rx="3.5" ry="2.1"/><ellipse cx="306" cy="80" rx="3.5" ry="2.1"/><ellipse cx="470" cy="159" rx="3.5" ry="2.1"/><ellipse cx="224" cy="235" rx="3.5" ry="2.1"/></g>
-        <g fill="#0b131d"><path d="m74 174 18 9v6l-18-9Z"/><path d="m422 190 20-7v6l-20 7Z"/></g>
-      </g>
-      <g class="vdh-scope-case">
-        <path d="m68 91 113-28.25 16 8-113 28.25Z" fill="#a7967e" stroke="#d3c2a6" stroke-width=".8"/>
-        <path d="m181 62.75 16 8v84l-16-8Z" fill="#574e44" stroke="#8a7c66" stroke-width=".7"/>
-        <g transform="matrix(1 -.25 0 1 68 91)">
-          <rect width="113" height="84" rx="5" fill="#c3b59c" stroke="#eee0c4"/>
-          <rect x="5" y="5" width="103" height="60" rx="4" fill="#756c5e"/>
-          <rect x="9" y="9" width="95" height="48" rx="3" fill="url(#vdh-screen)" stroke="#d2b68b" stroke-width=".6"/>
-          <g clip-path="url(#vdh-screen-clip)">
-            <rect x="12" y="12" width="90" height="42" fill="url(#vdh-screen-grid)"/>
-            <path d="M12 33h90M57 12v42" stroke="#b9c8d5" stroke-opacity=".33" stroke-width=".65"/>
-            <path class="vdh-screen-wave vdh-screen-glow" d="${wave}" stroke="#8ac5e6" stroke-width="3.8" stroke-opacity=".16"/>
-            <path class="vdh-screen-wave" d="${wave}" stroke="#b4d8ee" stroke-width="1.15"/>
-            <rect class="vdh-screen-scan" x="12" y="12" width="8" height="42" fill="#c8e6f6" fill-opacity=".06"/>
-          </g>
-          <path d="M11 10h90v12L11 38Z" fill="url(#vdh-glass)"/>
-          <g fill="#564d40" stroke="#f3e5ca" stroke-width=".5"><circle cx="19" cy="74" r="4.4"/><circle cx="38" cy="74" r="4.4"/><circle cx="58" cy="74" r="4.4"/></g>
-          <g stroke="#ddd1bc" stroke-width="1.1"><path d="M19 71v3m19-3v3"/></g>
-          <circle cx="58" cy="74" r="2" fill="#242b31"/>
-          <rect x="80" y="71" width="18" height="5" rx="1.5" fill="#77705f"/>
-          <circle class="vdh-power" cx="85" cy="73.5" r="1.3" fill="#ebbe76"/>
-          ${screw(4,4,1.8)}${screw(109,80,1.8)}
-        </g>
-        <path d="m76 174 14 7 98-26v6l-98 26-14-7Z" fill="#17212b"/>
-      </g>
-      <path d="M126 150.5c-12 14-16 31 5 45.5 15 11 43 11 55 5" stroke="#141b21" stroke-width="6" stroke-linecap="round"/>
-      <path d="M126 150.5c-12 14-16 31 5 45.5 15 11 43 11 55 5" stroke="#8e7c64" stroke-width="1" stroke-linecap="round"/>
-      <g class="vdh-meter-case">
-        <path d="m196 87 45-21 155 24-45 21Z" fill="url(#vdh-top)" stroke="#f5e8d2" stroke-width=".7"/>
-        <path d="m351 111 45-21v100l-45 21Z" fill="url(#vdh-side)" stroke="#c5b59e" stroke-width=".7"/>
-        <path d="m196 87 155 24v100l-155-24Z" fill="url(#vdh-body)" stroke="#f6ebd7" stroke-width=".8"/>
-        <path d="m197 89 153 24m3 1 41-21" stroke="#fff8e9" stroke-width=".8" opacity=".8"/>
-        <path d="m209 87 30-14 142 22" stroke="#a29680" stroke-width=".7"/>
-        <g stroke="#645c4e" stroke-width="1.9" stroke-linecap="round"><path d="m361 130 26-13m-26 20 26-13m-26 20 26-13m-26 20 26-13m-26 20 26-13m-26 20 26-13"/></g>
-        <g stroke="#e4d5bd" stroke-width=".6"><path d="m361 131 26-13m-26 20 26-13m-26 20 26-13m-26 20 26-13m-26 20 26-13m-26 20 26-13"/></g>
-        <g transform="matrix(1 .155 0 1 196 87)">
-          <rect x="11" y="8" width="133" height="54" rx="6" fill="#756d60" stroke="#fbf3df" stroke-width=".7"/>
-          <rect x="14" y="11" width="127" height="48" rx="4" fill="#f8f1df" stroke="#483e32" stroke-width=".9"/>
-          <g clip-path="url(#vdh-dial-clip)">
-            <path d="M34 52a43 43 0 0 1 86 0" stroke="#d3c2a3" stroke-width=".7"/>
-            <g stroke="#584f43">${dialTicks}</g>
-            <path d="M39 52a38 38 0 0 1 76 0" stroke="#a77748" stroke-opacity=".4" stroke-width=".5"/>
-            <path d="M111 28a43 43 0 0 1 8 14" stroke="#a65d3b" stroke-width="2.5"/>
-            <g class="vdh-meter-needle"><path d="M77 52 96 23" stroke="#925636" stroke-width="1.5" stroke-linecap="round"/><path d="m77 52-4 6" stroke="#5d5042" stroke-width="1.3" stroke-linecap="round"/></g>
-            <circle cx="77" cy="52" r="4.1" fill="url(#vdh-steel)" stroke="#74644f" stroke-width=".7"/>
-            <path d="M15 12h125v8L15 47Z" fill="url(#vdh-glass)"/>
-          </g>
-          <g class="vdh-selector">
-            <circle cx="40" cy="81" r="15" fill="#8e806b"/>
-            <circle cx="40" cy="80" r="13.5" fill="#363937" stroke="#f3e2c0" stroke-width=".7"/>
-            <circle cx="40" cy="80" r="10" fill="#454741" stroke="#68685a"/>
-            <g stroke="#777767" stroke-width=".8"><path d="M28 78h3m0-6 2 2m5-6v3m6-2-1 3m7 2-3 1m5 5h-3m1 6-3-2m-5 8v-3m-7 2 1-3m-7-3 3-1"/></g>
-            <path d="M40 80l5-8" stroke="#f2d49c" stroke-width="1.8" stroke-linecap="round"/>
-            <circle cx="40" cy="80" r="2" fill="#252c2c"/>
-          </g>
-          <g fill="#5e5344" stroke="#e4d5ba" stroke-width=".6"><circle cx="102" cy="81" r="7"/><circle cx="126" cy="81" r="7"/></g>
-          <circle cx="102" cy="81" r="4.5" fill="#9a553d" stroke="#cf967a" stroke-width=".7"/>
-          <circle cx="126" cy="81" r="4.5" fill="#2f4e6b" stroke="#829aaf" stroke-width=".7"/>
-          <circle cx="102" cy="81" r="1.8" fill="#35291e"/><circle cx="126" cy="81" r="1.8" fill="#19252f"/>
-          ${screw(5,5,2.2)}${screw(150,5,2.2)}${screw(5,94,2.2)}${screw(150,94,2.2)}
-          <g stroke="#b6a487" stroke-width=".6"><path d="M68 73h15M68 77h10M68 84h15M68 88h10"/></g>
-        </g>
-        <path d="m208 190 16 3v6l-16-3Zm119 19 15 2v6l-15-2Z" fill="#151c22"/>
-        <path d="m366 207 16-8v6l-16 8Z" fill="#172029"/>
-      </g>
-      <g class="vdh-leads" stroke-linecap="round">
-        <path d="M298 184c1 30 18 37 52 29 33-8 51-5 53 4 2 12-24 24-54 19" stroke="#131a22" stroke-width="5"/>
-        <path d="M298 184c1 30 18 37 52 29 33-8 51-5 53 4 2 12-24 24-54 19" stroke="#b3734b" stroke-width="2.5"/>
-        <path d="M322 188c15 30 65 13 84 8 22-6 45-5 45 5 0 9-16 16-27 17" stroke="#18202a" stroke-width="5"/>
-        <path d="M322 188c15 30 65 13 84 8 22-6 45-5 45 5 0 9-16 16-27 17" stroke="#59789a" stroke-width="2.5"/>
-        <path d="m345 235-11-2" stroke="#e7ccb2" stroke-width="2"/><path d="m424 218-9 3" stroke="#cad2d4" stroke-width="2"/>
-        <path d="m344 235 7 1m69-17 7-2" stroke="#302b27" stroke-width="5"/>
-      </g>
-      <g transform="translate(237 229) rotate(-18)">
-        <rect x="0" y="0" width="42" height="7" rx="3.5" fill="#18232f"/>
-        <rect x="3" y="0" width="23" height="6" rx="2.5" fill="#b98757" stroke="#eac39a" stroke-width=".6"/>
-        <path d="M28 3h25" stroke="#d2c7b5" stroke-width="1.5"/>
-        <g stroke="#795332" stroke-width=".6"><path d="M8 1v4m4-4v4m4-4v4m4-4v4"/></g>
-      </g>
+  // All bodies, panels, feet, sockets and probes use the same orthographic camera.
+  const yaw=35*Math.PI/180,pitch=25*Math.PI/180;
+  const X=[Math.cos(yaw),Math.sin(yaw)*Math.sin(pitch)],Y=[Math.sin(yaw),-Math.cos(yaw)*Math.sin(pitch)],Z=[0,-Math.cos(pitch)];
+  const project=(x,y,z=0)=>[18+x*X[0]+y*Y[0]+z*Z[0],188+x*X[1]+y*Y[1]+z*Z[1]];
+  const pt=p=>p.map(n=>n.toFixed(3)).join(',');
+  const polygon=(points,fill,extra='')=>`<polygon points="${points.map(p=>pt(project(...p))).join(' ')}" fill="${fill}" ${extra}/>`;
+  const line=(points,stroke,width=1.2,extra='')=>`<path d="${points.map((p,i)=>(i?'L':'M')+pt(project(...p))).join(' ')}" fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" ${extra}/>`;
+  const matrix=(x,y,z,plane='front')=>{const p=project(x,y,z),v=plane==='front'?[-Z[0],-Z[1]]:Y;return `matrix(${X[0]} ${X[1]} ${v[0]} ${v[1]} ${p[0]} ${p[1]})`};
+  function housing(x,y,w,d,h,id){
+    let feet='';for(const u of [9,w-22])feet+=polygon([[x+u,y+4,0],[x+u+13,y+4,0],[x+u+13,y+4,6],[x+u,y+4,6]],'#122e34')+polygon([[x+u+13,y+4,0],[x+u+13,y+17,0],[x+u+13,y+17,6],[x+u+13,y+4,6]],'#0b242d');
+    return `${feet}${polygon([[x,y,6],[x+w,y,6],[x+w,y+d,6],[x,y+d,6]],'#283c43')}${polygon([[x+w,y,6],[x+w,y+d,6],[x+w,y+d,h+6],[x+w,y,h+6]],'url(#r12-side)',`data-body-face="${id}-side"`)}${polygon([[x,y,h+6],[x+w,y,h+6],[x+w,y+d,h+6],[x,y+d,h+6]],'url(#r12-top)',`data-body-face="${id}-top"`)}${polygon([[x,y,6],[x+w,y,6],[x+w,y,h+6],[x,y,h+6]],'url(#r12-front)',`data-body-face="${id}-front"`)}${line([[x,y,h+6],[x+w,y,h+6],[x+w,y+d,h+6]],'#dce4da',.8)}${Array.from({length:5},(_,i)=>line([[x+w+.12,y+12,h-15-i*7],[x+w+.12,y+d-12,h-15-i*7]],'#8c9f98',1.4)).join('')}`;
+  }
+  const screw=(x,y)=>`<g transform="translate(${x} ${y})"><circle r="2.2" fill="#b9c7c1" stroke="#798e88" stroke-width=".65"/><path d="M-1.2 0h2.4" stroke="#5b716c" stroke-width=".8"/></g>`;
+  function knob(x,y,r=7){return `<g transform="translate(${x} ${y})"><circle cx=".8" cy="1.1" r="${r+1}" fill="#70837d"/><circle r="${r}" fill="#294850" stroke="#dce5db" stroke-width=".8"/><circle r="${r-2}" fill="#355963"/><path d="M0 -${r-2}v3" stroke="#e4c083" stroke-width="1.4" stroke-linecap="round"/></g>`}
+  const socket=(x,y,id,color)=>`<g data-header-socket="${id}" transform="translate(${x} ${y})"><circle r="5" fill="#70847e"/><circle r="3.5" fill="${color}" stroke="#d9ded1" stroke-width=".8"/><circle r="1.7" fill="#172f37"/></g>`;
+  function cable(from,tip,direction,color,id){
+    const back=[tip[0]+direction[0]*35,tip[1]+direction[1]*35,4],inner=[tip[0]+direction[0]*9,tip[1]+direction[1]*9,4],perp=[-direction[1]*3,direction[0]*3];
+    // The right-hand lead approaches from outside the housing, never beneath it.
+    const approachX=back[0]+(id==='meter-minus'?5:-35);
+    const controls=[from,[from[0]+5,from[1]-40,5],[approachX,back[1]-35,5],back].map(p=>project(...p));
+    const path=`M${pt(controls[0])}C${pt(controls[1])} ${pt(controls[2])} ${pt(controls[3])}`;
+    return `<path d="${path}" stroke="#0a2630" stroke-width="4.3" stroke-linecap="round"/><path data-header-cable="${id}" d="${path}" stroke="${color}" stroke-width="2.4" stroke-linecap="round"/>${polygon([[back[0]+perp[0],back[1]+perp[1],4],[inner[0]+perp[0],inner[1]+perp[1],4],[inner[0]-perp[0],inner[1]-perp[1],4],[back[0]-perp[0],back[1]-perp[1],4]],'#33555d','stroke="#829a93" stroke-width=".6"')}${line([inner,tip],'#d6d9c9',1.5,`data-header-probe="${id}"`)}`;
+  }
+  const wave=(amplitude,phase)=>Array.from({length:273},(_,i)=>{const x=-48+i*.85,y=38.5-amplitude*Math.sin((x+phase)*Math.PI/24);return `${i?'L':'M'}${x.toFixed(3)},${y.toFixed(3)}`}).join('');
+  function header(){
+    const ticks=Array.from({length:31},(_,i)=>{const a=Math.PI+i*Math.PI/30,r=i%5?38:34;return `<path d="M${66+Math.cos(a)*r} ${62+Math.sin(a)*r}L${66+Math.cos(a)*42} ${62+Math.sin(a)*42}" stroke-width="${i%5?.65:1.3}"/>`}).join('');
+    const board=[[0,0,0],[380,0,0],[380,210,0],[0,210,0]];
+    const channels=[[[110,35,2],[110,12,2],[245,12,2],[245,25,2],[280,25,2]],[[95,60,2],[85,60,2],[85,18,2],[319,18,2],[319,40,2]]];
+    const pads=[[110,35,2],[280,25,2],[319,40,2]];
+    const surface=(x,y,z=2)=>`<g transform="${matrix(x,y,z,'board')}"><circle r="5.3" fill="#a47543"/><circle r="3.1" fill="#e6c68a"/><circle r="1.2" fill="#304e56"/></g>`;
+    return `<svg class="vv-dash-instrument vv-dash-workbench r12-workbench" viewBox="0 0 520 300" fill="none" aria-hidden="true" focusable="false" data-projection="orthographic-yaw35-pitch25">
+      <defs><linearGradient id="r12-top" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e2eadd"/><stop offset="1" stop-color="#a8bcb2"/></linearGradient><linearGradient id="r12-front" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#ecf0e5"/><stop offset="1" stop-color="#c2cec2"/></linearGradient><linearGradient id="r12-side" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a4b7ad"/><stop offset="1" stop-color="#788f86"/></linearGradient><linearGradient id="r12-board"><stop stop-color="#244e56"/><stop offset="1" stop-color="#142e38"/></linearGradient><radialGradient id="r12-shadow"><stop stop-color="#001d27" stop-opacity=".5"/><stop offset="1" stop-color="#001d27" stop-opacity="0"/></radialGradient><clipPath id="r12-scope-clip"><rect x="12" y="13" width="101" height="51" rx="2"/></clipPath></defs>
+      <ellipse cx="270" cy="258" rx="210" ry="35" fill="url(#r12-shadow)"/>
+      ${polygon([[0,0,-7],[380,0,-7],[380,0,0],[0,0,0]],'#0c2731')}${polygon([[380,0,-7],[380,210,-7],[380,210,0],[380,0,0]],'#0a222e')}${polygon(board,'url(#r12-board)','stroke="#71958f" stroke-width=".8"')}
+      <g>${channels.map(p=>line(p,'#bd8a55',1.8)).join('')}${channels.map((p,i)=>line(p,'#f6d899',2.5,`class="r12-current-trace" data-header-trace="${i}" pathLength="1" stroke-dasharray=".085 .915" opacity="0"`)).join('')}</g>
+      ${[[30,17],[360,17],[360,190],[24,190]].map(([x,y])=>surface(x,y,.3)).join('')}${pads.map(p=>surface(...p)).join('')}
+      ${housing(35,105,150,70,96,'scope')}
+      <g transform="${matrix(35,105,102)}" data-header-panel="scope"><rect x="6" y="6" width="138" height="84" rx="3" fill="#b8c8bd" stroke="#8ba398" stroke-width=".7"/><rect x="9" y="10" width="107" height="57" rx="4" fill="#203b48" stroke="#779d98" stroke-width="1.5"/><g clip-path="url(#r12-scope-clip)"><rect x="12" y="13" width="101" height="51" fill="#0d2938"/><g stroke="#89bfb5" stroke-opacity=".14" stroke-width=".55">${[22,37,52,67,82,97].map(x=>`<path d="M${x} 13v51"/>`).join('')}${[23,33,43,53].map(y=>`<path d="M12 ${y}h101"/>`).join('')}</g><g data-header-wave="primary"><path d="${wave(12,0)}" stroke="#a6dfd1" stroke-opacity=".14" stroke-width="4.5"/><path d="${wave(12,0)}" stroke="#acebda" stroke-width="1.2"/></g><g data-header-wave="secondary"><path d="${wave(6,12)}" stroke="#e2bd81" stroke-width="1" opacity=".85"/></g></g>${knob(129,22,7)}${knob(129,45,7)}${knob(21,81,5)}${knob(47,81,5)}${socket(78,81,'scope','#d1b170')}${socket(104,81,'scope-spare','#a2c7bd')}<circle cx="130" cy="66" r="2.3" fill="#63bca0" data-header-led/>${[[4,4],[146,4],[4,92],[146,92]].map(p=>screw(...p)).join('')}</g>
+      ${housing(215,52,132,82,106,'meter')}
+      <g transform="${matrix(215,52,112)}" data-header-panel="meter"><rect x="8" y="9" width="116" height="67" rx="4" fill="#5d766e"/><rect x="11" y="12" width="110" height="61" rx="3" fill="#fffbed"/><path d="M24 62a42 42 0 0 1 84 0" stroke="#b5b5a6" stroke-width=".7"/><g stroke="#546e68">${ticks}</g><path d="M100 39a42 42 0 0 1 6 12" stroke="#b78152" stroke-width="2"/><line data-header-needle x1="66" y1="62" x2="80.706" y2="28.995" stroke="#b57c45" stroke-width="1.8" stroke-linecap="round"/><circle cx="66" cy="62" r="3.1" fill="#647c72"/>${knob(31,91,9)}${socket(84,91,'meter-plus','#c18d60')}${socket(110,91,'meter-minus','#536e7a')}${[[4,4],[128,4],[4,102],[128,102]].map(p=>screw(...p)).join('')}<path d="M15 68q32-50 90-46" stroke="#fff" stroke-opacity=".3" stroke-width="2.2"/></g>
+      ${cable([113,105,21],[110,35,2],[.8,.6],'#809cac','scope')}${cable([299,52,21],[280,25,2],[.8,.6],'#d49a62','meter-plus')}${cable([325,52,21],[319,40,2],[.96,-.28],'#627e8b','meter-minus')}
     </svg>`;
   }
-  window.VV_DASH_ART = Object.freeze({header});
+  function setup(host){
+    const hero=host.querySelector('.vv-dash-hero'),svg=hero?.querySelector('.r12-workbench');if(!hero||!svg||hero.dataset.r12MotionReady)return;
+    hero.dataset.r12MotionReady='true';const reduced=matchMedia('(prefers-reduced-motion:reduce)');let raf=0,start=0;
+    const primary=svg.querySelector('[data-header-wave=primary]'),secondary=svg.querySelector('[data-header-wave=secondary]'),needle=svg.querySelector('[data-header-needle]'),led=svg.querySelector('[data-header-led]'),traces=[...svg.querySelectorAll('[data-header-trace]')];
+    const frame=p=>{const phase=p*Math.PI*2,angle=(-66+18*Math.sin(phase)+5*Math.sin(phase*2))*Math.PI/180;primary.setAttribute('transform',`translate(${-48*p} 0)`);secondary.setAttribute('transform',`translate(${-48*p} 0)`);needle.setAttribute('x2',String(66+36*Math.cos(angle)));needle.setAttribute('y2',String(62+36*Math.sin(angle)));led.setAttribute('opacity',String(.6+.4*Math.sin(phase*2)**2));traces.forEach((t,i)=>{t.setAttribute('stroke-dashoffset',String(-p));t.setAttribute('opacity',String(Math.sin(Math.PI*p)**2*(i?.5:.85)))})};
+    const play=()=>{if(reduced.matches||!hero.getClientRects().length||raf)return;start=performance.now();const tick=now=>{const p=Math.min(1,(now-start)/4800);frame(p);if(p<1)raf=requestAnimationFrame(tick);else raf=0};raf=requestAnimationFrame(tick)};
+    hero.addEventListener('pointerenter',play);window.addEventListener('hashchange',()=>requestAnimationFrame(play));
+    reduced.addEventListener('change',()=>{if(reduced.matches){cancelAnimationFrame(raf);raf=0;frame(0)}});frame(0);requestAnimationFrame(play);
+  }
+  window.VV_DASH_ART=Object.freeze({header,setup,projection:()=>({origin:[18,188],x:X,y:Y,z:Z,project})});
 })();

@@ -1,0 +1,11 @@
+.r12-watch .dash-clock-second,.r12-watch .dash-clock-minute{transform-box:view-box!important;transform-origin:50px 50px!important;transition:transform 1.5s cubic-bezier(.25,.6,.2,1)!important}
+.r12-watch .dash-clock-second{transform:rotate(0deg)}
+.r12-watch .dash-clock-minute{transform:rotate(-55deg)}
+.vv-dash-portal.is-active .r12-watch .dash-clock-second{transform:rotate(235deg)}
+.vv-dash-portal.is-active .r12-watch .dash-clock-minute{transform:rotate(-51.0833333333deg)}
+.r12-watch .dash-clock-button{transform:translate(0px,0px);transition:transform .35s ease!important}
+.vv-dash-portal.is-active .r12-watch .dash-clock-button{transform:translate(var(--watch-crown-x),var(--watch-crown-y))}
+@media(prefers-reduced-motion:reduce){.r12-watch *{transition:none!important}.r12-watch .dash-clock-button{transform:none!important}.r12-watch .dash-clock-second{transform:rotate(0deg)!important}.r12-watch .dash-clock-minute{transform:rotate(-55deg)!important}}
+
+.r12-watch[data-watch-controlled] .dash-clock-second,.r12-watch[data-watch-controlled] .dash-clock-minute{transition:none!important;will-change:transform}
+@media(prefers-reduced-motion:reduce){.r12-watch[data-watch-controlled] .dash-clock-second{transform:rotate(var(--watch-seconds-angle,0deg))!important}.r12-watch[data-watch-controlled] .dash-clock-minute{transform:rotate(var(--watch-minutes-angle,-55deg))!important}}
