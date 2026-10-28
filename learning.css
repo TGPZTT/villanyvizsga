@@ -957,3 +957,31 @@ body:has(#learnView.active) .topbar { background:#fff; border-color:#dfe5e8; }
  #learnView .learn-table-wrap.is-multicol th .learn-mobile-column{margin-bottom:2px}
  #learnView .learn-cell-value{min-width:0;overflow-wrap:anywhere}
 }
+
+/* R13: each topic states its link to existing tasks without another switch. */
+#learnView .learn-task-legend{display:inline-flex;align-items:center;gap:6px;color:#78613c;font:14px/1.35 'Segoe UI',Arial,sans-serif;max-width:190px}
+#learnView .learn-task-legend svg{width:15px;height:18px;flex:none}
+#learnView .learn-rail-inner>.learn-task-legend{margin:7px 8px 10px}
+#learnView .learn-task-mark{display:inline-flex;align-items:center;gap:4px;color:#826333;font:12px/1.25 'Segoe UI',Arial,sans-serif;white-space:nowrap}
+#learnView .learn-task-mark svg{display:block;width:11px;height:14px;flex:none}
+#learnView .learn-rail-copy{display:grid;min-width:0;gap:4px;flex:1}
+#learnView .learn-rail-title{min-width:0;overflow-wrap:normal}
+#learnView .learn-rail-meta{display:flex;align-items:center;flex-wrap:wrap;gap:4px 9px}
+#learnView .learn-rail-meta:empty{display:none}
+#learnView .learn-rail-meta .learn-rail-check{display:inline-flex;align-items:center;gap:4px;margin:0;color:#426e59;font:12px/1.25 'Segoe UI',Arial,sans-serif;white-space:nowrap}
+#learnView .learn-rail-index{flex-basis:22px}
+#learnView .learn-section-nav .learn-task-mark{margin-left:3px}
+#learnView .learn-detail-stepper{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;margin:0 0 19px;padding:0 0 13px;border-bottom:1px solid #d8dfd9}
+#learnView .learn-detail-stepper button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:9px 12px;border:1px solid #cbd5d0;border-radius:8px;background:#fff;color:#3d514e;font:600 16px/1.3 'Segoe UI',Arial,sans-serif;touch-action:manipulation}
+#learnView .learn-detail-stepper button:hover:not(:disabled){background:var(--learn-chapter-soft,#faf5e8);border-color:var(--learn-chapter-accent,#84622f)}
+#learnView .learn-detail-stepper button:disabled{cursor:default;color:#8c9893;background:#f7f9f7;border-color:#e0e6e1}
+#learnView .learn-detail-current{display:grid;gap:4px;min-width:0;text-align:center}
+#learnView .learn-detail-current>span{color:#6d7872;font:14px/1.35 'Segoe UI',Arial,sans-serif;font-variant-numeric:tabular-nums}
+#learnView .learn-detail-current>strong{color:#30414c;font:650 16px/1.4 'Segoe UI',Arial,sans-serif;overflow-wrap:normal}
+@media(max-width:650px){
+ #learnView .learn-detail-stepper{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}
+ #learnView .learn-detail-current{grid-column:1/-1;grid-row:1;text-align:left}
+ #learnView .learn-detail-stepper button{grid-row:2;width:100%}
+ #learnView .learn-detail-stepper button:last-child{grid-column:2}
+}
+@media(max-width:1499px){#learnView .learn-rail-inner>.learn-task-legend{display:none}}

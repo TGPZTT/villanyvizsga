@@ -1,0 +1,86 @@
+#learnView .ls-bench{margin:16px 0 20px;padding:14px 16px 12px;border:1px solid #dfd1c1;border-radius:13px;background:#fffefb;color:#3e382f}
+#learnView .ls-types{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:10px;border-bottom:1px solid #e0e8e3}
+#learnView .ls-types button{display:flex;align-items:center;gap:7px;min-height:44px;padding:7px 10px;border:1px solid #ddcebb;border-radius:8px;background:#fff;color:#65513c;font:16px/1.3 'Segoe UI',Arial,sans-serif}
+#learnView .ls-types button b{font-size:14px;color:#6c5036}
+#learnView .ls-types button[aria-pressed=true]{border-color:#bc8a4f;background:#fff3de;color:#65411d;box-shadow:inset 0 0 0 1px #bc8a4f}
+#learnView .ls-types button[aria-pressed=true] b{color:#8a501d}
+#learnView .ls-kind-caption{display:none}
+#learnView .ls-bench button:focus-visible{outline:3px solid #bd7e31;outline-offset:3px}
+#learnView .ls-drawing{position:relative;max-width:800px;margin:5px auto 0}
+#learnView .ls-compact{display:none}
+#learnView .ls-circuit{display:block;width:100%;height:auto;overflow:visible;font:20px 'Segoe UI',Arial,sans-serif}
+#learnView .ls-circuit *{box-sizing:border-box}
+#learnView .ls-wire{fill:none;stroke-linecap:round;stroke-linejoin:round}
+#learnView .ls-wire-base{stroke:currentColor;stroke-width:3.1;fill:none}
+#learnView .ls-phase{color:#93613c}
+#learnView .ls-switched{color:#4d4f58}
+#learnView .ls-neutral{color:#367dab}
+#learnView .ls-traveller{color:#696c74}
+#learnView .ls-wire:not(.is-live) .ls-wire-base{opacity:.65}
+#learnView .ls-wire.is-live .ls-wire-base{opacity:1;stroke-width:3.7}
+#learnView .ls-flow{display:none;fill:none;stroke:#fffdf1;stroke-width:1.7;stroke-dasharray:4 17;stroke-linecap:round;opacity:.95}
+#learnView .ls-wire.is-live .ls-flow{display:block;animation:ls-ac-flow .85s linear infinite alternate}
+#learnView .ls-contact{fill:#fffefa;stroke:currentColor;stroke-width:1.8}
+#learnView .ls-blade{transform-box:view-box!important;transition:none!important}
+#learnView .ls-cross-box{fill:#f3f7f5;stroke:#c1ceca;stroke-width:1.2}
+#learnView .ls-cross-separator{fill:none;stroke:#fcfefd;stroke-width:7;stroke-linecap:round}
+#learnView .ls-mechanism{fill:none;stroke:#8b9490;stroke-width:1.4;stroke-dasharray:4 4;opacity:.7}
+#learnView .ls-actuator{fill:none;stroke:#6c7064;stroke-width:1.7;stroke-linecap:round}
+#learnView .ls-source circle{fill:#f6faf7;stroke:#526b70;stroke-width:1.8}
+#learnView .ls-source path{fill:none;stroke:#526b70;stroke-width:1.6;stroke-linecap:round}
+#learnView .ls-conductor-label{font-size:20px;font-weight:750}
+#learnView .ls-phase-label{fill:#7c4d2e}
+#learnView .ls-neutral-label{fill:#236b9e}
+#learnView .ls-s-label{text-anchor:middle;fill:#425d60;font-size:17px;font-weight:650}
+#learnView .ls-load-label{text-anchor:middle;fill:#5c6158;font-size:16px;font-weight:600}
+#learnView .ls-housing{fill:none;stroke:#bdc9bf;stroke-width:1;stroke-dasharray:3 4;opacity:.45}
+#learnView .ls-lamp-halo{fill:#f3c978;opacity:0;transition:opacity .16s ease}
+#learnView .ls-lamp-glass{fill:#f5f7f3;stroke:#6d746b;stroke-width:2;transition:fill .16s ease,stroke .16s ease}
+#learnView .ls-lamp-filament{fill:none;stroke:#7c8276;stroke-width:1.7;stroke-linecap:round}
+#learnView .ls-load.is-on .ls-lamp-halo{opacity:.2}
+#learnView .ls-load.is-on .ls-lamp-glass{fill:#fff0ad;stroke:#ba8538}
+#learnView .ls-load.is-on .ls-lamp-filament{stroke:#a16c24}
+#learnView .ls-pe{fill:none;stroke:#4f9d5f;stroke-width:2;stroke-linecap:round;opacity:.24}
+#learnView .ls-pe .ls-pe-stripe{stroke:#ebd545;stroke-dasharray:7 7}
+#learnView .ls-pe text{fill:#537453;stroke:none;font-size:16px}
+#learnView .ls-controls{position:absolute;inset:0;pointer-events:none}
+#learnView .ls-switch-button,#learnView .ls-position-control{position:absolute;transform:translate(-50%,-50%);pointer-events:auto}
+#learnView .ls-switch-button{display:flex;align-items:center;justify-content:center;gap:8px;min-width:116px;min-height:44px;padding:7px 10px;border:1px solid #d2b99a;border-radius:9px;background:#fffefb;color:#5f4830;font:16px/1.15 'Segoe UI',Arial,sans-serif;box-shadow:0 3px 8px #5a472910}
+#learnView .ls-switch-button>span:last-child{display:grid;gap:2px;text-align:left}
+#learnView .ls-switch-button b{font-size:16px;font-weight:650}
+#learnView .ls-switch-button small{font-size:12px;color:#6d7971}
+#learnView .ls-switch-button:hover{background:#fff7e9;border-color:#b99363}
+#learnView .ls-switch-button[aria-pressed=true]{background:#fff1d3;border-color:#bb8d4c}
+#learnView .ls-rocker{display:block;position:relative;flex:none;width:19px;height:28px;border:1px solid #afc1b6;border-radius:5px;background:linear-gradient(#e6eee6,#f8fbf6);box-shadow:inset 0 1px 3px #5a706313}
+#learnView .ls-rocker i{display:block;position:absolute;left:2px;right:2px;top:2px;height:10px;border-radius:2px;background:#d0b178;box-shadow:0 1px 2px #5c5c4430;transition:transform .18s ease,background .18s ease}
+#learnView .ls-switch-button[aria-pressed=true] .ls-rocker i{transform:translateY(11px);background:#6d967d}
+#learnView .ls-position-control{display:flex;gap:3px;padding:4px;border:1px solid #c7d4ca;border-radius:9px;background:#f8fbf7}
+#learnView .ls-position-control button{min-width:44px;min-height:44px;padding:5px;border:1px solid transparent;border-radius:5px;background:transparent;color:#67533b;font:16px 'Segoe UI',Arial,sans-serif}
+#learnView .ls-position-control button[aria-pressed=true]{background:#e6eee3;border-color:#a6bba7;color:#25533d}
+#learnView .ls-status{margin:2px 0 0!important;padding:10px 12px;border-left:3px solid #cda45f;border-radius:0 7px 7px 0;background:#faf4e9;color:#5a4933;font:16px/1.5 'Segoe UI',Arial,sans-serif}
+#learnView .ls-notes{margin:8px 0 0!important;color:#65736c;font:13px/1.5 'Segoe UI',Arial,sans-serif;max-width:none}
+#learnView .ls-notes span{white-space:nowrap;color:#6e826d}
+#learnView .learn-switch-code{display:flex;align-items:center;gap:6px;min-width:96px;max-width:155px}
+#learnView .learn-switch-code>b{flex:none;white-space:nowrap}
+#learnView .ls-table-symbol{display:block;flex:none;width:58px;height:52px;max-width:100%;color:#655749}
+@keyframes ls-ac-flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-21}}
+@media(max-width:640px){
+ #learnView .ls-bench{padding:12px 8px 10px;margin:12px 0 16px}
+ #learnView .ls-wide{display:none}
+ #learnView .ls-compact{display:block;max-width:360px}
+ #learnView .ls-types{gap:5px;padding:0 2px 9px}
+ #learnView .ls-types button{flex:1 1 88px;justify-content:center;display:grid;gap:2px;padding:6px;min-height:44px;font-size:16px}
+ #learnView .ls-types button b{font-size:16px}
+ #learnView [data-ls-key=installation-switches] .ls-types button{flex:1 1 0;min-width:0;padding:6px 3px}
+ #learnView [data-ls-key=installation-switches] .ls-types button span{display:none}
+ #learnView [data-ls-key=installation-switches] .ls-kind-caption{display:block;margin:8px 3px 0;font:600 16px/1.3 'Segoe UI',Arial,sans-serif;color:#6c5036}
+ #learnView .ls-circuit{font-size:20px}
+ #learnView .ls-switch-button{min-width:100px;padding:6px 8px;min-height:44px;gap:5px}
+ #learnView .ls-switch-button b{font-size:16px}
+ #learnView .ls-switch-button[data-ls-momentary]{width:126px;min-width:0}
+ #learnView .ls-switch-button[data-ls-momentary] b{white-space:normal}
+ #learnView .ls-switch-button small{font-size:12px}
+ #learnView .ls-status{font-size:16px;padding:8px 10px}
+ #learnView .ls-notes{font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){#learnView .ls-bench *,#learnView .ls-bench *::before,#learnView .ls-bench *::after{animation:none!important;transition:none!important}#learnView .ls-wire.is-live .ls-flow{stroke-dasharray:4 17}}
