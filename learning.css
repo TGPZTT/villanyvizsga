@@ -985,3 +985,13 @@ body:has(#learnView.active) .topbar { background:#fff; border-color:#dfe5e8; }
  #learnView .learn-detail-stepper button:last-child{grid-column:2}
 }
 @media(max-width:1499px){#learnView .learn-rail-inner>.learn-task-legend{display:none}}
+
+/* R14: one compact start action for the complete current task list. */
+#learnView .learn-linked-toolbar{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px 14px}
+#learnView .learn-linked-toolbar .learn-linked-filter{flex:1 1 480px;min-width:0}
+#learnView .learn-questions-start{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:44px;margin-left:auto;padding:9px 15px;border:1px solid var(--learn-chapter-accent,#a05824);border-radius:8px;background:var(--learn-chapter-soft,#fff1df);color:var(--learn-chapter-accent,#875028);font:650 16px/1.35 'Segoe UI',Arial,sans-serif;white-space:nowrap;touch-action:manipulation}
+#learnView .learn-questions-start svg{display:block;width:21px;height:21px;flex:none}
+#learnView .learn-questions-start:hover:not(:disabled){background:#fff;border-color:currentColor;box-shadow:0 2px 7px #5a3d1d16}
+#learnView .learn-questions-start:focus-visible{outline:3px solid #d58a24;outline-offset:3px}
+#learnView .learn-questions-start:disabled{cursor:default;border-color:#d7d9d4;background:#f6f7f4;color:#848b84;box-shadow:none}
+@media(max-width:650px){#learnView .learn-linked-toolbar{gap:10px}#learnView .learn-linked-toolbar .learn-linked-filter{flex-basis:100%}}

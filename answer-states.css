@@ -21,9 +21,10 @@
 }
 .option[data-answer-state="correct-omitted"],
 .option[data-answer-state="correct-omitted"]:hover {
-  border-color: #d2a24d;
-  background: #fff6df;
-  box-shadow: inset 4px 0 0 #bc831c;
+  border-color: #58a577;
+  border-right-color: #d2a24d;
+  background: linear-gradient(90deg, #e8f7ed 0%, #e8f7ed 75%, #fff0b8 100%);
+  box-shadow: inset 4px 0 0 #3b9160;
 }
 .option[data-answer-state="correct-rejected"],
 .option[data-answer-state="correct-rejected"]:hover {
@@ -35,13 +36,14 @@
 .answer-state-badge {
   display: flex;
   align-items: center;
-  gap: 7px;
-  width: 166px;
+  justify-content: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
   margin-left: auto;
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.35;
+  line-height: 1;
 }
+.answer-state-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .answer-state-icon {
   box-sizing: border-box;
   display: grid;
@@ -72,16 +74,14 @@
 #learnView .learn-option.is-right:has(input:checked) { border-color: #58a577; background: #e8f7ed; box-shadow: inset 4px 0 0 #3b9160; }
 #learnView .learn-option.is-wrong,
 #learnView .learn-option.is-wrong:has(input:checked) { border-color: #cf8a79; background: #fff0ea; box-shadow: inset 4px 0 0 #bc6450; }
-#learnView .learn-option.is-missed { border-color: #d2a24d; background: #fff6df; box-shadow: inset 4px 0 0 #bc831c; }
-.learn-option.is-missed .learn-option-note { border-color: #e8c987; background: #fffaed; color: #80550e; }
-.learn-option-top > :is(.answer-state-feedback,.answer-state-badge) { flex: 0 0 166px; }
-@media (max-width: 800px) {
-  .learn-option-top { flex-wrap: wrap; }
-  .learn-option-top > :is(.answer-state-feedback,.answer-state-badge) { flex: 1 1 calc(100% - 74px); margin-left: 74px; }
-}
+#learnView .learn-option.is-missed { border-color: #58a577; border-right-color: #d2a24d; background: linear-gradient(90deg, #e8f7ed 0%, #e8f7ed 75%, #fff0b8 100%); box-shadow: inset 4px 0 0 #3b9160; }
+.learn-option.is-missed .learn-option-note { border-color: #c4ddc7; background: linear-gradient(90deg, #f0f8ef 0%, #f0f8ef 75%, #fff4d6 100%); color: #486658; }
+.learn-option[data-answer-state] .learn-option-top { display: grid; grid-template-columns: 18px 27px minmax(0, 1fr) 26px; }
+.learn-option[data-answer-state] .learn-option-top > span:nth-child(3) { min-width: 0; }
+.learn-option-top > :is(.answer-state-feedback,.answer-state-badge) { grid-column: 4; flex: 0 0 26px; }
 @media (max-width: 650px) {
-  .option[data-answer-state] { grid-template-columns: 20px minmax(0, 1fr); }
+  .option[data-answer-state] { grid-template-columns: 20px minmax(0, 1fr) 26px; }
   .answer-state-feedback,
-  .answer-state-badge { grid-column: 2; width: auto; margin-left: 0; font-size: 13px; }
-  .answer-state-icon { flex-basis: 22px; width: 22px; height: 22px; font-size: 16px; }
+  .answer-state-badge { grid-column: 3; width: 26px; margin-left: auto; }
+  .learn-option-top > :is(.answer-state-feedback,.answer-state-badge) { grid-column: 4; }
 }

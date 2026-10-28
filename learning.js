@@ -639,7 +639,7 @@
       const id = String(option.id), selected = state.values.includes(id), right = correct.includes(id);
       const answerState = !state.submitted ? '' : selected ? right ? 'correct-selected' : 'wrong-selected' : right ? 'correct-omitted' : 'correct-rejected';
       const status = { 'correct-selected':['is-right','✓','Helyesen jelölted'], 'wrong-selected':['is-wrong','×','Tévesen jelölted'], 'correct-omitted':['is-missed','!','Kimaradt helyes válasz'] }[answerState];
-      return `<label class="learn-option ${status?.[0] || ''}"${answerState ? ` data-answer-state="${answerState}"` : ''}><span class="learn-option-top"><input type="${check.type === 'multi' ? 'checkbox' : 'radio'}" name="learning-answer" data-learn-option="${esc(id)}" ${selected ? 'checked' : ''} ${state.submitted ? 'disabled' : ''}><span class="learn-option-letter">${String.fromCharCode(65 + index)}</span><span>${esc(option.text)}</span>${status ? `<span class="answer-state-feedback"><b class="answer-state-icon" aria-hidden="true">${status[1]}</b><span class="answer-state-label">${status[2]}</span></span>` : ''}</span>${state.submitted ? `<span class="learn-option-note">${esc(option.feedback || option.reason || '')}</span>` : ''}</label>`;
+      return `<label class="learn-option ${status?.[0] || ''}"${answerState ? ` data-answer-state="${answerState}"` : ''}><span class="learn-option-top"><input type="${check.type === 'multi' ? 'checkbox' : 'radio'}" name="learning-answer" data-learn-option="${esc(id)}" ${selected ? 'checked' : ''} ${state.submitted ? 'disabled' : ''}><span class="learn-option-letter">${String.fromCharCode(65 + index)}</span><span>${esc(option.text)}</span>${status ? `<span class="answer-state-feedback" role="img" aria-label="${esc(status[2])}" title="${esc(status[2])}"><b class="answer-state-icon" aria-hidden="true">${status[1]}</b></span>` : ''}</span>${state.submitted ? `<span class="learn-option-note">${esc(option.feedback || option.reason || '')}</span>` : ''}</label>`;
     }).join('')}</div>`;
     if (check.type === 'match') input = `<div class="learn-match">${(check.pairs || []).map((pair,index) => {
       const right = Number(state.pairs[index]) === index && state.pairs[index] !== '';
@@ -682,10 +682,17 @@
     return [...ids].map(id => questionMap.get(String(id))).filter(Boolean);
   }
 
+  function questionGroups(lesson) {
+    const all = relatedQuestions(lesson);
+    const groups = {papers:all.filter(isPaper),generated:all.filter(isGenerated),contest:all.filter(q => !isGenerated(q) && !isPaper(q))};
+    return {...groups,list:groups[scope] || groups.papers};
+  }
+
   function questionMarkup(lesson) {
-    const all = relatedQuestions(lesson), papers = all.filter(isPaper), generated = all.filter(isGenerated), contest = all.filter(q => !isGenerated(q) && !isPaper(q)), list = scope === 'generated' ? generated : scope === 'contest' ? contest : papers, size = 6;
+    const {papers,generated,contest,list} = questionGroups(lesson), size = 6;
+    const sequenceButton = `<button type="button" id="learnQuestionsStart" class="learn-questions-start" data-learn-action="questions-start" aria-label="Sorban: az összes kiválasztott feladat megoldása" ${list.length ? '' : 'disabled'}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h9M4 12h6M4 19h9"/><path d="m15 8 5 4-5 4Z" fill="currentColor" stroke-width="1.2"/></svg><span>Sorban</span></button>`;
     questionPage = Math.max(0, Math.min(questionPage, Math.ceil(list.length / size) - 1));
-    return `<section class="learn-linked"><div class="learn-linked-filter" role="group" aria-label="Kapcsolódó feladatcsoportok"><button type="button" data-learn-scope="papers" aria-pressed="${scope === 'papers'}">Feladatok <span>${papers.length}</span></button><button type="button" data-learn-scope="generated" aria-pressed="${scope === 'generated'}">Géppel generált feladatok <span>${generated.length}</span></button><button type="button" data-learn-scope="contest" aria-pressed="${scope === 'contest'}">Versenyfeladatok <span>${contest.length}</span></button></div><div class="learn-question-list">${list.slice(questionPage * size, (questionPage + 1) * size).map(q => `<a href="#question/${encodeURIComponent(q.id)}" class="learn-question"><small>${esc(window.VV_LABELS.questionLabel(q))}</small><strong>${esc(q.prompt)}</strong><span>Feladat megnyitása →</span></a>`).join('') || '<p class="learn-empty">Ehhez a témához ebből a feladatcsoportból nincs hozzárendelt feladat.</p>'}</div>${list.length > size ? `<div class="learn-question-pager"><button type="button" class="button outline" data-learn-page="-1" ${questionPage === 0 ? 'disabled' : ''}>← Előző</button><span>${questionPage + 1} / ${Math.ceil(list.length / size)}</span><button type="button" class="button outline" data-learn-page="1" ${questionPage >= Math.ceil(list.length / size) - 1 ? 'disabled' : ''}>Következő →</button></div>` : ''}</section>`;
+    return `<section class="learn-linked"><div class="learn-linked-toolbar"><div class="learn-linked-filter" role="group" aria-label="Kapcsolódó feladatcsoportok"><button type="button" data-learn-scope="papers" aria-pressed="${scope === 'papers'}">Feladatok <span>${papers.length}</span></button><button type="button" data-learn-scope="generated" aria-pressed="${scope === 'generated'}">Géppel generált feladatok <span>${generated.length}</span></button><button type="button" data-learn-scope="contest" aria-pressed="${scope === 'contest'}">Versenyfeladatok <span>${contest.length}</span></button></div>${sequenceButton}</div><div class="learn-question-list">${list.slice(questionPage * size, (questionPage + 1) * size).map(q => `<a href="#question/${encodeURIComponent(q.id)}" class="learn-question"><small>${esc(window.VV_LABELS.questionLabel(q))}</small><strong>${esc(q.prompt)}</strong><span>Feladat megnyitása →</span></a>`).join('') || '<p class="learn-empty">Ehhez a témához ebből a feladatcsoportból nincs hozzárendelt feladat.</p>'}</div>${list.length > size ? `<div class="learn-question-pager"><button type="button" class="button outline" data-learn-page="-1" ${questionPage === 0 ? 'disabled' : ''}>← Előző</button><span>${questionPage + 1} / ${Math.ceil(list.length / size)}</span><button type="button" class="button outline" data-learn-page="1" ${questionPage >= Math.ceil(list.length / size) - 1 ? 'disabled' : ''}>Következő →</button></div>` : ''}</section>`;
   }
 
   const hasLegacyModel = lesson => !!lesson.interaction && !lesson.presentationPolicy?.hideLegacyInteraction;
@@ -707,7 +714,7 @@
     current = lesson;
     const selectedCable = selectedCableType(lesson);
     lastRoute = selectedCable && tab==='read' ? cableRoute(lesson,selectedCable.id) : lessonRoute(lesson);
-    if (['check','model'].includes(tab)) lastRoute+=`/${tab}`;
+    if (['check','model','questions'].includes(tab)) lastRoute+=`/${tab}`;
     if (/^#learn(?:\/|$)/.test(location.hash) && location.hash !== `#${lastRoute}`) history.replaceState(null,'',`#${lastRoute}`);
     progress.lastLesson = lesson.id; save();
     host.style.setProperty('--learn-chapter-accent',validColor(lesson.chapter.accent?.color,'#a9541b'));
@@ -752,7 +759,8 @@
       if (parts[3] === 'cable' && cableTypesForLesson(lesson).some(type => type.id === parts[4])) { cableSelections.set(lesson.id,parts[4]); tab = 'read'; }
       else if (parts[3] === 'check' && lesson.check) tab='check';
       else if (parts[3] === 'model' && lesson.interaction) tab='model';
-      else if (!parts[3] && /\/(?:check|model)$/u.test(lastRoute)) tab='read';
+      else if (parts[3] === 'questions') tab='questions';
+      else if (!parts[3] && /\/(?:check|model|questions)$/u.test(lastRoute)) tab='read';
       renderLesson(lesson, options);
     }
     else { lastRoute = 'learn'; overview(); }
@@ -858,6 +866,7 @@
       if (target.hasAttribute('data-learn-switch')) { const saved = models.get(current.id), index = Number(target.dataset.learnSwitch), before=saved.positions[index], halo=getComputedStyle($('.learn-lamp-halo',host)).opacity; saved.positions[index] = before ? 0 : 1; renderLesson(current); const control=$(`[data-learn-switch="${index}"]`,host);control?.focus({preventScroll:true});if(!matchMedia('(prefers-reduced-motion:reduce)').matches){$('i',control)?.animate([{transform:`translateY(${before?23:0}px)`},{transform:`translateY(${before?0:23}px)`}],{duration:450,easing:'cubic-bezier(.2,.7,.2,1)'});const circle=$('.learn-lamp-halo',host);circle?.animate([{opacity:halo},{opacity:getComputedStyle(circle).opacity}],{duration:550,easing:'ease'});} return; }
       if (target.hasAttribute('data-learn-state')) { const widths=new Map($$('[data-learn-channel]',host).map(element=>[element.dataset.learnChannel,element.style.width]));models.get(current.id).index = Number(target.dataset.learnState); renderLesson(current); $(`[data-learn-state="${target.dataset.learnState}"]`, host)?.focus({preventScroll:true});if(!matchMedia('(prefers-reduced-motion:reduce)').matches)$$('[data-learn-channel]',host).forEach(element=>{const old=widths.get(element.dataset.learnChannel);if(old)element.animate([{width:old},{width:element.style.width}],{duration:650,easing:'cubic-bezier(.2,.7,.2,1)'});}); return; }
       switch (target.dataset.learnAction) {
+        case 'questions-start': if (current && questionGroups(current).list.length) document.dispatchEvent(new CustomEvent('vv-learning-start-questions')); break;
         case 'mark': if (progress.read[current.id]) delete progress.read[current.id]; else progress.read[current.id] = Date.now(); save('mark'); renderLesson(current); $('[data-learn-action="mark"]', host)?.focus({preventScroll:true}); break;
         case 'hint': { const state = sessionFor(current); state.hint = !state.hint; renderLesson(current); $('[data-learn-action="hint"]', host)?.focus({preventScroll:true}); break; }
         case 'check': evaluateCheck(); break;
@@ -896,5 +905,5 @@
 
   window.addEventListener('storage',event=>{if(event.key===KEY){progress=readProgress();if(host?.getClientRects().length)renderRoute(location.hash);}});
 
-  window.VV_LEARN = Object.freeze({setup, renderRoute, resetProgress, capture: captureInputs, currentRoute: () => lastRoute, linksForQuestion: id => (reverseMap.get(String(id)) || []).map(lesson => ({id:lesson.id,title:lesson.title,chapterTitle:lesson.chapter.title,href:href(lesson)})), questionIds: () => current ? relatedQuestions(current).map(q => q.id) : [], stats: () => ({chapters:chapters.length,lessons:lessons.length,topics:allGroups().length,linkedQuestions:reverseMap.size,read:countRead(lessons)})});
+  window.VV_LEARN = Object.freeze({setup, renderRoute, resetProgress, capture: captureInputs, currentRoute: () => lastRoute, linksForQuestion: id => (reverseMap.get(String(id)) || []).map(lesson => ({id:lesson.id,title:lesson.title,chapterTitle:lesson.chapter.title,href:href(lesson)})), questionIds: () => current ? questionGroups(current).list.map(q => q.id) : [], stats: () => ({chapters:chapters.length,lessons:lessons.length,topics:allGroups().length,linkedQuestions:reverseMap.size,read:countRead(lessons)})});
 })();
