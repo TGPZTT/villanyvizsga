@@ -396,8 +396,18 @@
     const text=String(q.explanation||'').trim();
     if(!text)return '';
     const paragraphs=text.split(/\n+/u).filter(Boolean).map(paragraph=>`<p class="specific-explanation">${inlineMathText(paragraph)}</p>`).join('');
-    const steps=q.solutionSteps?.length?`<ol class="solution-derivation">${q.solutionSteps.map(step=>`<li><strong>${esc(step.title)}</strong>${step.math?`<div class="solution-equation">${window.VVFormula.typeset(step.math)}</div>`:''}<p>${inlineMathText(step.body)}</p></li>`).join('')}</ol>`:'';
+    const steps=q.solutionSteps?.length?`<ol class="solution-derivation">${q.solutionSteps.map(step=>`<li><strong>${esc(step.title)}</strong>${step.math?solutionEquationMarkup(step.math):''}<p>${inlineMathText(step.body)}</p></li>`).join('')}</ol>`:'';
     return paragraphs+steps;
+  }
+  function solutionEquationMarkup(math){
+    const equation=document.createElement('div');
+    equation.className='solution-equation';
+    String(math).split(';').forEach(statement=>statement.split('→').forEach((clause,index)=>{
+      if(index){const arrow=document.createElement('div');arrow.className='solution-equation-transition';arrow.textContent='↓';equation.append(arrow);}
+      const line=document.createElement('div');line.className='solution-equation-line';line.textContent=clause.trim();
+      window.VVFormula.formatDOM(line);equation.append(line);
+    }));
+    return equation.outerHTML;
   }
   function questionHint(q){return String(q.hint||'').trim()}
   function wrongAnswerMarkup(q,response){
