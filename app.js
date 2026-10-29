@@ -475,7 +475,7 @@
   function bindOptions(root){$$('.option input',root).forEach(input=>input.addEventListener('change',()=>$$('.option',root).forEach(label=>label.classList.toggle('selected',!!$('input:checked',label)))))}
   function openQuestion(q,{fromRoute=false,origin=view}={}){
     if(!q||exam&&!exam.submitted)return;
-    const reuse=questionState&&(view==='question'||view==='learn'&&questionState.ids[questionState.index]===q.id)&&questionState.ids.includes(q.id);
+    const reuse=questionState&&(view==='question'||view==='learn'&&questionState.origin==='learn'&&questionState.learnReturnRoute===window.VV_LEARN?.currentRoute()&&questionState.ids[questionState.index]===q.id)&&questionState.ids.includes(q.id);
     if(!reuse){
       const homeView=['exam','learn','progress'].includes(origin)?origin:'bank';
       const learningIds=homeView==='learn'?window.VV_LEARN?.questionIds()||[]:[];
