@@ -501,6 +501,7 @@
     return `<section class="lv-workbench" data-lv-key="${esc(key)}" data-lv-part="${part}" aria-label="${esc(spec.title)}">${showTitle?`<div class="lv-heading"><h3>${esc(depictionTitle||spec.title)}</h3></div>`:''}${drawing}${spec.variant==='ohm'?'':`<div class="lv-observation" role="status" aria-live="polite"><span class="lv-observation-dot" style="background:${esc(item.color||colors[index%colors.length])}"></span><div><strong class="lv-observation-label">${esc(item.label)}</strong><p>${formatDetail(item.detail||'')}</p></div></div>`}${['flow','timeline','route','safety'].includes(spec.type)&&spec.items.length>5?`<div class="lv-step-controls"><button type="button" data-lv-prev ${index===0?'disabled':''} aria-label="Előző részlet">←</button><span>${index+1} / ${spec.items.length}</span><button type="button" data-lv-next ${index===spec.items.length-1?'disabled':''} aria-label="Következő részlet">→</button></div>`:''}</section>`;
   }
   function render(lesson){
+    if(window.VVLearningTransformers?.matches(lesson))return window.VVLearningTransformers.render(lesson,lesson.id);
     const initial=lesson.interaction?.states?.[0]?.channels||[];
     const visible=[lesson.visualSpec,lesson.secondaryVisual].map((spec,part)=>({spec:spec?.variant==='ohm'?{...spec,ohmDefaults:{u:initial.find(item=>item.unit==='V')?.value,r:initial.find(item=>item.unit==='Ω')?.value}}:spec,part})).filter(({spec,part})=>spec?.items?.length&&!lesson.presentationPolicy?.hideVisuals?.includes(part===0?'visualSpec':'secondaryVisual'));
     const staticParts=visible.filter(({spec,part})=>window.VVLearningComparisons?.matches(spec,lesson.id,part));
@@ -639,6 +640,7 @@
   }
   function mount(root,lesson){
     if(!root)return;
+    window.VVLearningTransformers?.mount(root);
     within(root,'[data-lv-illustrations]').forEach(group=>{
       if(illustrationBound.has(group))return;
       illustrationBound.add(group);

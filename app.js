@@ -125,7 +125,6 @@
       if(root&&!$('#examNavigationNotice',root))root.insertAdjacentHTML('afterbegin','<div id="examNavigationNotice" class="feedback review" role="status">A folyamatban lévő próbából a „Próba megszakítása” gombbal léphetsz ki.</div>');
       return;
     }
-
     if(view==='question'&&target!=='question')captureQuestionResponse();
     if(view==='practice'&&practice&&target!=='practice'){const active=practice.list[practice.index];practice.responses[active.id]=selectedFrom($('#practiceSession'),active)}
     if(view==='learn'&&target!=='learn')window.VV_LEARN?.capture();
@@ -341,7 +340,7 @@
       const group=q.sourceId;let head='';if(group!==last){head=`<div class="section-head"><div><div class="kicker">${esc(window.VV_LABELS.sourceKind(q,true))}</div><h2>${esc(sourceLabel(q))}</h2></div></div>`;last=group}
       const status=attemptStatus(q);
       const preview=q.prompt.replace(/\s+/g,' ').slice(0,150);
-      return head+`<button class="bank-item" data-id="${esc(q.id)}"><span class="bank-index">${esc(q.number)}</span><span class="bank-main"><strong>${esc(preview)}${q.prompt.length>150?'…':''}</strong><small>${esc(displayTopic(q))} · ${esc(typeLabel(q))} · ${q.points} pont</small></span><span class="bank-meta">${q.requiresFigure?'<span class="chip">Ábrás</span>':''}${q.review?'<span class="chip review">Ellenőrzendő megoldás</span>':''}${status!=='new'?`<span class="chip ${status}">${status==='correct'?'Sikerült':'Újra'}</span>`:''}<span aria-hidden="true">↗</span></span></button>`
+      return head+`<button class="bank-item" data-id="${esc(q.id)}"><span class="bank-index">${esc(q.number)}</span><span class="bank-main"><strong>${inlineMathText(preview)}${q.prompt.length>150?'…':''}</strong><small>${esc(displayTopic(q))} · ${esc(typeLabel(q))} · ${q.points} pont</small></span><span class="bank-meta">${q.requiresFigure?'<span class="chip">Ábrás</span>':''}${q.review?'<span class="chip review">Ellenőrzendő megoldás</span>':''}${status!=='new'?`<span class="chip ${status}">${status==='correct'?'Sikerült':'Újra'}</span>`:''}<span aria-hidden="true">↗</span></span></button>`
     }).join('');
     $$('.bank-item').forEach(e=>e.addEventListener('click',()=>openQuestion(byId.get(e.dataset.id))));
     $('#bankPager').innerHTML=pages>1?`<button id="prevPage" ${bankPage===0?'disabled':''}>← Előző</button><span>${bankPage+1} / ${pages}</span><button id="nextPage" ${bankPage===pages-1?'disabled':''}>Következő →</button>`:'';
@@ -391,7 +390,8 @@
   function resetQuestionAttempt(session,id){
     for(const key of ['responses','shown','hints','feedback'])if(session[key])delete session[key][id];
   }
-  const inlineMathText=value=>esc(String(value??'').replace(/ × /gu,' · ')).replace(/(\p{L})_([\p{L}\p{N}]+(?:[,–][\p{L}\p{N}]+)*)/gu,'$1<sub>$2</sub>');
+  const inlineMathText=value=>window.VV_READABLE.inlineQuantities(value,part=>esc(String(part??'').replace(/ × /gu,' · ')).replace(/(\p{L})_([\p{L}\p{N}]+(?:[,–][\p{L}\p{N}]+)*)/gu,'$1<sub>$2</sub>'));
+  const questionPromptMarkup=q=>window.VV_READABLE.promptParts(q.id,q.prompt).map(part=>`<span class="question-prompt-part">${inlineMathText(part)}</span>`).join('');
   function explanationMarkup(q){
     const text=String(q.explanation||'').trim();
     if(!text)return '';
@@ -474,7 +474,7 @@
     const hintText=['bank','practice'].includes(mode)?questionHint(q):'';
     const hint=hintText?`<div class="question-inline-hint"><button id="questionHintToggle" class="question-hint-toggle" type="button" aria-expanded="${hintOpen}" aria-controls="questionHint"><span aria-hidden="true">?</span> ${hintOpen?'Támpont elrejtése':'Támpont kérése'} <span aria-hidden="true">${hintOpen?'−':'+'}</span></button><div id="questionHint" class="question-hint-body" ${hintOpen?'':'hidden'}><strong>Támpont</strong><p>${inlineMathText(hintText)}</p></div></div>`:'';
     const title=mode==='bank'?`<div class="question-meta" aria-label="Feladatsor és feladatszám">${esc(window.VV_LABELS.questionLabel(q))}</div>`:`<div class="question-meta">${esc(window.VV_LABELS.questionLabel(q))}</div>`;
-    const prompt=mode==='bank'?`<h1 id="questionTitle" class="question-title question-prompt" tabindex="-1">${inlineMathText(q.prompt)}</h1>`:`<h2 class="question-title question-prompt">${inlineMathText(q.prompt)}</h2>`;
+    const prompt=mode==='bank'?`<h1 id="questionTitle" class="question-title question-prompt" tabindex="-1">${questionPromptMarkup(q)}</h1>`:`<h2 class="question-title question-prompt">${questionPromptMarkup(q)}</h2>`;
     const mobileActions=mode==='bank'?`<div class="question-mobile-actions">${isAuto(q)?'<button id="questionCheckMobile" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!show?`<button id="questionShowMobile" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}</div><div id="questionFeedbackMobile" role="status" aria-live="polite"></div>`:'';
     const rationale=show&&mode!=='review'?wrongAnswerMarkup(q,response):'';
     return `<div class="question-top"><div class="tags"><span class="chip">${esc(displayTopic(q))}</span><span class="chip">${esc(typeLabel(q))}</span>${q.requiresFigure?'<span class="chip">Ábrás feladat</span>':''}${q.review?'<span class="chip review">Megoldás ellenőrzendő</span>':''}</div><span>${q.points} pont</span></div>${title}${prompt}${figure}${sourceFigureLink}${learningLinksMarkup(q,mode)}${hint}${opts}${input}${mobileActions}${!auto&&mode==='exam'?'<div class="feedback review">Ezt a feladatot a vizsga végén önellenőrzéssel lehet értékelni.</div>':''}${show&&mode!=='review'?`<div class="explanation"><strong>${q.review?'Forrás szerinti megoldás':'Megoldás'}</strong><p>${inlineMathText(answerLabel(q))}</p>${rationale}${q.explanation?`<strong style="margin-top:14px">Miért?</strong>${explanationMarkup(q)}`:''}${q.review?'<p>A forrás vagy a válaszkulcs ellenőrzése szükséges; biztonsági szempontból kétes állítást ne tanulj meg tényként.</p>':''}${sourceLink(q)}</div>`:''}`;

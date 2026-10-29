@@ -1,0 +1,73 @@
+.tf-workbench{--tf-ink:#493427;--tf-wire:#64584d;--tf-border:#dfcdb9;--tf-bg:#fffaf0;--tf-phase:#96470e;display:grid;gap:16px;padding:18px;background:var(--tf-bg);border:1px solid var(--tf-border);border-radius:10px;color:var(--tf-ink);min-width:0;font:400 16px/1.55 'Segoe UI',Arial,sans-serif}
+.tf-workbench *{box-sizing:border-box}
+.tf-workbench sub.tf-sub{font-size:.75em;line-height:0;vertical-align:sub}
+.tf-workbench p{margin:0;max-width:77ch;color:inherit;font:inherit}
+.tf-group-controls,.tf-pairs,.tf-motion-controls,.tf-view-controls{display:flex;flex-wrap:wrap;gap:8px}
+.tf-workbench [hidden]{display:none!important}
+.tf-workbench [role=tabpanel]{display:grid;gap:16px;min-width:0}
+.tf-view-controls{border-bottom:1px solid var(--tf-border);padding-bottom:12px}
+.tf-view-controls button{flex:1}
+.tf-view-controls button[aria-selected=true]{background:#f4e2c8;border-color:#9c5b25;box-shadow:inset 0 -2px #9c5b25}
+.tf-voltage-section,.tf-neutral-section{padding-top:12px;border-top:1px solid var(--tf-border)}
+.tf-workbench h3{font:700 17px/1.45 'Segoe UI',Arial,sans-serif;margin:0 0 10px;color:inherit}
+.tf-workbench button{min-height:44px;touch-action:manipulation;border:1px solid #c9ae90;background:#fff;padding:8px 12px;border-radius:6px;color:var(--tf-ink);font:600 15px/1.4 'Segoe UI',Arial,sans-serif;cursor:pointer}
+.tf-group-controls button{font-size:19px;padding:7px 18px}
+.tf-workbench button[aria-pressed=true]{background:#f4e2c8;border-color:#9c5b25;box-shadow:inset 0 -2px #9c5b25}
+.tf-workbench button:hover{background:#f5ead9}
+.tf-workbench :focus-visible{outline:3px solid #86502b;outline-offset:3px}
+.tf-board{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+.tf-board figure{min-width:0;margin:0}
+.tf-board figure>figcaption{font-weight:700;font-size:17px;margin-bottom:8px}
+.tf-winding-figure{border-right:1px solid var(--tf-border);padding-right:20px}
+.tf-board svg{display:block;width:100%;height:auto;max-width:330px;margin:auto}
+.tf-board .tf-clock{max-width:305px}
+.tf-workbench svg text{font:500 15px 'Segoe UI',Arial,sans-serif;fill:var(--tf-ink);stroke:none}
+.tf-workbench svg .tf-side{font-weight:700;font-size:15px}
+.tf-workbench svg .tf-terminal-name{font-weight:700;font-size:17px}
+.tf-workbench svg .tf-end,.tf-workbench svg .tf-connection{font-size:14px}
+.tf-workbench svg .tf-core-label{font-size:12px}
+.tf-workbench svg .tf-hour{font-size:15px;fill:#766a60}
+.tf-workbench svg .tf-vector-label{font-size:15px;font-weight:600;paint-order:stroke;stroke:#fffaf0;stroke-width:4;stroke-linejoin:round}
+.tf-wire,.tf-coil,.tf-core,.tf-measure,.tf-line-measure,.tf-neutral-wire{fill:none;stroke:var(--tf-wire);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tf-coil{stroke:var(--tf-phase);stroke-width:2.2}
+.tf-coil.is-focus{stroke-width:4.2}
+.tf-terminal{fill:#fffaf0;stroke:var(--tf-wire);stroke-width:1.5}
+.tf-polarity,.tf-origin{fill:#273139}
+.tf-core{stroke:#abb3b8;stroke-width:6}
+.tf-core-label{fill:#6a625b}
+.tf-clock-rim{fill:#fffdf9;stroke:#b8aa9a;stroke-width:1}
+.tf-tick{stroke:#b3a89b;stroke-width:1.3}
+.tf-zero{stroke:#b3a89b;stroke-width:1.3;stroke-dasharray:3 4;fill:none}
+.tf-vector path{stroke:var(--tf-phase);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.tf-vector.tf-lower path{stroke-width:2.8}
+.tf-vector.tf-lower path.tf-halo{stroke:#fffdf9;stroke-width:6.5}
+.tf-muted{opacity:.34}
+.tf-clock-result{display:grid;gap:2px;margin:4px 0 10px;min-height:70px}
+.tf-clock-result b{font-size:21px}
+.tf-clock-result span{font-size:14px;line-height:1.45}
+.tf-arrow-legend{display:grid;gap:4px;font-size:13px;margin-bottom:12px}
+.tf-arrow-legend span{display:flex;gap:8px;align-items:center}
+.tf-arrow-legend i{width:30px;border-top:3px solid #64584d;display:inline-block}
+.tf-arrow-legend .tf-dash{border-top-style:dashed}
+.tf-pairs button{flex:1;padding:7px;font-size:14px;border-bottom:3px solid var(--tf-phase);white-space:nowrap}
+.tf-all{display:flex;align-items:center;gap:9px;margin:12px 0;font-size:15px;cursor:pointer}
+.tf-all input{width:18px;height:18px;accent-color:#96470e;flex:none}
+.tf-motion-controls button{flex:1;min-width:88px;padding:7px;font-size:13px}
+.tf-reading{border-left:3px solid #a2612c;padding:8px 12px;background:#fff}
+.tf-workbench .tf-legend{font-size:14px;line-height:1.6}
+.tf-workbench .tf-scale-note{font-size:13px;color:#6b5949}
+.tf-neutral{display:block;width:100%;max-width:320px;margin:10px 0}
+.tf-neutral-wire{stroke:#176bb1;stroke-width:2.8}
+.tf-neutral-point{stroke:#176bb1}
+.tf-workbench svg .tf-neutral-label{fill:#176bb1;font-weight:700}
+.tf-voltage-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin:14px 0}
+.tf-voltage-pair figure{min-width:0;margin:0}
+.tf-voltage-pair svg{width:100%;height:auto;display:block;max-width:290px;margin:auto}
+.tf-voltage-pair figcaption{display:grid;gap:6px;font-size:14px}
+.tf-voltage-coil{fill:#fff4df;stroke:#96470e;stroke-width:2}
+.tf-measure{stroke:#96470e;stroke-width:2}
+.tf-line-measure{stroke:#2b607e;stroke-width:2;stroke-dasharray:4 3}
+.tf-workbench svg .tf-measure-label{font-size:14px;fill:#5c4938;paint-order:stroke;stroke:#fffaf0;stroke-width:3px}
+@media(max-width:650px){.tf-board{grid-template-columns:1fr;gap:18px}.tf-winding-figure{border-right:0;padding-right:0;border-bottom:1px solid var(--tf-border);padding-bottom:12px}.tf-board svg{max-width:285px}.tf-board .tf-clock{max-width:285px}.tf-clock-result{min-height:0;margin-top:10px}.tf-voltage-pair{grid-template-columns:1fr;gap:18px}.tf-group-controls button{flex:1}.tf-workbench{gap:14px;padding:12px}.tf-legend{font-size:14px}.tf-board figure>figcaption{font-size:16px}}
+@media(max-width:350px){.tf-workbench{padding:9px}.tf-group-controls{gap:6px}.tf-group-controls button{padding:7px 10px;font-size:18px}.tf-motion-controls button{min-width:78px}.tf-workbench button{overflow-wrap:anywhere}.tf-pairs button{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.tf-workbench *{scroll-behavior:auto}}

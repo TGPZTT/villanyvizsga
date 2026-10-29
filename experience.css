@@ -1805,6 +1805,14 @@ main:not(:has(#guideView)):has(.guide-solving) { padding-top: 10px; padding-bott
 .question-top .tags{min-width:0;max-width:100%}
 .question-top .tags .chip{max-width:100%;white-space:normal;overflow-wrap:break-word}
 
+/* Request boundaries were reviewed against each source prompt. Compact blocks
+   keep the description and its question distinct at every question entry point. */
+.question-prompt { text-align: start; text-wrap: wrap; word-break: normal; overflow-wrap: break-word; hyphens: none; }
+.question-prompt-part { display: block; }
+.question-prompt-part + .question-prompt-part { margin-top: .32em; }
+.quantity-token { white-space: nowrap; word-break: normal; overflow-wrap: normal; hyphens: none; }
+.quantity-prefix { overflow-wrap: anywhere; }
+
 /* Source controls for the existing exam setup. No shared CSS is changed here. */
 #examSetup .exam-source-setup {
   grid-template-columns: minmax(10rem, .42fr) minmax(0, 1fr);
