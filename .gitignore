@@ -72,8 +72,16 @@
 !learning-transformers.css
 !progress-storage.js
 !progress-storage.css
+!progress-tools.js
+!progress-tools.css
 !/fonts/
 /fonts/*
 !/fonts/*.woff2
 !/fonts/*.css
 !/fonts/*-OFL.txt
+
+!question-timing.js
+
+!adaptive-practice.js
+
+!adaptive-practice.css

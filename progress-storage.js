@@ -102,6 +102,29 @@
     updateUI();
     return removed;
   }
+  function replaceProgress(values) {
+    if (!values || PROGRESS_KEYS.some(key => typeof values[key] !== 'string') || Object.keys(values).some(key => !PROGRESS_KEYS.includes(key))) return {ok:false};
+    syncPermission();
+    let persisted = false;
+    if (allowed()) {
+      const before = new Map(PROGRESS_KEYS.map(key => [key, read(key)])), written = [];
+      if (allowed()) {
+        try {
+          for (const key of PROGRESS_KEYS) if (before.get(key) !== values[key]) { localStorage.setItem(key, values[key]); written.push(key); }
+          persisted = true;
+        } catch {
+          for (const key of written.reverse()) try { const value = before.get(key); if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch {}
+          failure();
+          return {ok:false};
+        }
+      }
+    }
+    // Commit memory only after validation and all requested durable writes succeed.
+    for (const key of PROGRESS_KEYS) { memory.set(key, values[key]); if (persisted) dirty.delete(key); else dirty.add(key); }
+    for (const key of PROGRESS_KEYS) emit('vv-storage-change', {key,value:values[key],external:true,reason:'restore',persisted});
+    emit('vv-storage-restored', {persisted});
+    return {ok:true,persisted};
+  }
   window.addEventListener('storage', event => {
     try { if (event.storageArea && event.storageArea !== localStorage) return; } catch { failure(); return; }
     if (event.key === CHOICE_KEY || event.key === null) {
@@ -220,7 +243,7 @@
   }
   window.VV_STORAGE = Object.freeze({
     ready:Promise.resolve(), get decision() { return decision; }, get allowed() { return allowed(); }, get available() { return available; }, hasLegacy,
-    get, set, remove, choose, clearProgress, openSettings, keys:PROGRESS_KEYS, choiceKey:CHOICE_KEY
+    get, set, remove, choose, clearProgress, replaceProgress, openSettings, keys:PROGRESS_KEYS, choiceKey:CHOICE_KEY
   });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true}); else boot();
 })();

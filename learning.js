@@ -907,6 +907,7 @@
 
   window.addEventListener('vv-storage-change',event=>{if(event.detail.key===KEY&&event.detail.external){progress=readProgress();if(host?.getClientRects().length)renderRoute(location.hash);}});
   window.addEventListener('vv-storage-clear',()=>resetProgress({persist:false}));
+  window.addEventListener('vv-storage-restored',()=>{progress=readProgress();sessions.clear();if(host?.getClientRects().length)renderRoute(location.hash);});
 
   window.VV_LEARN = Object.freeze({setup, renderRoute, resetProgress, capture: captureInputs, currentRoute: () => lastRoute, linksForQuestion: id => (reverseMap.get(String(id)) || []).map(lesson => ({id:lesson.id,title:lesson.title,chapterTitle:lesson.chapter.title,href:href(lesson)})), questionIds: () => current ? relatedQuestions(current).map(q => q.id) : [], stats: () => ({chapters:chapters.length,lessons:lessons.length,topics:allGroups().length,linkedQuestions:reverseMap.size,read:countRead(lessons)})});
 })();
