@@ -7,7 +7,7 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const shuffle = values => { const result = [...values]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; };
-  const readProgress = () => { try { const value = JSON.parse(localStorage.getItem(KEY)); return value && typeof value === 'object' ? {read: value.read || {}, checks: value.checks || {}, lastLesson: value.lastLesson || ''} : {read:{}, checks:{}, lastLesson:''}; } catch { return {read:{}, checks:{}, lastLesson:''}; } };
+  const readProgress = () => { try { const value = JSON.parse(window.VV_STORAGE?.get(KEY)); return value && typeof value === 'object' && !Array.isArray(value) ? {read: value.read && typeof value.read === 'object' && !Array.isArray(value.read) ? value.read : {}, checks: value.checks && typeof value.checks === 'object' && !Array.isArray(value.checks) ? value.checks : {}, lastLesson: typeof value.lastLesson === 'string' ? value.lastLesson : ''} : {read:{}, checks:{}, lastLesson:''}; } catch { return {read:{}, checks:{}, lastLesson:''}; } };
   let progress = readProgress();
   let host, data, chapters = [], lessons = [], lessonMap = new Map(), questionMap = new Map(), reverseMap = new Map(), figureMeta = new Map(), commonFigureFirstUse = new Map(), loading;
   let current = null, lastRoute = 'learn', day = 0, query = '', tab = 'read', figureIndex = 0, scope = 'papers', questionPage = 0, resetOpen = false;
@@ -20,14 +20,15 @@
   const taskMark=lesson=>taskCount(lesson)?`<span class="learn-task-mark" aria-label="Vizsgaanyag. ${taskCount(lesson)} kapcsolódó feladat." title="${taskCount(lesson)} feladat megoldásához szükséges ismeretet tartalmaz.">${taskMarkerIcon}<span>Vizsgaanyag</span></span>`:'';
   let searchTimer;
   const save = reason => {
-    try { localStorage.setItem(KEY, JSON.stringify(progress)); } catch {}
+    window.VV_STORAGE?.set(KEY, JSON.stringify(progress));
     if (reason) document.dispatchEvent(new CustomEvent('vv-learning-progress', {detail:{reason}}));
   };
-  const resetProgress = ({render = true} = {}) => {
+  const resetProgress = ({render = true, persist = true} = {}) => {
     progress = {read:{}, checks:{}, lastLesson:''};
     sessions.clear();
     resetOpen = false;
-    save('reset');
+    if (persist) save('reset');
+    else document.dispatchEvent(new CustomEvent('vv-learning-progress', {detail:{reason:'reset'}}));
     if (render && host?.getClientRects().length) renderRoute(location.hash);
   };
   const lessonRoute = lesson => `learn/${encodeURIComponent(lesson.chapter.id)}/${encodeURIComponent(lesson.id)}`;
@@ -904,7 +905,8 @@
     return loading;
   }
 
-  window.addEventListener('storage',event=>{if(event.key===KEY){progress=readProgress();if(host?.getClientRects().length)renderRoute(location.hash);}});
+  window.addEventListener('vv-storage-change',event=>{if(event.detail.key===KEY&&event.detail.external){progress=readProgress();if(host?.getClientRects().length)renderRoute(location.hash);}});
+  window.addEventListener('vv-storage-clear',()=>resetProgress({persist:false}));
 
   window.VV_LEARN = Object.freeze({setup, renderRoute, resetProgress, capture: captureInputs, currentRoute: () => lastRoute, linksForQuestion: id => (reverseMap.get(String(id)) || []).map(lesson => ({id:lesson.id,title:lesson.title,chapterTitle:lesson.chapter.title,href:href(lesson)})), questionIds: () => current ? relatedQuestions(current).map(q => q.id) : [], stats: () => ({chapters:chapters.length,lessons:lessons.length,topics:allGroups().length,linkedQuestions:reverseMap.size,read:countRead(lessons)})});
 })();

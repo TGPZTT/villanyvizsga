@@ -7,7 +7,7 @@
     if(initialized)return;initialized=true;
     const side=document.querySelector('.sidebar'),menu=document.querySelector('#menuToggle');if(!side)return;
     const mq=matchMedia('(max-width:950px)'),motion=matchMedia('(prefers-reduced-motion:reduce)');
-    let collapsed=false;try{collapsed=localStorage.getItem('villanyvizsga-nav-collapsed')==='true'}catch{}
+    let collapsed=window.VV_STORAGE?.get('villanyvizsga-nav-collapsed')==='true';
     const fold=document.createElement('button');fold.type='button';fold.className='nav-fold';fold.setAttribute('aria-controls',side.id||'mainNav');
     if(!side.id)side.id='mainNav';fold.innerHTML=svg('m14 6-6 6 6 6');side.append(fold);
     side.querySelectorAll('.nav-link').forEach(link=>{
@@ -25,7 +25,8 @@
     };
     const closeMobile=()=>{side.classList.remove('open');backdrop.hidden=true;menu?.setAttribute('aria-expanded','false');menu?.setAttribute('aria-label','Menü megnyitása');document.querySelector('#main')?.removeAttribute('inert');side.removeAttribute('aria-modal');side.removeAttribute('role');if(mq.matches)side.inert=true;else side.inert=false};
     const openMobile=()=>{side.inert=false;side.classList.add('open');backdrop.hidden=false;menu?.setAttribute('aria-expanded','true');menu?.setAttribute('aria-label','Menü bezárása');document.querySelector('#main')?.setAttribute('inert','');side.setAttribute('role','dialog');side.setAttribute('aria-modal','true');side.querySelector('.nav-link.active,.nav-link')?.focus()};
-    fold.addEventListener('click',()=>{collapsed=!collapsed;try{localStorage.setItem('villanyvizsga-nav-collapsed',String(collapsed))}catch{}update()});
+    fold.addEventListener('click',()=>{collapsed=!collapsed;window.VV_STORAGE?.set('villanyvizsga-nav-collapsed',String(collapsed));update()});
+    window.addEventListener('vv-storage-change',event=>{if(event.detail.key==='villanyvizsga-nav-collapsed'&&event.detail.external){collapsed=window.VV_STORAGE?.get(event.detail.key)==='true';update()}});
     if(menu){menu.innerHTML=svg('M4 6h16M4 12h16M4 18h16');menu.setAttribute('aria-label','Menü megnyitása');menu.addEventListener('click',()=>side.classList.contains('open')?closeMobile():openMobile())}
     backdrop.addEventListener('click',()=>{closeMobile();menu?.focus()});
     side.addEventListener('click',e=>{if(e.target.closest('.nav-link,.brand')&&mq.matches)closeMobile()});

@@ -70,3 +70,10 @@
 
 !learning-transformers.js
 !learning-transformers.css
+!progress-storage.js
+!progress-storage.css
+!/fonts/
+/fonts/*
+!/fonts/*.woff2
+!/fonts/*.css
+!/fonts/*-OFL.txt

@@ -35,9 +35,9 @@
     const prefix=text.match(/^([A-Z])\s*[.)]\s+/iu);
     return prefix&&prefix[1].toUpperCase()===key.toUpperCase()?text.slice(prefix[0].length).trim():text;
   };
-  const seed=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch{return {}}};
+  const seed=()=>{try{const value=JSON.parse(window.VV_STORAGE?.get(KEY));return value&&typeof value==='object'&&!Array.isArray(value)?value:{}}catch{return {}}};
   const progress=seed();
-  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(progress))}catch{}};
+  const save=()=>window.VV_STORAGE?.set(KEY,JSON.stringify(progress));
   const sources=(raw.sources||[]).map(s=>typeof s==='string'?{id:s,title:s,file:s}:s);
   const qlist=(raw.questions||[]).filter(q=>!q.generated?.machineGenerated||q.generated.formRevision==='concise-r5').map((q,i)=>{
     const file=q.sourceFile||q.source||q.sourceId||'';
@@ -125,6 +125,7 @@
       if(root&&!$('#examNavigationNotice',root))root.insertAdjacentHTML('afterbegin','<div id="examNavigationNotice" class="feedback review" role="status">A folyamatban lévő próbából a „Próba megszakítása” gombbal léphetsz ki.</div>');
       return;
     }
+
     if(view==='question'&&target!=='question')captureQuestionResponse();
     if(view==='practice'&&practice&&target!=='practice'){const active=practice.list[practice.index];practice.responses[active.id]=selectedFrom($('#practiceSession'),active)}
     if(view==='learn'&&target!=='learn')window.VV_LEARN?.capture();
@@ -145,14 +146,17 @@
   function fillSelect(select,items,label){if(!select)return;select.innerHTML=`<option value="">${esc(label)}</option>`+items.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')}
   function sourceNames(){return [...new Set(qlist.map(sourceLabel))].sort((a,b)=>a.localeCompare(b,'hu',{numeric:true}))}
   function topicNames(){return [...new Set(qlist.map(q=>q.topic))].sort((a,b)=>a.localeCompare(b,'hu'))}
-  function resetSavedResults(){
+  function resetSavedResults({fromStorage=false}={}){
+    if(!fromStorage&&window.VV_STORAGE){window.VV_STORAGE.clearProgress();return}
     Object.keys(progress).forEach(id=>delete progress[id]);
-    try{localStorage.removeItem(KEY);localStorage.removeItem(EXAM_HISTORY_KEY);localStorage.removeItem(EXAM_EXPOSURE_KEY)}catch{}
     questionState=null;practice=null;
-    if(exam?.submitted)resetExam();
+    progressManager.selected.clear();progressManager.pending=null;
+    if(exam)resetExam();
     $('#practiceSession')?.classList.add('hidden');$('#practiceSetup')?.classList.remove('hidden');$('#practiceView')?.classList.remove('practice-running');
-    window.VV_LEARN?.resetProgress({render:false});
+    window.VV_LEARN?.resetProgress({render:false,persist:false});
     renderWrongTasks();renderBank();window.VV_SELECTION?.refresh();renderHome();
+    if(view==='question')navigate('bank');
+    if(view==='progress')renderProgressManager();
   }
   function renderHome(){
     window.VV_DASHBOARD?.render({questions:qlist,progress,navigate,onReset:resetSavedResults});
@@ -655,11 +659,11 @@
   }
   const EXAM_HISTORY_KEY='villanyvizsga-exam-history-v1';
   const EXAM_EXPOSURE_KEY='villanyvizsga-exam-exposure-v1';
-  function examHistory(){try{const rows=JSON.parse(localStorage.getItem(EXAM_HISTORY_KEY));return Array.isArray(rows)?rows.filter(row=>row&&Array.isArray(row.ids)).slice(-8):[]}catch{return []}}
+  function examHistory(){try{const rows=JSON.parse(window.VV_STORAGE?.get(EXAM_HISTORY_KEY));return Array.isArray(rows)?rows.filter(row=>row&&Array.isArray(row.ids)).slice(-8):[]}catch{return []}}
   function examExposure(){
     const byId=Object.create(null),known=new Set(qlist.map(q=>String(q.id)));
     try{
-      const saved=JSON.parse(localStorage.getItem(EXAM_EXPOSURE_KEY));
+      const saved=JSON.parse(window.VV_STORAGE?.get(EXAM_EXPOSURE_KEY));
       if(saved&&Number.isSafeInteger(saved.runs)&&saved.runs>=0&&saved.runs<Number.MAX_SAFE_INTEGER&&saved.byId&&typeof saved.byId==='object'&&!Array.isArray(saved.byId)){
         for(const [id,row] of Object.entries(saved.byId)){
           if(known.has(id)&&row&&Number.isSafeInteger(row.count)&&row.count>0&&row.count<=saved.runs&&Number.isSafeInteger(row.last)&&row.last>0&&row.last<=saved.runs)byId[id]={count:row.count,last:row.last};
@@ -694,7 +698,7 @@
     if(list.length<count){examNotice(`Most ${list.length} kellően eltérő kérdésből álló feladatsort sikerült összeállítani. ${list.length>=15?'Válassz 15 kérdést, vagy jelölj ki további forrást.':'Jelölj ki másik vagy további forrást.'}`);return;}
     exposure.runs++;
     for(const id of new Set(list.map(q=>String(q.id))))exposure.byId[id]={count:(exposure.byId[id]?.count||0)+1,last:exposure.runs};
-    try{localStorage.setItem(EXAM_EXPOSURE_KEY,JSON.stringify(exposure));localStorage.setItem(EXAM_HISTORY_KEY,JSON.stringify([...examHistory(),{at:Date.now(),scope:sources.join('+'),sources,ids:list.map(q=>q.id)}].slice(-8)))}catch{}
+    window.VV_STORAGE?.set(EXAM_EXPOSURE_KEY,JSON.stringify(exposure));window.VV_STORAGE?.set(EXAM_HISTORY_KEY,JSON.stringify([...examHistory(),{at:Date.now(),scope:sources.join('+'),sources,ids:list.map(q=>q.id)}].slice(-8)));
     exam={list,index:0,phase:'main',responses:{},drafts:{},skipped:[],remaining:90*60,deadline:Date.now()+90*60*1000,submitted:false,revealed:false,endReason:''};
     $('#examSetup').classList.add('hidden');$('#examSession').classList.remove('hidden');$('#examView').classList.add('exam-running');document.body.classList.add('exam-running');
     renderExam();clearInterval(timerId);timerId=setInterval(tickExam,250);
@@ -866,11 +870,12 @@
       if(target==='learn')window.VV_LEARN?.renderRoute('#'+route);
     };
     window.addEventListener('hashchange',followHash);
-    window.addEventListener('storage',event=>{
-      if(event.key!==KEY)return;
+    window.addEventListener('vv-storage-change',event=>{
+      if(event.detail.key!==KEY||!event.detail.external)return;
       const incoming=seed();Object.keys(progress).forEach(id=>delete progress[id]);Object.assign(progress,incoming);
       renderWrongTasks();if(view==='home')renderHome();if(view==='bank')renderBank();if(view==='progress')renderProgressManager();
     });
+    window.addEventListener('vv-storage-clear',()=>resetSavedResults({fromStorage:true}));
     window.addEventListener('beforeunload',event=>{if(exam&&!exam.submitted){event.preventDefault();event.returnValue=''}});
     followHash();
     if(!qlist.length){$('#homeMetrics').innerHTML='<div class="loading">A feladatbank adatai még nem töltődtek be.</div>'}
