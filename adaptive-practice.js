@@ -73,22 +73,27 @@
     return {questions:chosen.map(row=>row.q),meta:{available:unique.length,requested,selected:chosen.length,exploration,limitedBySimilarity:chosen.length<requested,reasons,composition}};
   }
   let uiConfig,observer,scheduled=false;
-  function quickStart(parent,placement){
+  const quick={count:10,kinds:new Set(['papers'])};
+  const sourceKind=q=>q.generated?.machineGenerated||q.sourceId?.startsWith('generated-exam-')?'generated':root.VV_LABELS?.sourceKind(q)==='Versenyfeladat'?'competition':'papers';
+  function quickPool(){return (uiConfig?.allPool?.()||[]).filter(q=>quick.kinds.has(sourceKind(q)));}
+  function quickStart(parent){
     if(!parent||!uiConfig?.allPool)return;
-    let button=parent.querySelector('[data-adaptive-quick]');
-    if(!button){
-      button=document.createElement('button');button.type='button';button.className='ap-quick-start';button.dataset.adaptiveQuick=placement;
-      button.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h3c4 0 4 10 8 10h3M14 12l3 3-3 3M3 15h3c1.1 0 2-1 2.8-2.4M11.2 7.4C12 6 12.9 5 14 5h3M14 2l3 3-3 3"/></svg><span>Személyre szabott gyakorlás</span>';
-      button.title='10 feladat minden témából. Alapfeladatokkal indul.';
-      button.addEventListener('click',()=>{const result=select(uiConfig.allPool(),10,{progress:uiConfig.progress(),topicOf:q=>root.VV_SELECTION?.topicFor(q)||q.topic||''});if(result.questions.length)uiConfig.launch(result.questions,result.meta);});
-      parent.append(button);
+    let panel=parent.querySelector('[data-adaptive-quick-panel]');
+    if(!panel){
+      panel=document.createElement('section');panel.className='ap-quick';panel.dataset.adaptiveQuickPanel='';panel.setAttribute('aria-labelledby','apQuickTitle');
+      panel.innerHTML='<h2 id="apQuickTitle" class="ap-quick-title">Személyre szabott gyakorlás</h2><div class="ap-quick-count" role="group" aria-label="Feladatok száma">'+[10,20,30].map(n=>'<button type="button" data-quick-count="'+n+'" aria-pressed="'+(quick.count===n)+'">'+n+'</button>').join('')+'</div><div class="ap-quick-sources" role="group" aria-label="További feladatcsoportok"><label><input type="checkbox" data-quick-kind="generated"><span>Géppel generált</span></label><label><input type="checkbox" data-quick-kind="competition"><span>Versenyfeladatok</span></label></div><button type="button" class="ap-quick-start" data-adaptive-quick="practice"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h3c4 0 4 10 8 10h3M14 12l3 3-3 3M3 15h3c1.1 0 2-1 2.8-2.4M11.2 7.4C12 6 12.9 5 14 5h3M14 2l3 3-3 3"/></svg><span>Indítás</span></button>';
+      panel.addEventListener('click',event=>{const count=event.target.closest('[data-quick-count]');if(count){quick.count=Number(count.dataset.quickCount);panel.querySelectorAll('[data-quick-count]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.quickCount)===quick.count)));}});
+      panel.querySelectorAll('[data-quick-kind]').forEach(input=>{input.checked=quick.kinds.has(input.dataset.quickKind)});
+      panel.addEventListener('change',event=>{const input=event.target.closest('[data-quick-kind]');if(input)input.checked?quick.kinds.add(input.dataset.quickKind):quick.kinds.delete(input.dataset.quickKind);panel.querySelector('[data-adaptive-quick]').disabled=!quickPool().length;});
+      panel.querySelector('[data-adaptive-quick]').addEventListener('click',()=>{const result=select(quickPool(),quick.count,{progress:uiConfig.progress(),topicOf:q=>root.VV_SELECTION?.topicFor(q)||q.topic||''});if(result.questions.length)uiConfig.launch(result.questions,result.meta);});
+      parent.append(panel);
     }
-    button.disabled=!uiConfig.allPool().length;
+    panel.querySelector('[data-adaptive-quick]').disabled=!quickPool().length;
   }
   function refreshUI(){
     scheduled=false;
-    quickStart(document.querySelector('.vv-dash-hero-copy'),'home');
-    quickStart(document.querySelector('#practiceView .page-intro'),'practice');
+    document.querySelector('[data-adaptive-quick="home"]')?.remove();
+    quickStart(document.querySelector('#practiceView .page-intro'));
     const setup=document.querySelector('#practiceSetup'),start=setup?.querySelector('#startPractice'),slot=start?.closest('.sf-start-slot');
     if(!slot||start.hidden||!uiConfig)return;
     let button=slot.querySelector('[data-adaptive-start]');
