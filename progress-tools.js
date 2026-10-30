@@ -189,7 +189,7 @@
     if(title&&!document.querySelector('[data-pt-practice]')){
       const row=document.createElement('div');row.className='pt-practice-heading';title.before(row);row.append(title);
       const button=document.createElement('button');button.type='button';button.className='pt-practice-summary';button.dataset.ptPractice='';button.setAttribute('aria-haspopup','dialog');
-      button.innerHTML='<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16" fill="none" stroke="#dbe7e0" stroke-width="3"/><circle data-pt-ring cx="20" cy="20" r="16" fill="none" stroke="#53836a" stroke-width="3" stroke-linecap="round" transform="rotate(-90 20 20)"/><path d="M12 25v-5m8 5V14m8 11V10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span><strong>Felkészültség</strong><span data-pt-practice-count></span></span>';
+      button.innerHTML=(window.VV_SELECTION?.icon('readiness')||'')+'<span><strong>Felkészültség</strong><span data-pt-practice-count></span></span>';
       button.addEventListener('click',openTopics);row.append(button);
     }
     schedule();
@@ -198,7 +198,7 @@
     const button=document.querySelector('[data-pt-practice]');if(!button||!config)return;
     const records=read(Q)||{},questions=config.questions||[],done=questions.filter(q=>['correct','retry'].includes(records[q.id]?.status)),retry=done.filter(q=>outcome(records[q.id])==='repeat').length;
     button.querySelector('[data-pt-practice-count]').textContent=`${done.length} / ${questions.length} megoldott, ${retry} ismétlendő`;
-    button.querySelector('[data-pt-ring]').setAttribute('stroke-dasharray',`${questions.length?done.length/questions.length*100.531:0} 100.531`);
+    button.querySelector('[data-pt-ring]')?.setAttribute('stroke-dasharray',`${questions.length?done.length/questions.length*100:0} 100`);
   }
   function schedule(){if(queued)return;queued=true;queueMicrotask(()=>{queued=false;renderTopics();updatePracticeSummary();});}
   function mountBackup() {

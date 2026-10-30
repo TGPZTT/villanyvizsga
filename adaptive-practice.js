@@ -90,15 +90,17 @@
   function quickPool(){return (uiConfig?.allPool?.()||[]).filter(q=>quick.kinds.has(sourceKind(q)));}
   function quickStart(parent){
     if(!parent||!uiConfig?.allPool)return;
-    let panel=parent.querySelector('[data-adaptive-quick-panel]');
+    let panel=document.querySelector('#practiceView [data-adaptive-quick-panel]');
     if(!panel){
       panel=document.createElement('section');panel.className='ap-quick';panel.dataset.adaptiveQuickPanel='';panel.setAttribute('aria-labelledby','apQuickTitle');
-      panel.innerHTML='<h2 id="apQuickTitle" class="ap-quick-title">Okos gyakorlás</h2><div class="ap-quick-count" role="group" aria-label="Feladatok száma">'+[10,20,30].map(n=>'<button type="button" data-quick-count="'+n+'" aria-pressed="'+(quick.count===n)+'">'+n+'</button>').join('')+'</div><div class="ap-quick-sources" role="group" aria-label="További feladatcsoportok"><label><input type="checkbox" data-quick-kind="generated"><span>Géppel generált</span></label><label><input type="checkbox" data-quick-kind="competition"><span>Versenyfeladatok</span></label></div><button type="button" class="ap-quick-start" data-adaptive-quick="practice"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="11" height="11" rx="2.5"/><path d="M7 2v2.5M13 2v2.5M7 15.5V18M13 15.5V18M2 7h2.5M2 13h2.5M15.5 7H18M15.5 13H18M7.5 12.5l5-5M7.5 7.5l5 5"/><circle class="ap-smart-node" cx="10" cy="10" r="1.8" fill="currentColor"/></svg><span>Indítás</span></button>';
+      const art=id=>root.VV_SELECTION?.icon(id)||'';
+      const intro=parent.querySelector(':scope > p');if(intro)intro.textContent='Indíts Okos gyakorlást, vagy állítsd össze te a feladatsort.';
+      panel.innerHTML='<div class="ap-quick-overview"><span class="ap-quick-art">'+art('smart')+'</span><div class="ap-quick-copy"><h2 id="apQuickTitle" class="ap-quick-title">Okos gyakorlás</h2><p>A korábban elrontott, segítséggel megoldott és még nem próbált feladatok nagyobb eséllyel kerülnek bele. Több témából válogat, ritkítja a hasonló kérdéseket, és az átolvasást nem számítja bele.</p></div></div><div class="ap-quick-controls"><div class="ap-quick-count" role="group" aria-label="Feladatok száma">'+[10,20,30].map(n=>'<button type="button" data-quick-count="'+n+'" aria-pressed="'+(quick.count===n)+'">'+n+'</button>').join('')+'</div><div class="ap-quick-sources" role="group" aria-label="További feladatcsoportok"><label><input type="checkbox" name="quickPracticeGenerated" data-quick-kind="generated"><span>Géppel generált</span></label><label><input type="checkbox" name="quickPracticeCompetition" data-quick-kind="competition"><span>Versenyfeladatok</span></label></div><button type="button" class="ap-quick-start" data-adaptive-quick="practice">'+art('start')+'<span>Indítás</span></button></div>';
       panel.addEventListener('click',event=>{const count=event.target.closest('[data-quick-count]');if(count){quick.count=Number(count.dataset.quickCount);panel.querySelectorAll('[data-quick-count]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.quickCount)===quick.count)));}});
       panel.querySelectorAll('[data-quick-kind]').forEach(input=>{input.checked=quick.kinds.has(input.dataset.quickKind)});
       panel.addEventListener('change',event=>{const input=event.target.closest('[data-quick-kind]');if(input)input.checked?quick.kinds.add(input.dataset.quickKind):quick.kinds.delete(input.dataset.quickKind);panel.querySelector('[data-adaptive-quick]').disabled=!quickPool().length;});
       panel.querySelector('[data-adaptive-quick]').addEventListener('click',()=>{const result=plan(quickPool(),quick.count,{progress:uiConfig.progress(),topicOf:q=>root.VV_SELECTION?.topicFor(q)||q.topic||''});if(result.questions.length)uiConfig.launch(result.questions,result.meta);});
-      parent.append(panel);
+      parent.after(panel);
     }
     panel.querySelector('[data-adaptive-quick]').disabled=!quickPool().length;
   }
@@ -110,7 +112,7 @@
     if(!slot||start.hidden||!uiConfig)return;
     let button=slot.querySelector('[data-adaptive-start]');
     if(!button){
-      button=document.createElement('button');button.type='button';button.className='button outline ap-start';button.dataset.adaptiveStart='';button.textContent='Okos gyakorlás';button.title='A hibákból, a segítségkérésből és a tényleges megoldásokból állít össze gyakorlást.';
+      button=document.createElement('button');button.type='button';button.className='button outline ap-start';button.dataset.adaptiveStart='';button.innerHTML=(root.VV_SELECTION?.icon('smart')||'')+'<span>Okos gyakorlás</span>';button.title='A hibákból, a segítségkérésből és a tényleges megoldásokból állít össze gyakorlást.';
       button.addEventListener('click',()=>{
         const result=plan(uiConfig.pool(),uiConfig.count(),{progress:uiConfig.progress(),topicOf:q=>root.VV_SELECTION?.topicFor(q)||q.topic||''});
         if(result.questions.length)uiConfig.launch(result.questions,result.meta);

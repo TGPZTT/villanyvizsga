@@ -1,3 +1,130 @@
+(function(){
+  'use strict';
+  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm=d=>((d%360)+360)%360,point=(a,r=1)=>({x:Math.sin(a*Math.PI/180)*r,y:-Math.cos(a*Math.PI/180)*r});
+  const angle=v=>norm(Math.atan2(v.x,-v.y)*180/Math.PI);
+  const rotate=(v,a)=>{const p=point(angle(v)+a,Math.hypot(v.x,v.y));return{x:p.x,y:p.y}};
+  const clock=(hv,lv)=>Math.round(norm(angle(lv)-angle(hv))/30)%12;
+  const waveform=(t,phase)=>Math.cos((t-phase)*Math.PI/180);
+  const states=new Map(),controllers=new WeakMap();
+  const get=key=>{if(!states.has(key))states.set(key,{scene:0,layout:0,rotation:0,time:0,reveal:1,difference:false,task:0,arc:0,pairTurn:0,answer:null,transfer:null,transferTurn:90});return states.get(key)};
+  const prose=x=>esc(x).replace(/U_([A-Za-z][A-Za-z0-9]*)/g,'U<sub>$1</sub>');
+  const sub=x=>esc(x).replace(/U_([A-Za-z][A-Za-z0-9]*)/g,'U<tspan baseline-shift="sub" font-size="72%">$1</tspan>');
+  const text=(x,y,value,cls='',anchor='middle')=>`<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${sub(value)}</text>`;
+  const line=(d,cls='')=>`<path d="${d}" class="pl-line ${cls}"/>`;
+  const node=(x,y)=>`<circle cx="${x}" cy="${y}" r="3" class="pl-node"/>`;
+  function arrow(x,y,deg,len,cls='',extra=''){
+    const p=point(deg,len),unit=point(deg),cross={x:-unit.y,y:unit.x},a={x:p.x-unit.x*7+cross.x*3,y:p.y-unit.y*7+cross.y*3},b={x:p.x-unit.x*7-cross.x*3,y:p.y-unit.y*7-cross.y*3};
+    return `<g class="pl-arrow ${cls}" transform="translate(${x} ${y})" ${extra}><path d="M0 0L${p.x} ${p.y}"/><path d="M${a.x} ${a.y}L${p.x} ${p.y}L${b.x} ${b.y}"/></g>`;
+  }
+  const svg=(body,w,h,label,cls='')=>`<svg class="pl-svg ${cls}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(label)}">${body}</svg>`;
+  const button=(label,action,value='',extra='')=>`<button type="button" data-pl-action="${action}" data-value="${value}" ${extra}>${label}</button>`;
+  const phaseAngles=[0,120,240],phaseNames=['A','B','C'];
+  function winding(a,b){const dx=b.x-a.x,dy=b.y-a.y,length=Math.hypot(dx,dy),deg=Math.atan2(dy,dx)*180/Math.PI-90;return `<g transform="translate(${a.x} ${a.y}) rotate(${deg})">${line(`M0 0V${length*.3}M0 ${length*.7}V${length}`)}<path class="pl-coil" d="M0 ${length*.3}${Array.from({length:4},()=>`a5 ${length*.05} 0 0 1 0 ${length*.1}`).join('')}"/></g>`;}
+  function physical(s){
+    const from=[{x:150,y:35},{x:150,y:240},{x:45,y:240}],to=[{x:45,y:140},{x:255,y:140},{x:150,y:240}],p=from.map((v,i)=>({x:v.x+(to[i].x-v.x)*s.layout,y:v.y+(to[i].y-v.y)*s.layout})),o={x:150,y:140};
+    return svg(p.map((v,i)=>winding(o,v)+node(v.x,v.y)+text(v.x+(i===0?-14:i===1?14:0),v.y+(v.y<100?-13:v.y>200?24:-15),phaseNames[i],'pl-terminal')).join('')+node(o.x,o.y)+text(166,125,'O','pl-terminal'),300,280,s.copy.physicalAria);
+  }
+  function phasePlot(s,{rotation=s.rotation,time=0,reveal=3,difference=true}={}){
+    const c={x:150,y:140},radius=76;let body=`<circle cx="150" cy="140" r="76" class="pl-circle"/><g data-pl-plot>`;
+    for(let i=0;i<3;i++){
+      const progress=Math.max(0,Math.min(1,reveal-i)),a=phaseAngles[i]*(s.building?progress:1)-time+rotation,p=point(a,98),alpha=s.building?(progress>0?1:0):progress;
+      body+=`<g data-pl-phase="${i}" style="opacity:${alpha}">${arrow(c.x,c.y,a,radius,'pl-phase-'+i)}${text(c.x+p.x,c.y+p.y+6,'U_'+phaseNames[i],'pl-phase-label pl-phase-'+i)}</g>`;
+    }
+    if(difference&&!s.building){const a=point(-time+rotation,radius),b=point(120-time+rotation,radius),label=rotate({x:58,y:-41},rotation-time),v={x:a.x-b.x,y:a.y-b.y};body+=arrow(c.x+b.x,c.y+b.y,angle(v),Math.hypot(v.x,v.y),'pl-difference')+text(c.x+label.x,c.y+label.y,'U_AB','pl-difference-label');}
+    if(reveal>=2){const a=point(-time+rotation,35),b=point(120-time+rotation,35),label=point(60-time+rotation,52);body+=line(`M${c.x+a.x} ${c.y+a.y}A35 35 0 0 1 ${c.x+b.x} ${c.y+b.y}`,'pl-angle-arc')+text(c.x+label.x,c.y+label.y+5,'120°','pl-angle-label');}
+    body+='</g>'+node(c.x,c.y)+text(c.x-13,c.y+18,'O','pl-small','end');
+    return svg(body,300,280,s.copy.phaseAria);
+  }
+  function waves(s){
+    const x=61,width=282,rows=[50,124,198],amplitude=25;let body='';
+    for(let i=0;i<3;i++){
+      const y=rows[i];let d='';for(let t=0;t<=360;t+=3)d+=(t?'L':'M')+(x+width*t/360)+' '+(y-amplitude*waveform(t,phaseAngles[i]));
+      body+=line(`M${x} ${y}H${x+width}`,'pl-axis')+`<path d="${d}" class="pl-wave pl-phase-${i}"/>`+text(28,y+7,'U_'+phaseNames[i],'pl-wave-label pl-phase-'+i);
+      const peak=x+width*phaseAngles[i]/360;body+=`<circle cx="${peak}" cy="${y-amplitude}" r="4" class="pl-peak pl-phase-${i}"/>`;
+      const cursor=x+width*s.time/360,cy=y-amplitude*waveform(s.time,phaseAngles[i]);body+=`<circle cx="${cursor}" cy="${cy}" r="5" class="pl-sample pl-sample-original pl-phase-${i}" style="opacity:${s.building?0:1}"/>`;
+    }
+    if(s.building){const i=Math.min(2,Math.floor(s.reveal)),progress=Math.max(0,Math.min(1,s.reveal-i)),offset=phaseAngles[i]*progress,px=x+width*offset/360,y=rows[i],cy=y-amplitude*waveform(offset,phaseAngles[i]);body+=`<path d="M${x} ${y+31}v5M${x} ${y+34}H${px}m0 -3v6" class="pl-time-span pl-phase-${i}"/><circle cx="${px}" cy="${cy}" r="6" class="pl-sample pl-sample-original pl-phase-${i}" style="opacity:${s.building?0:1}"/>`;}
+    body+=`<g style="opacity:${s.building?0:1}">${line(`M${x+width*s.time/360} 12V235`,'pl-cursor')}</g>`+text(x,263,'0','pl-small')+text(x+width/3,263,'T/3','pl-small')+text(x+2*width/3,263,'2T/3','pl-small')+text(x+width,263,'T','pl-small');
+    return svg(body,370,280,s.copy.waveAria);
+  }
+  function scene0(s){return `<div class="pl-compare"><figure><figcaption>${esc(s.copy.physicalTitle)}</figcaption><div data-pl-physical>${physical(s)}</div>${button(s.copy.rearrange,'layout')}<p class="pl-caption">${esc(s.copy.physicalCaption)}</p></figure><figure><figcaption>${esc(s.copy.phaseTitle)}</figcaption><div data-pl-phases>${phasePlot(s)}</div>${button(s.copy.rotateAll,'plot-rotate')}<p class="pl-caption">${esc(s.copy.phaseCaption)}</p></figure></div><p class="pl-key" data-pl-note>${esc(s.copy.spaceNote)}</p>`;}
+  function scene1(s){return `<p class="pl-mode-status" data-pl-mode role="status">${esc(s.building?s.copy.buildingNote:s.copy.referenceNote)}</p><div class="pl-timing"><figure><figcaption>${esc(s.copy.waveTitle)}</figcaption><div data-pl-waves>${waves(s)}</div><p class="pl-caption">${esc(s.copy.periodDefinition)}</p></figure><figure><figcaption>${esc(s.copy.timePhaseTitle)}</figcaption><div data-pl-time-phases>${phasePlot(s,{rotation:0,time:s.time,reveal:s.reveal,difference:s.difference})}</div></figure></div><div class="pl-fractions"><span><b>U<sub>A</sub></b> 0 → 0°</span><span><b>U<sub>B</sub></b> T/3 → 120°</span><span><b>U<sub>C</sub></b> 2T/3 → 240°</span></div><p class="pl-key">${prose(s.copy.timeNote)}</p><div class="pl-actions">${button(s.copy.build,'build')}${button(s.copy.period,'period')}${button(s.copy.difference,'difference','',`aria-pressed="${s.difference}"`)}</div>${s.difference?`<p class="pl-caption">${prose(s.copy.differenceNote)}</p>`:''}`;}
+  function clockFace(cx,cy,r=107){let b=`<circle cx="${cx}" cy="${cy}" r="${r}" class="pl-clock-rim"/>`;for(let i=0;i<12;i++){const a=point(i*30,r-6),z=point(i*30,r),label=point(i*30,r+20);b+=line(`M${cx+a.x} ${cy+a.y}L${cx+z.x} ${cy+z.y}`,'pl-clock-tick')+text(cx+label.x,cy+label.y+6,i||12,'pl-clock-number');}return b;}
+  function arc(cx,cy,deg){if(deg<=.01)return '';const r=94,p=point(Math.min(359.9,deg),r);return `<path d="M${cx} ${cy-r}A${r} ${r} 0 ${deg>180?1:0} 1 ${cx+p.x} ${cy+p.y}" class="pl-clock-arc"/>`;}
+  function taskGeometry(s){
+    const mobile=s.mobile,cx=mobile?220:650,cy=mobile?490:170,stage=s.task;
+    const given=s.copy.diagram;
+    const pair=s.copy.given.map((v,i)=>{
+      const origin={x:v.x+(cx-v.x)*Math.min(1,Math.max(0,stage-2)),y:v.y+(cy-v.y)*Math.min(1,Math.max(0,stage-2))};
+      const moved=stage>=3,turn=moved?s.pairTurn:0,classes=i?'pl-lv':'pl-hv';
+      return `<g data-pl-copy="${i}" transform="translate(${origin.x} ${origin.y}) rotate(${turn})" style="opacity:${stage>=2?1:0}">${arrow(0,0,v.angle,v.length,classes)}${text(v.labelX,v.labelY,v.label,'pl-vector-name '+classes,v.anchor||'middle').replace('<text ',`<text transform="rotate(${-turn} ${v.labelX} ${v.labelY})" `)}</g>`;
+    }).join('');
+    let body=`<g class="pl-task-original" style="opacity:${stage>=2?.52:1}">${given}</g>`;
+    if(stage>=.5&&stage<1.5)body+='<rect x="10" y="8" width="200" height="123" rx="7" class="pl-region"/>';
+    if(stage>=1.5&&stage<2)body+='<rect x="9" y="172" width="190" height="130" rx="7" class="pl-region"/>';
+    body+=clockFace(cx,cy)+`<g class="pl-key-guides">${line(`M${cx} ${cy}V${cy-110}`,'pl-axis')}</g>`+pair+node(cx,cy)+arc(cx,cy,s.arc)+(s.arc>0?text(cx,cy+153,s.task>=4?`${solution(s).hour} · 30° = ${solution(s).delta}°`:`${Math.round(s.arc)}°`,'pl-angle-result'):'');
+    if(s.arc>5){for(let h=1;h<=Math.min(11,Math.floor(s.arc/30));h++){const p=point(h*30,107);body+=`<circle cx="${cx+p.x}" cy="${cy+p.y}" r="4" class="pl-count-dot"/>`;}}
+    return svg(body,mobile?440:810,mobile?650:330,s.copy.taskAria,'pl-task-svg');
+  }
+  function taskPrompt(s){const q=window.VV_DATA?.questions?.find(q=>q.id===s.copy.questionId);return q||s.copy.fallbackQuestion;}
+  function solution(s){const delta=norm(s.copy.given[1].angle-s.copy.given[0].angle),hour=Math.round(delta/30)%12;return {delta,hour,symbol:s.copy.symbols.join('')+hour};}
+  function taskOptions(s){const q=taskPrompt(s),done=s.task>=4,options=q.options||[],correct=(Array.isArray(q.answer)?q.answer:[q.answer]).map(String);return `<div class="pl-task-options" role="group" aria-label="${esc(s.copy.answerChoices)}">${options.map((o,i)=>{const value=typeof o==='string'?o:o.text,right=correct.includes(value);return `<span class="pl-task-option ${done&&right?'is-correct':''}"><b>${String.fromCharCode(65+i)}</b>${esc(value)}${done&&right?'<span aria-label="Helyes megoldás">✓</span>':''}</span>`}).join('')}</div>`;}
+  function transfer(s){
+    const cx=145,cy=145;let b=clockFace(cx,cy,100);b+=arrow(cx,cy,s.transferTurn,76,'pl-hv')+arrow(cx,cy,s.transferTurn+solution(s).delta,65,'pl-lv');
+    const a=point(s.transferTurn,90),z=point(s.transferTurn+solution(s).delta,84);b+=text(cx+a.x+12,cy+a.y+6,'U_A','pl-vector-name pl-hv','start')+text(cx+z.x,cy+z.y-12,'U_a','pl-vector-name pl-lv');
+    const chosen=s.transfer!==null;
+    return `<section class="pl-transfer"><h4>${esc(s.copy.transferTitle)}</h4><p>${prose(s.copy.transferPrompt)}</p><p class="pl-caption">${prose(s.transferTurn===90?s.copy.transferInitial:s.transferTurn===0?s.copy.transferAligned:s.copy.transferTurning)}</p><div class="pl-transfer-grid">${svg(b,310,290,s.copy.transferAria)}<div><div class="pl-transfer-choices">${s.copy.transferChoices.map(v=>button(String(v),'transfer-answer',v,`aria-pressed="${s.transfer===v}"`)).join('')}</div>${chosen?`<p class="pl-transfer-feedback ${s.transfer===solution(s).hour?'is-correct':'is-wrong'}">${prose(s.copy.transferFeedback[s.transfer])}</p>${button(s.copy.verifyRotation,'transfer-align')}`:''}</div></div></section>`;
+  }
+  function scene2(s){const q=taskPrompt(s);return `<div class="pl-task-heading"><p>${esc(q.prompt)}</p><a href="#question/${encodeURIComponent(s.copy.questionId)}">${esc(s.copy.openQuestion)}</a><a href="#" data-zoom-asset="${esc(s.copy.originalPath)}" data-zoom-caption="${esc(s.copy.taskAria)}" aria-haspopup="dialog">${esc(s.copy.zoom)}</a></div><p class="pl-task-caution">${prose(s.copy.taskCaution)}</p><div data-pl-task>${taskGeometry(s)}</div><div class="pl-answer-parts" aria-live="polite"><span class="${s.task>=1?'is-filled':''}">${s.task>=1?s.copy.symbols[0]:'—'}</span><span class="${s.task>=2?'is-filled':''}">${s.task>=2?s.copy.symbols[1]:'—'}</span><span class="${s.task>=4?'is-filled':''}">${s.task>=4?solution(s).hour:'—'}</span><strong>${s.task>=4?solution(s).symbol:''}</strong></div><p class="pl-key" data-pl-task-note>${prose(s.copy.taskNotes[Math.min(4,Math.floor(s.task))])}</p>${taskOptions(s)}<div class="pl-actions pl-task-controls">${button(s.solutionTime>0&&s.solutionTime<6000?s.copy.continue:s.copy.solve,'solve')}${button(s.copy.rotatePair,'pair-rotate','',s.task<4?'disabled':'')}${button(s.copy.alignPair,'pair-align','',s.task<4?'disabled':'')}</div>${s.task>=4?transfer(s):''}`;}
+  function contents(s){return `<nav class="pl-scenes" aria-label="${esc(s.copy.navigation)}">${s.copy.scenes.map((name,i)=>button(esc(name),'scene',i,`aria-current="${s.scene===i?'step':'false'}"`)).join('')}</nav><div class="pl-scene" data-pl-scene="${s.scene}">${[scene0,scene1,scene2][s.scene](s)}</div>`;}
+  function render(copy,key='transformer-phase-lab'){if(!copy?.scenes)return '<p>Az új ábrához frissítsd az oldalt.</p>';const s=get(key);s.copy=copy;return `<section class="phase-lab" data-phase-lab="${esc(key)}" aria-label="${esc(copy.title)}">${contents(s)}</section>`;}
+  function ease(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+  function mount(host){for(const root of host.querySelectorAll('[data-phase-lab]')){
+    if(controllers.has(root))continue;const s=get(root.dataset.phaseLab),controller={frame:0,token:0,playing:false};controllers.set(root,controller);
+    const reduce=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const stop=()=>{controller.token++;cancelAnimationFrame(controller.frame);controller.playing=false;root.querySelector('[data-pl-action="solve"]')?.replaceChildren(document.createTextNode(s.copy.solve));};
+    const responsive=()=>{s.mobile=root.clientWidth<610;};responsive();
+    const repaint=()=>{const focused=document.activeElement,action=focused?.dataset?.plAction;root.innerHTML=contents(s);if(action)root.querySelector(`[data-pl-action="${action}"]`)?.focus({preventScroll:true});};
+    const drawPhysical=()=>{root.querySelector('[data-pl-physical]').innerHTML=physical(s);};
+    const drawPlot=()=>{root.querySelector('[data-pl-phases]').innerHTML=phasePlot(s);};
+    const drawTime=()=>{const mode=root.querySelector('[data-pl-mode]'),caption=s.building?s.copy.buildingNote:s.time?s.copy.playingNote:s.copy.referenceNote;if(mode&&mode.textContent!==caption)mode.textContent=caption;root.querySelector('[data-pl-waves]').innerHTML=waves(s);root.querySelector('[data-pl-time-phases]').innerHTML=phasePlot(s,{rotation:0,time:s.time,reveal:s.reveal,difference:s.difference});};
+    const drawTask=()=>{root.querySelector('[data-pl-task]').innerHTML=taskGeometry(s);const note=root.querySelector('[data-pl-task-note]');if(note)note.innerHTML=prose(s.copy.taskNotes[Math.min(4,Math.floor(s.task))]);const parts=root.querySelector('.pl-answer-parts');if(parts&&parts.dataset.milestone!==String(Math.floor(s.task))){parts.dataset.milestone=String(Math.floor(s.task));parts.innerHTML=`<span class="${s.task>=1?'is-filled':''}">${s.task>=1?s.copy.symbols[0]:'—'}</span><span class="${s.task>=2?'is-filled':''}">${s.task>=2?s.copy.symbols[1]:'—'}</span><span class="${s.task>=4?'is-filled':''}">${s.task>=4?solution(s).hour:'—'}</span><strong>${s.task>=4?solution(s).symbol:''}</strong>`;}};
+    function tween(duration,update,done=()=>{}){const token=++controller.token,begun=performance.now(),actual=reduce()?1:duration;controller.playing=true;const tick=now=>{if(token!==controller.token||!root.isConnected)return;const t=Math.min(1,(now-begun)/actual);update(ease(t),t);if(t<1)controller.frame=requestAnimationFrame(tick);else{controller.playing=false;done();}};controller.frame=requestAnimationFrame(tick);}
+    function solve(){
+      if(controller.playing){stop();root.querySelector('[data-pl-action="solve"]').textContent=s.copy.continue;return;}
+      if(!s.solutionTime||s.solutionTime>=6000){s.solutionTime=0;s.task=0;s.arc=0;s.pairTurn=0;s.transfer=null;repaint();}
+      const board=root.querySelector('[data-pl-task]'),bounds=board.getBoundingClientRect();if(bounds.top<16||bounds.bottom>innerHeight-110)board.scrollIntoView({block:'center',behavior:reduce()?'instant':'smooth'});
+      const from=s.solutionTime;
+      tween(6000-from,(_,t)=>{
+        const elapsed=from+(6000-from)*t;s.solutionTime=elapsed;
+        if(elapsed<1100)s.task=ease(elapsed/1100);
+        else if(elapsed<2200)s.task=1+ease((elapsed-1100)/1100);
+        else if(elapsed<4000)s.task=2+ease((elapsed-2200)/1800);
+        else{s.task=3;s.arc=solution(s).delta*ease((elapsed-4000)/2000);}
+        drawTask();
+      },()=>{s.task=4;s.arc=solution(s).delta;s.solutionTime=6000;repaint();});
+      root.querySelector('[data-pl-action="solve"]').textContent=s.copy.stop;
+    }
+    root.addEventListener('click',event=>{
+      const b=event.target.closest('[data-pl-action]');if(!b||!root.contains(b))return;const action=b.dataset.plAction,value=Number(b.dataset.value);
+      if(action==='solve'){solve();return;}stop();
+      if(action==='scene'){s.scene=value;s.building=false;repaint();return;}
+      if(action==='layout'){const from=s.layout,to=from>.5?0:1;tween(1300,t=>{s.layout=from+(to-from)*t;drawPhysical()},()=>{const n=root.querySelector('[data-pl-note]');if(n)n.textContent=s.copy.spaceNoteDone;});}
+      else if(action==='plot-rotate'){const from=s.rotation,to=from<0?0:-60;tween(1600,t=>{s.rotation=from+(to-from)*t;drawPlot()},()=>root.querySelector('[data-pl-note]').textContent=s.copy.rotationNote);}
+      else if(action==='build'){s.time=0;s.reveal=1;s.building=true;tween(2600,t=>{s.reveal=1+2*t;drawTime();},()=>{s.building=false;s.reveal=3;drawTime()});}
+      else if(action==='period'){s.building=false;s.reveal=3;tween(6000,(_,t)=>{s.time=360*t;drawTime()},()=>{s.time=0;drawTime()});}
+      else if(action==='difference'){s.building=false;s.reveal=3;s.time=0;s.difference=!s.difference;repaint();}
+      else if(action==='pair-rotate'||action==='pair-align'){if(s.task<4)return;s.solutionTime=6000;const from=s.pairTurn,to=action==='pair-align'?0:from+90;s.arc=0;tween(1600,t=>{s.pairTurn=from+(to-from)*t;drawTask()},()=>{root.querySelector('[data-pl-task-note]').innerHTML=prose(s.copy.pairRotateNote);});}
+      else if(action==='transfer-answer'){s.transfer=value;repaint();}
+      else if(action==='transfer-align'){const from=s.transferTurn;tween(1500,t=>{s.transferTurn=from*(1-t);const el=root.querySelector('.pl-transfer');if(el)el.outerHTML=transfer(s)});}
+    });
+    const observer=new ResizeObserver(()=>{if(!root.isConnected){observer.disconnect();return;}const mobile=root.clientWidth<610;if(mobile!==s.mobile){stop();s.mobile=mobile;repaint();}});observer.observe(root);repaint();
+  }}
+  function selectScene(host,scene=0){for(const root of host.querySelectorAll('[data-phase-lab]')){const control=controllers.get(root);if(control){control.token++;cancelAnimationFrame(control.frame);control.playing=false;}const s=get(root.dataset.phaseLab);s.scene=scene;root.innerHTML=contents(s);}}
+  window.VVTransformerPhaseLab={render,mount,selectScene,model:{norm,point,angle,rotate,clock,waveform,phaseAngles}};
+})();
+
 (function () {
   'use strict';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -250,7 +377,7 @@
       case 3:return `${lead()}<div class="tf-z-layout"><div>${zigzag(s)}</div><div class="tf-z-controls"><p>Melyik fázis útját követed?</p><div class="tf-choice-row">${LOWER.map((p,i)=>btn(p+'–n út','z',i,s.z===i)).join('')}</div><p class="tf-note">${t(s,'zpath',{phase:LOWER[s.z],core1:PHASES[s.z],core2:PHASES[(s.z+1)%3]})}</p><p class="tf-small-copy">${t(s,'znote')}</p></div></div>`;
       case 4:return `${lead()}<div class="tf-voltage-board"><figure><figcaption>Csillag · Y</figcaption>${shape('Y',true,false,s.measure)}<p>${formula("U_v = √3 · U_t")}</p></figure><figure><figcaption>Delta · D</figcaption>${shape('D',true,false,s.measure)}<p>${formula("U_v = U_t")}</p></figure></div><div class="tf-action-row">${btn(s.measure?'Mérj két fázisvezető között':'Mérj a tekercs két végén','measure','',s.measure)}</div>${recognition(s,'voltage',t(s,'voltagePrompt'),['230 V','400 V','690 V'],1,s.copy?.voltageFeedback||[])}<p class="tf-small-copy">${t(s,'voltageNote')}</p>`;
       case 5:return `${lead()}<div data-tf-wave>${waveform(s)}</div><div class="tf-action-row">${btn('Lépés egy nyolcad körrel','phase')}${btn('Egy teljes kör lejátszása','play')}${btn('Vissza a kezdőállapotba','phase-reset')}</div>${note(t(s,'note5'))}<p class="tf-small-copy">${t(s,'waveNote')}</p>`;
-      case 6:return windingToClock(s);
+      case 6:return window.VVTransformerPhaseLab.render(s.copy.phaseLab);
       case 7:return `${lead()}<div class="tf-hour-layout"><div>${clock(hours[s.hour])}</div><div class="tf-hour-controls"><div class="tf-choice-row" role="group" aria-label="Óraállás">${[0,1,5,6,11].map(h=>btn(h+' óra','hour',h,s.hour===h)).join('')}</div><p class="tf-hour-reading"><b>${s.hour===0?'0°':s.hour*30+'° az óramutató szerint'}</b><span>${s.copy?.hourText?.[s.hour]||''}</span></p>${note(t(s,s.hour===11?'hour11':s.hour===0?'hour0':'hourOther'))}<p class="tf-small-copy">${t(s,'arrowNote')}</p></div></div>${recognition(s,'clock',t(s,'clockPrompt'),['1','11'],1,s.copy?.clockFeedback||[])}`;
       case 8:return `${lead()}<div class="tf-group-controls" role="group" aria-label="Kapcsolási csoportpéldák">${Object.keys(groups).map(g=>btn(g,'group',g,s.group===g)).join('')}</div>${groupParts(s)}${recognition(s,'symbol',t(s,'symbolPrompt'),s.copy?.symbolOptions||[],1,s.copy?.symbolFeedback||[])}<p class="tf-small-copy tf-parallel-note">${t(s,'parallelNote')}</p>`;
       default:return '';
@@ -271,6 +398,7 @@
     panel.querySelector('[data-tf-action="next"]').textContent=s.step===8?'Vissza az elejére':'Következő';
     panel.querySelectorAll('[data-tf-action="step"]').forEach(b=>{if(Number(b.dataset.value)===s.step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
     const bridgeBack=panel.querySelector('[data-tf-action="bridge-prev"]');if(bridgeBack)bridgeBack.disabled=!(s.bridgeStage>0);
+    window.VVTransformerPhaseLab?.mount(panel);
     panel.dataset.tfStep=s.step+1;panel.dataset.tfGroup=s.group;notation(panel);
     if(focus){const buttons=[...panel.querySelectorAll('button')],target=buttons.find(b=>b.dataset.tfAction===focus.action&&b.dataset.value===focus.value);target?.focus({preventScroll:true});}
   }
@@ -299,5 +427,6 @@
     });
   }
   const matches=lesson=>lesson?.id==='machines-vector-group'||lesson?.variant==='transformer-vector-group';
-  window.VVLearningTransformers={matches,render,mount,model,netlist,angleOf,normal,groups};
+  function openBridge(host,scene=2){for(const panel of host.querySelectorAll('[data-tf-key]')){const s=stateByKey.get(panel.dataset.tfKey);if(s){stop(panel);s.step=6;update(panel,s);window.VVTransformerPhaseLab.selectScene(panel,scene);panel.scrollIntoView({block:'start',behavior:'auto'});}}}
+  window.VVLearningTransformers={matches,render,mount,model,netlist,angleOf,normal,groups,openBridge};
 })();

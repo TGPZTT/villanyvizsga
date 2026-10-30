@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const VERSION = '20261030r26';
+  const VERSION = '20261030r27';
   const esc = value => String(value).replace(/[&<>"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
   let dialog, frame, notice, returnTo, generation = 0;
   let referenceDialog, referenceReturnTo;
@@ -200,7 +200,9 @@
           frame.hidden = false;
           child.requestAnimationFrame(()=>{
             child.dispatchEvent(new child.Event('resize'));
-            const heading = doc.querySelector('h1');
+            const direct=/^(vectors|vector-task)$/.test(trigger?.dataset.learningFocus||'');
+            if(direct)child.VVLearningTransformers?.openBridge(doc.querySelector('#learnView'),trigger.dataset.learningFocus==='vector-task'?2:0);
+            const heading = doc.querySelector(direct?'[data-tf-title]':'h1');
             heading?.setAttribute('tabindex','-1'); heading?.focus({preventScroll:true});
           });
         } catch {

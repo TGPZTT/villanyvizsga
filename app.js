@@ -482,7 +482,7 @@
   function learningLinksMarkup(q,mode){
     if(mode==='exam')return '';
     const links=window.VV_LEARN?.linksForQuestion(q.id)||[];
-    return links.length?`<div class="learn-question-links"><span>Tananyag ehhez:</span>${links.map(link=>`<a href="${esc(link.href)}" data-learning-window aria-haspopup="dialog">${esc(link.title)} →</a>`).join('')}</div>`:'';
+    return links.length?`<div class="learn-question-links"><span>Tananyag ehhez:</span>${links.map(link=>`<a href="${esc(link.href)}" data-learning-window data-learning-focus="${esc(link.focus||'')}" aria-haspopup="dialog">${esc(link.title)} →</a>`).join('')}</div>`:'';
   }
   function choiceOptionMarkup(q,option,{selected,correct,show,multi,mode}){
     const outcome=show&&!q.review?(correct?(selected?'correct-selected':'correct-omitted'):(selected?'wrong-selected':'correct-rejected')):'';

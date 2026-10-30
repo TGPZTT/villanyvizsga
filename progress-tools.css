@@ -5,3 +5,9 @@
 @media(prefers-reduced-motion:reduce){.pt-dialog::backdrop{backdrop-filter:none}}
 
 .pt-practice-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 20px}.pt-practice-heading h1{margin:0}.pt-practice-summary{display:flex;align-items:center;gap:9px;padding:7px 11px;border:1px solid #c6d8cd;border-radius:8px;background:#f6faf7;color:#37634e;text-align:left;font-family:var(--sans,Arial,sans-serif);cursor:pointer}.pt-practice-summary svg{width:37px;height:37px;flex:0 0 37px}.pt-practice-summary>span{display:grid;gap:3px}.pt-practice-summary strong{font-size:14px}.pt-practice-summary [data-pt-practice-count]{font-size:12px;line-height:1.4;color:#536f60}.pt-practice-summary:hover{background:#ebf3ec}.pt-practice-summary:focus-visible{outline:3px solid #527c67;outline-offset:3px}
+
+/* R27: a checked learning sheet with a real progress ring. */
+.pt-practice-summary{gap:10px;padding:8px 13px 8px 9px;background:#f7faf6;border-color:#c1d6c8;box-shadow:0 3px 10px #294f3c06}.pt-practice-summary svg{width:48px;height:48px;flex-basis:48px}.pt-practice-summary strong{font-size:15px}.pt-practice-summary [data-pt-practice-count]{font-size:12px;font-variant-numeric:tabular-nums}.pt-practice-summary:focus-visible .sf-art-ticks{opacity:1}
+@media(hover:hover) and (pointer:fine){.pt-practice-summary:hover .sf-art-ticks{animation:sf-check-reveal .75s cubic-bezier(.23,1,.32,1)}}
+@media(max-width:650px){.pt-practice-heading{gap:10px}.pt-practice-summary{padding:6px 10px 6px 7px}.pt-practice-summary svg{width:42px;height:42px;flex-basis:42px}}
+@media(prefers-reduced-motion:reduce){.pt-practice-summary *{animation:none!important;transition:none!important}}
