@@ -1895,3 +1895,6 @@ main:not(:has(#guideView)):has(.guide-solving) { padding-top: 10px; padding-bott
  .exam-banner{padding:14px;margin-bottom:16px;gap:10px}
  .setup-grid{gap:12px;margin-bottom:16px}
 }
+
+/* Keep the banner clock square and centered over the generic span rule. */
+.exam-banner .exam-banner-icon{display:grid;place-items:center;flex:0 0 52px;width:52px;height:52px;line-height:0}

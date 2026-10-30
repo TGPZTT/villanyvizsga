@@ -166,7 +166,7 @@
       if(!list.length)return;
       launchPersonalized(list,Math.min(window.VV_SELECTION?.practiceCount()||10,list.length));
     }});
-    window.VV_ADAPTIVE?.mount({pool:()=>window.VV_SELECTION?.practicePool()||[],count:()=>window.VV_SELECTION?.practiceCount()||10,progress:()=>progress,launch:(list,meta)=>{navigate('practice');beginPractice(list,list.length,{ordered:true,reasons:meta.reasons})}});
+    window.VV_ADAPTIVE?.mount({pool:()=>window.VV_SELECTION?.practicePool()||[],allPool:()=>qlist.filter(q=>isExamPaper(q)&&!q.generated?.machineGenerated&&!q.sourceId.startsWith('generated-exam-')),count:()=>window.VV_SELECTION?.practiceCount()||10,progress:()=>progress,launch:(list,meta)=>{navigate('practice');beginPractice(list,list.length,{ordered:true,reasons:meta.reasons})}});
     setText('#navCount',qlist.length);
   }
   function renderWrongTasks(){

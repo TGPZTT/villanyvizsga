@@ -73,8 +73,23 @@
     return {questions:chosen.map(row=>row.q),meta:{available:unique.length,requested,selected:chosen.length,exploration,limitedBySimilarity:chosen.length<requested,reasons,composition}};
   }
   let uiConfig,observer,scheduled=false;
+  function quickStart(parent,placement){
+    if(!parent||!uiConfig?.allPool)return;
+    let button=parent.querySelector('[data-adaptive-quick]');
+    if(!button){
+      button=document.createElement('button');button.type='button';button.className='ap-quick-start';button.dataset.adaptiveQuick=placement;
+      button.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h3c4 0 4 10 8 10h3M14 12l3 3-3 3M3 15h3c1.1 0 2-1 2.8-2.4M11.2 7.4C12 6 12.9 5 14 5h3M14 2l3 3-3 3"/></svg><span>Személyre szabott gyakorlás</span>';
+      button.title='10 feladat minden témából. Alapfeladatokkal indul.';
+      button.addEventListener('click',()=>{const result=select(uiConfig.allPool(),10,{progress:uiConfig.progress(),topicOf:q=>root.VV_SELECTION?.topicFor(q)||q.topic||''});if(result.questions.length)uiConfig.launch(result.questions,result.meta);});
+      parent.append(button);
+    }
+    button.disabled=!uiConfig.allPool().length;
+  }
   function refreshUI(){
-    scheduled=false;const setup=document.querySelector('#practiceSetup'),start=setup?.querySelector('#startPractice'),slot=start?.closest('.sf-start-slot');
+    scheduled=false;
+    quickStart(document.querySelector('.vv-dash-hero-copy'),'home');
+    quickStart(document.querySelector('#practiceView .page-intro'),'practice');
+    const setup=document.querySelector('#practiceSetup'),start=setup?.querySelector('#startPractice'),slot=start?.closest('.sf-start-slot');
     if(!slot||start.hidden||!uiConfig)return;
     let button=slot.querySelector('[data-adaptive-start]');
     if(!button){
