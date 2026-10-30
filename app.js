@@ -71,10 +71,17 @@
     if(!window.VV_ASSETS)return;
     $$('img[data-asset-src]:not([data-asset-requested])',root).forEach(img=>{
       img.dataset.assetRequested='true';
-      window.VV_ASSETS.getURL(img.dataset.assetSrc).then(url=>{if(img.isConnected)img.src=url}).catch(()=>{
-        const figure=img.closest('.question-figure');
-        if(figure&&figure.isConnected)figure.insertAdjacentHTML('afterbegin','<div class="asset-error">Az ábra nem nyitható meg. Frissítsd az oldalt, majd próbáld újra.</div>');
-      });
+      const figure=img.closest('.question-figure'),original=Object.entries(raw.figurePresentation||{}).find(([,v])=>v.path===img.dataset.assetSrc)?.[0];
+      let usedOriginal=false;
+      const failed=()=>{
+        if(!img.isConnected)return;
+        if(original&&!usedOriginal&&window.VV_ASSETS.has(original)){usedOriginal=true;load(original,true);return;}
+        if(!figure||figure.querySelector('.asset-error'))return;
+        img.hidden=true;const message=document.createElement('div');message.className='asset-error';message.setAttribute('role','alert');message.append('Az ábra nem töltődött be. ');
+        const retry=document.createElement('button');retry.type='button';retry.className='asset-retry';retry.textContent='Újrapróbálás';retry.addEventListener('click',()=>{message.remove();usedOriginal=false;load(img.dataset.assetSrc,true)});message.append(retry);figure.prepend(message);
+      };
+      const load=(path,refresh=false)=>{img.onload=()=>{figure?.querySelector('.asset-error')?.remove();img.hidden=false;};img.onerror=failed;window.VV_ASSETS.getURL(path,{refresh}).then(url=>{if(img.isConnected){img.hidden=false;img.src=url}}).catch(failed);};
+      load(img.dataset.assetSrc);
     });
     $$('a[data-asset]:not([data-asset-requested])',root).forEach(link=>{
       link.dataset.assetRequested='true';
@@ -119,6 +126,7 @@
   }
 
   function navigate(target,{updateHash=true,replaceHash=false,scroll=true}={}){
+    window.VV_NAV?.beforeNavigate();
     if(exam&&!exam.submitted&&target!=='exam'){
       routeTo('exam',true);
       const root=$('#examSession');
@@ -442,7 +450,7 @@
       const remaining=q.options.filter(option=>!selected.includes(option.key)&&!correct.includes(option.key));
       const item=(option,status)=>`<li data-option-reason="${esc(option.key)}"><div class="reason-option-heading"><b>${esc(option.key)}. ${inlineMathText(option.text)}</b>${status?`<small>${esc(status)}</small>`:''}</div><p>${inlineMathText(q.optionReasons?.[option.key]||'')}</p></li>`;
       const incorrect=wrong.length?`<section class="answer-rationale answer-rationale-wrong"><strong>${q.review?'A jelölt válasz és a forrás eltérése':'Miért téves a jelölésed?'}</strong><ul>${wrong.map(option=>item(option,q.review?'Ezt jelölted':'Tévesen jelölted')).join('')}</ul></section>`:'';
-      const correctHtml=q.review?(right.length?`<section class="answer-rationale answer-rationale-key"><strong>A javítókulcs szerinti válasz indoklása</strong><ul>${right.map(option=>item(option,selected.includes(option.key)?'Egyezik a kulccsal':'A kulcs szerint ezt kellett volna választani')).join('')}</ul></section>`:''):(hit.length?`<section class="answer-rationale answer-rationale-correct"><strong>Miért helyes a jelölésed?</strong><ul>${hit.map(option=>item(option,'Helyesen jelölted')).join('')}</ul></section>`:'')+(omitted.length?`<section class="answer-rationale answer-rationale-omitted"><strong>${omitted.length===1?'Miért kellett volna ezt is bejelölni?':'Miért kellett volna ezeket is bejelölni?'}</strong><ul>${omitted.map(option=>item(option,'Kimaradt helyes válasz')).join('')}</ul></section>`:'');
+      const correctHtml=q.review?(right.length?`<section class="answer-rationale answer-rationale-key"><strong>A javítókulcs szerinti válasz indoklása</strong><ul>${right.map(option=>item(option,selected.includes(option.key)?'Egyezik a kulccsal':'A kulcs szerint ezt kellett volna választani')).join('')}</ul></section>`:''):(hit.length?`<section class="answer-rationale answer-rationale-correct"><strong>Miért helyes a jelölésed?</strong><ul>${hit.map(option=>item(option,'Helyesen jelölted')).join('')}</ul></section>`:'')+(omitted.length?`<section class="answer-rationale answer-rationale-omitted"><strong>${q.type==='single'?'Miért ez lett volna a helyes válasz?':omitted.length===1?'Miért kellett volna ezt is bejelölni?':'Miért kellett volna ezeket is bejelölni?'}</strong><ul>${omitted.map(option=>item(option,'Kimaradt helyes válasz')).join('')}</ul></section>`:'');
       const other=remaining.length?`<details class="answer-option-notes"><summary>A többi lehetőség indoklása</summary><ul>${remaining.map(option=>item(option,'')).join('')}</ul></details>`:'';
       return incorrect+correctHtml+other;
     }
@@ -456,7 +464,7 @@
         let reason=field.optionReasons?.[given]||field.explanation||q.numericMistakes?.find(m=>Number.isFinite(got)&&Math.abs(got-m.value)<=m.tolerance)?.reason||'';
         if(!given)reason='Ehhez a részhez még nem adtál választ.';
         else if(field.kind!=='choice'){
-          if(!Number.isFinite(got))reason='Csak számot adj meg; a mértékegységet a mező mellett feltüntetjük. Tizedesvesszőt és tizedespontot is használhatsz.';
+          if(!Number.isFinite(got))reason='Csak számot adj meg. A mértékegységet a mező mellett feltüntetjük. Tizedesvesszőt és tizedespontot is használhatsz.';
           else if(!reason){
             const ratio=right?got/right:0;
             if(Math.abs(ratio-1000)<15)reason='A beírt szám körülbelül ezerszerese a helyes értéknek. Ellenőrizd az alapegység és a kilo-/milliegység közötti átváltást a levezetésben.';
@@ -618,7 +626,7 @@
     const position=practice.index+1,total=practice.list.length,status=attemptStatus(q)==='correct'?'Sikerült':attemptStatus(q)==='retry'?'Újra gyakorlom':'Még nem értékelt';
     const feedback=practice.feedback?.[q.id];
     const actions=`${auto?'<button id="practiceCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="practiceShow" class="button ${auto?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!auto&&shown?'<button id="practiceGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="practiceHard" class="button outline" type="button">Ezt újra gyakorlom</button>`;
-    root.innerHTML=`<div class="practice-layout"><article class="practice-main"><div class="practice-mobile-head"><span>${position} / ${total} feladat</span><button id="practiceExitMobile" type="button">Kilépés</button></div>${practice.reasons?.[q.id]?`<p class="ap-reason"><strong>Személyre szabott.</strong> ${esc(practice.reasons[q.id])}</p>`:''}${questionBody(q,'practice',r,shown)}<div id="practiceFeedbackMobile" class="practice-mobile-feedback" tabindex="-1" role="status" aria-live="polite">${feedback?`<div class="feedback ${feedback.kind}">${esc(feedback.text)}</div>`:''}</div><div class="practice-mobile-actions">${auto?'<button id="practiceCheckMobile" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="practiceShowMobile" class="button ${auto?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!auto&&shown?'<button id="practiceGotItMobile" class="button outline" type="button">Megértettem</button>':''}<button id="practiceHardMobile" class="button outline" type="button">Újra gyakorlom</button><div class="practice-mobile-nav"><button id="practicePrevMobile" class="button outline" type="button" ${position===1?'disabled':''}>← Előző</button><button id="practiceNextMobile" class="button dark" type="button">${position===total?'Befejezés':'Következő →'}</button></div></div></article><aside class="practice-rail" aria-label="Gyakorlás vezérlése"><div class="practice-rail-head"><strong>Gyakorlás</strong><button id="practiceExit" type="button">Kilépés</button></div><div class="practice-rail-count">${position} <span>/ ${total} feladat</span></div><div class="progress-track"><div class="progress-fill" style="width:${position/total*100}%"></div></div><div class="question-side-detail"><span>Téma</span><b>${esc(displayTopic(q))}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(window.VV_LABELS.questionLabel(q))}</b></div><div class="question-side-detail"><span>Állapot</span><b>${status}</b></div><div class="practice-rail-actions">${actions}</div><div id="practiceFeedback" tabindex="-1" role="status" aria-live="polite">${feedback?`<div class="feedback ${feedback.kind}">${esc(feedback.text)}</div>`:''}</div><div class="practice-rail-nav"><button id="practicePrev" class="button outline" type="button" ${position===1?'disabled':''}>← Előző</button><button id="practiceNext" class="button dark" type="button">${position===total?'Befejezés':'Következő →'}</button></div></aside></div>`;
+    root.innerHTML=`<div class="practice-layout"><article class="practice-main"><div class="practice-mobile-head"><span>${position} / ${total} feladat</span><button id="practiceExitMobile" type="button">Kilépés</button></div>${practice.reasons?.[q.id]?`<p class="ap-reason"><strong>Okos gyakorlás.</strong> ${esc(practice.reasons[q.id])}</p>`:''}${questionBody(q,'practice',r,shown)}<div id="practiceFeedbackMobile" class="practice-mobile-feedback" tabindex="-1" role="status" aria-live="polite">${feedback?`<div class="feedback ${feedback.kind}">${esc(feedback.text)}</div>`:''}</div><div class="practice-mobile-actions">${auto?'<button id="practiceCheckMobile" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="practiceShowMobile" class="button ${auto?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!auto&&shown?'<button id="practiceGotItMobile" class="button outline" type="button">Megértettem</button>':''}<button id="practiceHardMobile" class="button outline" type="button">Újra gyakorlom</button><div class="practice-mobile-nav"><button id="practicePrevMobile" class="button outline" type="button" ${position===1?'disabled':''}>← Előző</button><button id="practiceNextMobile" class="button dark" type="button">${position===total?'Befejezés':'Következő →'}</button></div></div></article><aside class="practice-rail" aria-label="Gyakorlás vezérlése"><div class="practice-rail-head"><strong>Gyakorlás</strong><button id="practiceExit" type="button">Kilépés</button></div><div class="practice-rail-count">${position} <span>/ ${total} feladat</span></div><div class="progress-track"><div class="progress-fill" style="width:${position/total*100}%"></div></div><div class="question-side-detail"><span>Téma</span><b>${esc(displayTopic(q))}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(window.VV_LABELS.questionLabel(q))}</b></div><div class="question-side-detail"><span>Állapot</span><b>${status}</b></div><div class="practice-rail-actions">${actions}</div><div id="practiceFeedback" tabindex="-1" role="status" aria-live="polite">${feedback?`<div class="feedback ${feedback.kind}">${esc(feedback.text)}</div>`:''}</div><div class="practice-rail-nav"><button id="practicePrev" class="button outline" type="button" ${position===1?'disabled':''}>← Előző</button><button id="practiceNext" class="button dark" type="button">${position===total?'Befejezés':'Következő →'}</button></div></aside></div>`;
     restoreNumericResponse(root,q,r);
     bindOptions(root);
     const preserve=()=>{practice.responses[q.id]=selectedFrom(root,q)};
@@ -653,10 +661,10 @@
     beginPractice(pool,count);
   }
   function beginPractice(pool,count,{ordered=false,reasons=null}={}){
-    practice={list:(ordered?pool:shuffle(pool)).slice(0,count),index:0,responses:{},shown:{},hints:{},feedback:{},reasons};$('#practiceSetup').classList.add('hidden');$('#practiceSession').classList.remove('hidden');$('#practiceView').classList.add('practice-running');renderPractice();window.scrollTo({top:0,behavior:'instant'});const heading=$('#practiceSession .question-prompt');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true})}
+    practice={list:(ordered?pool:shuffle(pool)).slice(0,count),index:0,responses:{},shown:{},hints:{},feedback:{},reasons};$('#practiceSetup').classList.add('hidden');$('#practiceSession').classList.remove('hidden');$('#practiceView').classList.add('practice-running');if(reasons)window.VV_ADAPTIVE?.remember(practice.list);renderPractice();window.scrollTo({top:0,behavior:'instant'});const heading=$('#practiceSession .question-prompt');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true})}
   }
   function launchPersonalized(pool,count){
-    const selected=window.VV_ADAPTIVE?.select(pool,count,{progress,topicOf:q=>window.VV_SELECTION?.topicFor(q)||q.topic});
+    const selected=window.VV_ADAPTIVE?.plan(pool,count,{progress,topicOf:q=>window.VV_SELECTION?.topicFor(q)||q.topic});
     navigate('practice');beginPractice(selected?.questions||pool,selected?.questions.length||count,{ordered:!!selected,reasons:selected?.meta.reasons});
   }
   const EXAM_AREAS=[
@@ -912,6 +920,10 @@
       renderWrongTasks();if(view==='home')renderHome();if(view==='bank')renderBank();if(view==='progress')renderProgressManager();
     });
     window.addEventListener('vv-storage-clear',()=>resetSavedResults({fromStorage:true}));
+    document.addEventListener('vv-question-learning-help',()=>{
+      if(view==='question'&&questionState){const q=byId.get(questionState.ids[questionState.index]);if(q)noteSupport(q,questionState,'hint');}
+      else if(view==='practice'&&practice){const q=practice.list[practice.index];if(q)noteSupport(q,practice,'hint');}
+    });
     window.addEventListener('vv-storage-restored',()=>{
       window.VV_TIMING?.pause();
       const incoming=seed();Object.keys(progress).forEach(id=>delete progress[id]);Object.assign(progress,incoming);

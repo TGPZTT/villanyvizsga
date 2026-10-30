@@ -17,9 +17,10 @@
   }
 
   async function fetchBytes(path) {
-    const response = await fetch(path, { cache: 'no-store' });
-    if (!response.ok) throw new Error('fetch');
-    return new Uint8Array(await response.arrayBuffer());
+    for(let attempt=0;attempt<3;attempt++){
+      try{const response=await fetch(path,{cache:'no-store'});if(!response.ok)throw new Error('fetch');return new Uint8Array(await response.arrayBuffer());}
+      catch(error){if(attempt===2)throw error;await new Promise(resolve=>setTimeout(resolve,200*(attempt+1)));}
+    }
   }
 
   async function decryptBytes(key, bytes, context) {
@@ -44,9 +45,10 @@
     const cache = new Map();
     return Object.freeze({
       has(path) { return !!assetLookup(map, path); },
-      async getURL(path) {
+      async getURL(path,{refresh=false}={}) {
         const info = assetLookup(map, path);
         if (!info || !/^[A-Za-z0-9_-]{8,128}$/.test(String(info.id || ''))) throw new Error('asset');
+        if(refresh)cache.delete(info.id);
         if (cache.has(info.id)) return cache.get(info.id);
         const pending = (async () => {
           const bytes = await fetchBytes(`protected/assets/${info.id}.vve`);
@@ -115,7 +117,7 @@
     document.querySelector('.shell').hidden = false;
     document.querySelector('.skip').hidden = false;
     const script = document.createElement('script');
-    script.src = 'app.js?v=20261029r21';
+    script.src = 'app.js?v=20261030r26';
     script.onerror = () => {
       document.querySelector('.shell').hidden = true;
       screen.hidden = false;

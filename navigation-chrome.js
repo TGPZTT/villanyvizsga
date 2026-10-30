@@ -3,8 +3,35 @@
   const paths={home:'m3 11 9-8 9 8M5 10v11h14V10M9 21v-7h6v7',learn:'M3 4h7l2 2 2-2h7v15h-7l-2 2-2-2H3zM12 6v15',bank:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',practice:'m4 16 11-11 4 4L8 20l-5 1zM13 7l4 4',exam:'M9 2h6M12 2v3M18 6l2-2M12 10v5l3 2M21 14a9 9 0 1 1-18 0 9 9 0 0 1 18 0',guide:'M19 3H5l7 9-7 9h14'};
   const svg=(p,cls='')=>`<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${p}"/></svg>`;
   let initialized=false;
+  let backBar,currentRoute=null,returning=null;const trail=[];
+  const route=hash=>/^#(?:home|bank|practice|exam|guide|learn|question|progress)(?:\/|$)/.test(hash||'')?hash:(/szamolas\.html$/.test(location.pathname)?'#guide':'#home');
+  const routeKey=hash=>hash.startsWith('#question/')?'#question':hash.startsWith('#learn/')?hash.split('/').slice(0,3).join('/'):hash;
+  function updateBack(){if(backBar)backBar.hidden=!currentRoute||['#home','#question'].includes(routeKey(currentRoute.hash))||document.body.classList.contains('exam-running');}
+  function beforeNavigate(){if(currentRoute)currentRoute.y=scrollY;}
+  function trackRoute(hash=location.hash){
+    const next=route(hash);if(!currentRoute){currentRoute={hash:next,y:scrollY};updateBack();return;}
+    if(routeKey(next)===routeKey(currentRoute.hash)){currentRoute.hash=next;updateBack();return;}
+    if(returning){const destination=returning;returning=null;currentRoute={hash:next,y:destination.y};requestAnimationFrame(()=>requestAnimationFrame(()=>scrollTo({top:destination.y,behavior:'instant'})));}
+    else{if(trail.at(-1)&&routeKey(trail.at(-1).hash)===routeKey(next))trail.pop();else{trail.push({...currentRoute});if(trail.length>32)trail.shift();}currentRoute={hash:next,y:0};}
+    updateBack();
+  }
+  function goBack(){
+    if(document.body.classList.contains('exam-running'))return;
+    let destination=trail.pop();while(destination&&routeKey(destination.hash)===routeKey(currentRoute?.hash||''))destination=trail.pop();
+    if(!destination)destination={hash:currentRoute?.hash.startsWith('#learn/')?'#learn':'#home',y:0};
+    if(/szamolas\.html$/.test(location.pathname)){location.assign('index.html'+destination.hash);return;}
+    returning=destination;location.replace(destination.hash);
+  }
+  function setupBack(){
+    const main=document.querySelector('#main');if(!main)return;
+    backBar=document.createElement('div');backBar.className='vv-back-bar';backBar.hidden=true;
+    backBar.innerHTML='<button type="button" class="vv-back-button" aria-label="Vissza az előző oldalra">'+svg('M19 12H5m6-6-6 6 6 6')+'<span>Vissza</span></button>';main.prepend(backBar);backBar.querySelector('button').addEventListener('click',goBack);
+    window.addEventListener('hashchange',()=>trackRoute());document.addEventListener('vv-learning-route',event=>trackRoute('#'+event.detail.route));
+    window.addEventListener('scroll',()=>{if(currentRoute&&!returning)currentRoute.y=scrollY},{passive:true});
+    new MutationObserver(updateBack).observe(document.body,{attributes:true,attributeFilter:['class']});trackRoute();
+  }
   function setup(){
-    if(initialized)return;initialized=true;
+    if(initialized)return;initialized=true;setupBack();
     const side=document.querySelector('.sidebar'),menu=document.querySelector('#menuToggle');if(!side)return;
     const mq=matchMedia('(max-width:950px)'),motion=matchMedia('(prefers-reduced-motion:reduce)');
     let collapsed=window.VV_STORAGE?.get('villanyvizsga-nav-collapsed')==='true';
@@ -36,6 +63,6 @@
     // Guide pages are standalone and have no app initializer.
     if(motion.matches)document.body.classList.add('nav-reduced-motion');
   }
-  window.VV_NAV=Object.freeze({setup,icon:view=>svg(paths[view]||paths.home)});
+  window.VV_NAV=Object.freeze({setup,beforeNavigate,back:goBack,icon:view=>svg(paths[view]||paths.home)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
 })();

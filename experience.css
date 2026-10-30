@@ -1898,3 +1898,7 @@ main:not(:has(#guideView)):has(.guide-solving) { padding-top: 10px; padding-bott
 
 /* Keep the banner clock square and centered over the generic span rule. */
 .exam-banner .exam-banner-icon{display:grid;place-items:center;flex:0 0 52px;width:52px;height:52px;line-height:0}
+
+.asset-retry{font:600 14px/1.4 var(--sans,Arial,sans-serif);margin-left:7px;padding:6px 10px;border:1px solid #b87360;border-radius:5px;background:#fff;color:#8d452f;cursor:pointer}.asset-retry:focus-visible{outline:3px solid #8d452f;outline-offset:3px}
+
+.question-figure img[hidden]{display:none}

@@ -23,7 +23,7 @@
     }
     return Object.fromEntries(Object.entries(values).map(([key,list])=>{list.sort((a,b)=>a-b);return [key,list.length>=5?Math.max(.25,Math.min(4,list[Math.floor(list.length/2)])):1];}));
   }
-  function describe(question,row,{now=Date.now(),baseline=1}={}){
+  function describe(question,row,{now=Date.now(),baseline=1,conceptError=0}={}){
     const results=logs(row),last=results.at(-1),level=state(row),reasons=[];
     let weight=level==='new'?6.2:row.status==='retry'?8.4:level==='repeated'?1.1:last?4:2.6;
     if(level==='new')reasons.push('Ezt a feladatot még nem oldottad meg.');
@@ -42,6 +42,7 @@
       weight+=support.solutionUsed?2.2:1.8;
       reasons.unshift(support.solutionUsed?'Legutóbb megnézted a megoldást.':'Legutóbb támpontot kértél.');
     }
+    if(conceptError>(last?.at||row?.at||0)){weight+=1.6;reasons.unshift('A kapcsolódó lecke ellenőrző kérdésénél még tévesztettél.');}
     const active=time(last?.activeMs),relative=active/(expected(question)*Math.max(.25,Math.min(4,Number(baseline)||1)));
     if(relative>1.8){weight+=Math.min(.75,(relative-1.8)*.3);reasons.push('Ennél több aktív időre volt szükséged.');}
     const stamp=Number(last?.at||row?.at)||0,age=stamp>0?Math.max(0,now-stamp):Infinity;
@@ -62,16 +63,27 @@
     for(const row of rows){cursor-=weight(row);if(cursor<0)return row;}
     return rows.at(-1);
   }
-  function select(pool,count,{progress={},now=Date.now(),random=Math.random,topicOf=q=>q.topic||''}={}){
+  function select(pool,count,{progress={},now=Date.now(),random=Math.random,topicOf=q=>q.topic||'',recent=[],lessonErrors={}}={}){
     const unique=[...new Map((Array.isArray(pool)?pool:[]).filter(q=>q&&q.id!==undefined).map(q=>[String(q.id),q])).values()];
     const requested=Math.max(0,Math.min(unique.length,Math.floor(Number(count)||0))),baseline=baselines(unique,progress),reasons={},composition={new:0,repeat:0,repeated:0};
-    const rows=unique.map(q=>({q,id:String(q.id),family:family(q),figures:figures(q),tokens:tokens(q),topic:topicOf(q),...describe(q,progress[String(q.id)],{now,baseline:baseline[kind(q)]})}));
+    const rows=unique.map(q=>{const f=family(q),times=recent.filter(r=>r.id===String(q.id)).length,close=f&&recent.some(r=>r.family===f),factor=times?Math.max(.28,Math.pow(.55,times)):close?.65:1;const info=describe(q,progress[String(q.id)],{now,baseline:baseline[kind(q)],conceptError:lessonErrors[String(q.id)]||0});return {q,id:String(q.id),family:f,figures:figures(q),tokens:tokens(q),topic:topicOf(q),...info,weight:info.weight*factor};});
     const chosen=[],topics=new Map();let candidates=[...rows],exploration=false;
     const add=row=>{chosen.push(row);composition[row.state]++;reasons[row.id]=row.reasons[0];topics.set(row.topic,(topics.get(row.topic)||0)+1);candidates=candidates.filter(other=>other.id!==row.id&&!related(row,other));};
     if(requested){const fresh=candidates.filter(row=>row.state==='new');if(fresh.length){add(draw(fresh,row=>row.weight,random));exploration=true;}}
     while(chosen.length<requested&&candidates.length)add(draw(candidates,row=>row.weight/(1+.45*(topics.get(row.topic)||0)),random));
     return {questions:chosen.map(row=>row.q),meta:{available:unique.length,requested,selected:chosen.length,exploration,limitedBySimilarity:chosen.length<requested,reasons,composition}};
   }
+  const recentSets=[];
+  function remember(questions){recentSets.push(questions.map(q=>({id:String(q.id),family:family(q)})));if(recentSets.length>2)recentSets.shift();}
+  function lessonErrors(){
+    let checks={};try{checks=JSON.parse(root.VV_STORAGE?.get('villanyvizsga-learning-v1'))?.checks||{}}catch{}
+    const source=root.VV_LEARNING,out={};if(!source?.chapters)return out;
+    const links=new Map();for(const chapter of source.chapters)for(const lesson of chapter.lessons)links.set(lesson.id,new Set(lesson.questionIds||[]));
+    for(const [qid,ids]of Object.entries(source.questionLinks||{}))for(const id of Array.isArray(ids)?ids:[ids])links.get(id)?.add(qid);
+    for(const [id,row]of Object.entries(checks))if(row?.correct===false&&Number.isFinite(row.at))for(const qid of links.get(id)||[])out[String(qid)]=Math.max(out[String(qid)]||0,row.at);
+    return out;
+  }
+  function plan(pool,count,options={}){return select(pool,count,{...options,recent:recentSets.flat(),lessonErrors:lessonErrors()});}
   let uiConfig,observer,scheduled=false;
   const quick={count:10,kinds:new Set(['papers'])};
   const sourceKind=q=>q.generated?.machineGenerated||q.sourceId?.startsWith('generated-exam-')?'generated':root.VV_LABELS?.sourceKind(q)==='Versenyfeladat'?'competition':'papers';
@@ -81,11 +93,11 @@
     let panel=parent.querySelector('[data-adaptive-quick-panel]');
     if(!panel){
       panel=document.createElement('section');panel.className='ap-quick';panel.dataset.adaptiveQuickPanel='';panel.setAttribute('aria-labelledby','apQuickTitle');
-      panel.innerHTML='<h2 id="apQuickTitle" class="ap-quick-title">Személyre szabott gyakorlás</h2><div class="ap-quick-count" role="group" aria-label="Feladatok száma">'+[10,20,30].map(n=>'<button type="button" data-quick-count="'+n+'" aria-pressed="'+(quick.count===n)+'">'+n+'</button>').join('')+'</div><div class="ap-quick-sources" role="group" aria-label="További feladatcsoportok"><label><input type="checkbox" data-quick-kind="generated"><span>Géppel generált</span></label><label><input type="checkbox" data-quick-kind="competition"><span>Versenyfeladatok</span></label></div><button type="button" class="ap-quick-start" data-adaptive-quick="practice"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h3c4 0 4 10 8 10h3M14 12l3 3-3 3M3 15h3c1.1 0 2-1 2.8-2.4M11.2 7.4C12 6 12.9 5 14 5h3M14 2l3 3-3 3"/></svg><span>Indítás</span></button>';
+      panel.innerHTML='<h2 id="apQuickTitle" class="ap-quick-title">Okos gyakorlás</h2><div class="ap-quick-count" role="group" aria-label="Feladatok száma">'+[10,20,30].map(n=>'<button type="button" data-quick-count="'+n+'" aria-pressed="'+(quick.count===n)+'">'+n+'</button>').join('')+'</div><div class="ap-quick-sources" role="group" aria-label="További feladatcsoportok"><label><input type="checkbox" data-quick-kind="generated"><span>Géppel generált</span></label><label><input type="checkbox" data-quick-kind="competition"><span>Versenyfeladatok</span></label></div><button type="button" class="ap-quick-start" data-adaptive-quick="practice"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="11" height="11" rx="2.5"/><path d="M7 2v2.5M13 2v2.5M7 15.5V18M13 15.5V18M2 7h2.5M2 13h2.5M15.5 7H18M15.5 13H18M7.5 12.5l5-5M7.5 7.5l5 5"/><circle class="ap-smart-node" cx="10" cy="10" r="1.8" fill="currentColor"/></svg><span>Indítás</span></button>';
       panel.addEventListener('click',event=>{const count=event.target.closest('[data-quick-count]');if(count){quick.count=Number(count.dataset.quickCount);panel.querySelectorAll('[data-quick-count]').forEach(b=>b.setAttribute('aria-pressed',String(Number(b.dataset.quickCount)===quick.count)));}});
       panel.querySelectorAll('[data-quick-kind]').forEach(input=>{input.checked=quick.kinds.has(input.dataset.quickKind)});
       panel.addEventListener('change',event=>{const input=event.target.closest('[data-quick-kind]');if(input)input.checked?quick.kinds.add(input.dataset.quickKind):quick.kinds.delete(input.dataset.quickKind);panel.querySelector('[data-adaptive-quick]').disabled=!quickPool().length;});
-      panel.querySelector('[data-adaptive-quick]').addEventListener('click',()=>{const result=select(quickPool(),quick.count,{progress:uiConfig.progress(),topicOf:q=>root.VV_SELECTION?.topicFor(q)||q.topic||''});if(result.questions.length)uiConfig.launch(result.questions,result.meta);});
+      panel.querySelector('[data-adaptive-quick]').addEventListener('click',()=>{const result=plan(quickPool(),quick.count,{progress:uiConfig.progress(),topicOf:q=>root.VV_SELECTION?.topicFor(q)||q.topic||''});if(result.questions.length)uiConfig.launch(result.questions,result.meta);});
       parent.append(panel);
     }
     panel.querySelector('[data-adaptive-quick]').disabled=!quickPool().length;
@@ -98,9 +110,9 @@
     if(!slot||start.hidden||!uiConfig)return;
     let button=slot.querySelector('[data-adaptive-start]');
     if(!button){
-      button=document.createElement('button');button.type='button';button.className='button outline ap-start';button.dataset.adaptiveStart='';button.textContent='Személyre szabott';button.title='A hibákból, a segítségkérésből és a tényleges megoldásokból állít össze gyakorlást.';
+      button=document.createElement('button');button.type='button';button.className='button outline ap-start';button.dataset.adaptiveStart='';button.textContent='Okos gyakorlás';button.title='A hibákból, a segítségkérésből és a tényleges megoldásokból állít össze gyakorlást.';
       button.addEventListener('click',()=>{
-        const result=select(uiConfig.pool(),uiConfig.count(),{progress:uiConfig.progress(),topicOf:q=>root.VV_SELECTION?.topicFor(q)||q.topic||''});
+        const result=plan(uiConfig.pool(),uiConfig.count(),{progress:uiConfig.progress(),topicOf:q=>root.VV_SELECTION?.topicFor(q)||q.topic||''});
         if(result.questions.length)uiConfig.launch(result.questions,result.meta);
       });
       slot.append(button);
@@ -115,5 +127,5 @@
     if(!observer){observer=new MutationObserver(scheduleUI);observer.observe(setup,{childList:true,subtree:true});setup.addEventListener('change',scheduleUI);}
     scheduleUI();
   }
-  root.VV_ADAPTIVE=Object.freeze({select,describe,mount});
+  root.VV_ADAPTIVE=Object.freeze({select,describe,plan,remember,mount});
 })(typeof window==='undefined'?globalThis:window);

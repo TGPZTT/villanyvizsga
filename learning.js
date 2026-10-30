@@ -752,6 +752,7 @@
     if (!host) return;
     const route = String(hash || '').replace(/^#/, '');
     if (!/^learn(?:\/|$)/.test(route)) return;
+    document.dispatchEvent(new CustomEvent('vv-learning-route',{detail:{route}}));
     if (!data) { host.innerHTML = '<div class="learn-loading" role="status">A tananyag betöltése…</div>'; return; }
     const parts = route.split('/').map(part => { try { return decodeURIComponent(part); } catch { return ''; } });
     let lesson = parts[2] ? lessonMap.get(parts[2]) : parts[1] ? chapters.find(chapter => chapter.id === parts[1])?.lessons[0] : null;

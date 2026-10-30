@@ -69,10 +69,10 @@
   const model=netlist;
   const t=(s,key,values={})=>String(s.copy?.[key]??'').replace(/\{(\w+)\}/g,(_,k)=>esc(values[k]??''));
   const title=s=>s.copy?.titles?.[s.step]||'Transzformátorok';
-  const shortTitles=['Alapok','Y · csillag','D · delta','Z · zegzug','400 / 230 V','Nyíl és hullám','Mérőpontok','Órajel','Teljes jel'];
+  const shortTitles=['Alapok','Y · csillag','D · delta','Z · zegzug','400 / 230 V','Nyíl és hullám','Rajz → vektor','Órajel','Teljes jel'];
   const stateByKey=new Map(),mounted=new WeakSet(),playing=new WeakMap();let serial=0;
   const defaults=()=>({step:0,flux:false,y:false,d:false,z:0,measure:false,phase:0,merged:false,pair:0,hour:11,group:'Dyn11',part:'hv',answers:{}});
-  const label=(x,y,s,cls='',anchor='middle')=>`<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${esc(s).replace(/U_([A-Za-z]+)/g,'U<tspan baseline-shift="sub" font-size="75%">$1</tspan>')}</text>`;
+  const label=(x,y,s,cls='',anchor='middle')=>`<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${esc(s).replace(/U_([A-Za-z][A-Za-z0-9]*)/g,'U<tspan baseline-shift="sub" font-size="75%">$1</tspan>')}</text>`;
   const dot=(x,y,cls='')=>`<circle cx="${x}" cy="${y}" r="3.5" class="tf-terminal ${cls}"/>`;
   const wire=(d,from='',to='',cls='')=>`<path d="${d}" class="tf-wire ${cls}" ${from?`data-tf-wire data-from="${from}" data-to="${to}"`:''}/>`;
   const svg=(body,w,h,aria,cls='')=>`<svg class="tf-drawing ${cls}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(aria)}">${body}</svg>`;
@@ -136,13 +136,14 @@
     const u=scale(v,1/length(v)),end=add({x:cx,y:cy},scale(u,r)),base=sub(end,scale(u,8)),p={x:-u.y*4,y:u.x*4};
     return `<g class="tf-vector tf-${side} ${cls}" data-side="${side}"><path data-tf-arrow-shaft data-side="${side}" d="M${cx} ${cy}L${end.x} ${end.y}"/><path d="M${base.x+p.x} ${base.y+p.y}L${end.x} ${end.y}L${base.x-p.x} ${base.y-p.y}"/></g>`;
   }
-  function clock(group,pair=0,rotation=0,labels=true) {
+  function clock(group,pair=0,rotation=0,labels=true,phasePair=false) {
     const m=model(group,rotation),cx=145,cy=145;let b=`<circle cx="145" cy="145" r="111" class="tf-clock-rim"/>`;
     for(let i=0;i<12;i++){const a=point(i*30,104,cx,cy),e=point(i*30,110,cx,cy),t=point(i*30,128,cx,cy);b+=wire(`M${a.x} ${a.y}L${e.x} ${e.y}`);b+=label(t.x,t.y+5,i||12,'tf-hour');}
-    const align=angleOf(m.hvLine[pair]),h=rotate(m.hvLine[pair],align),l=rotate(m.lvLine[pair],align);
-    b+=arrow(cx,cy,h,88,'hv')+arrow(cx,cy,l,76,'lv')+dot(cx,cy,'tf-junction');
-    if(labels){b+=label(159,69,'U_'+PHASES[pair]+PHASES[(pair+1)%3],'tf-vector-label','start');const p=add({x:cx,y:cy},scale(l,86/length(l))),same=m.clock===0;b+=label(same?130:p.x+(p.x<cx?-8:10),same?84:p.y+5,'U_'+LOWER[pair]+LOWER[(pair+1)%3],'tf-vector-label',same||p.x<cx?'end':'start');}
-    return svg(b,290,290,`${group}. A nagyobb oldal vonali feszültsége 12-n; a kisebb oldal megfelelő feszültsége ${m.clock} óránál. Normalizált nyílhosszak.`,'tf-clock');
+    const upper=phasePair?m.hvPhase:m.hvLine,lower=phasePair?m.lvPhase:m.lvLine;
+    const align=angleOf(upper[pair]),h=rotate(upper[pair],align),l=rotate(lower[pair],align);
+    b+='<g class="tf-clock-pair">';b+=arrow(cx,cy,h,88,'hv')+arrow(cx,cy,l,76,'lv')+dot(cx,cy,'tf-junction');
+    if(labels){b+=label(159,69,'U_'+PHASES[pair]+(phasePair?'':PHASES[(pair+1)%3]),'tf-vector-label','start');const p=add({x:cx,y:cy},scale(l,86/length(l))),same=m.clock===0;b+=label(same?130:p.x+(p.x<cx?-8:10),same?84:p.y+5,'U_'+LOWER[pair]+(phasePair?'':LOWER[(pair+1)%3]),'tf-vector-label',same||p.x<cx?'end':'start');}
+    b+='</g>';return svg(b,290,290,`${group}. A nagyobb oldal ${phasePair?'fázis':'vonali'}feszültsége 12-n; a kisebb oldal megfelelő feszültsége ${m.clock} óránál. Normalizált nyílhosszak.`,'tf-clock');
   }
   function waveform(s) {
     const phase=normal(s.phase),theta=phase*Math.PI/180,cx=103,cy=135,r=65;
@@ -156,8 +157,9 @@
     return `<div class="tf-wave-desktop">${svg(b,570,275,'A feszültség a CCW forgó nyíl függőleges vetülete, u=sin(theta). Jelenlegi fázis '+Math.round(phase)+' fok.','tf-waveform')}</div><div class="tf-wave-mobile">${svg(mobileArrow,310,210,'Feszültségnyíl és függőleges vetülete. '+Math.round(phase)+' fok.')}${svg(mobileWave,310,190,'Ugyanazon időpillanat a szinuszos feszültségen. '+Math.round(phase)+' fok.')}</div>`;
   }
   function pairedMeasurement(s) {
-    if(s.merged)return `<div class="tf-pair-clock">${clock('Dyn11',s.pair)}<div class="tf-key"><span class="tf-key-hv">Nagyobb oldal: U_${PHASES[s.pair]+PHASES[(s.pair+1)%3]}</span><span class="tf-key-lv">Kisebb oldal: U_${LOWER[s.pair]+LOWER[(s.pair+1)%3]}</span><small>${t(s,'normalizedNote')}</small></div></div>`;
-    const m=model('Dyn11'),i=s.pair,upper=PHASES[i]+PHASES[(i+1)%3],lower=LOWER[i]+LOWER[(i+1)%3];
+    const group=s.bridgeGroup||'Dyn11';
+    if(s.merged)return `<div class="tf-pair-clock">${clock(group,s.pair)}<div class="tf-key"><span class="tf-key-hv">Nagyobb oldal: U_${PHASES[s.pair]+PHASES[(s.pair+1)%3]}</span><span class="tf-key-lv">Kisebb oldal: U_${LOWER[s.pair]+LOWER[(s.pair+1)%3]}</span><small>${t(s,'normalizedNote')}</small></div></div>`;
+    const m=bridgeModel(group),i=s.pair,upper=PHASES[i]+PHASES[(i+1)%3],lower=LOWER[i]+LOWER[(i+1)%3];
     const mini=(y,letters,side,v)=>`${label(20,y+23,side==='hv'?'Nagyobb oldal':'Kisebb oldal','tf-caption','start')}${wire(`M38 ${y+56}H137M38 ${y+118}H137`)}${dot(38,y+56)}${dot(38,y+118)}${label(19,y+62,letters[0],'tf-terminal-name')}${label(19,y+124,letters[1],'tf-terminal-name')}<path d="M85 ${y+56}V${y+118}" class="tf-measure"/><circle cx="85" cy="${y+87}" r="17" class="tf-meter"/>${label(85,y+93,'V','tf-meter-text')}${label(143,y+92,'U_'+letters,'tf-vector-label','start')}${arrow(250,y+87,v,48,side)}`;
     return svg(mini(0,upper,'hv',m.hvLine[i])+mini(165,lower,'lv',m.lvLine[i]),320,325,'Azonos sorrendű vonali feszültségpár mérőpontjai. A megfelelő feszültségnyilak külön kezdőpontban.','tf-measure-pairs');
   }
@@ -189,6 +191,44 @@
     b+=label(180,264,kind==='Y'?(reverse?'Fordított tekercsvégek a vonalon':'Három tekercsvég közös pontban'):'Három tekercs zárt hurokban','tf-small');
     return svg(b,365,280,(hv?'Nagyobb':'Kisebb')+' feszültségű oldal. '+kind+' netlista, minden tekercs 1-es vége pontozott.','tf-netlist');
   }
+  function bridgeModel(group){return model(group,angleOf(model(group).hvCoil[0]));}
+  function bridgePhase(m,side){
+    const hv=side==='hv',phase=hv?m.hvPhase:m.lvPhase,letters=hv?PHASES:LOWER,c={x:150,y:140},r=70/length(phase[0]),tips=phase.map(v=>add(c,scale(v,r)));
+    let b='';
+    if(hv&&m.spec.hv!=='Y')tips.forEach((p,i)=>{const end=tips[(i+1)%3];b+=wire(`M${p.x} ${p.y}L${end.x} ${end.y}`);});
+    phase.forEach((v,i)=>{b+=arrow(c.x,c.y,v,70,side,'tf-bridge-phase');const p=add(c,scale(v,94/length(v)));b+=label(p.x,p.y+5,letters[i],'tf-terminal-name');});
+    const start=tips[1],end=tips[0],d=sub(end,start);b+=arrow(start.x,start.y,d,length(d),side,'tf-bridge-line');
+    const mid=scale(add(start,end),.5);b+=label(mid.x+14,mid.y+5,'U_'+letters[0]+letters[1],'tf-vector-label','start');
+    b+=dot(c.x,c.y)+label(c.x-10,c.y+24,hv&&m.spec.hv!=='Y'?'segédpont':hv?'O':'o','tf-small','end');
+    return svg(b,300,265,(hv?'Primer':'Szekunder')+' kapocspontok és az első két kapocs közötti vonali feszültség.','tf-bridge-phasors');
+  }
+  function bridgeCoil(side){
+    const cap=side==='hv'?'A':'a';let b=wire('M65 55V80M65 128V160')+coil(65,80,48)+dot(65,55)+dot(65,160)+label(65,37,cap+'1','tf-terminal-name')+label(65,187,cap+'2','tf-terminal-name')+`<circle cx="55" cy="83" r="3" class="tf-polarity"/>`;
+    b+=arrow(108,160,{x:0,y:-1},100,side)+`<g class="tf-bridge-float">${arrow(228,160,{x:0,y:-1},100,side)}</g>`+label(228,192,'U_'+cap+'1'+cap+'2','tf-vector-label');
+    return svg(b,300,220,'Az 1-es és 2-es tekercsvég közötti feszültség nyila megjelenik fázorként.','tf-bridge-coil');
+  }
+  function windingToClock(s){
+    const group=s.bridgeGroup||'Dy11',m=bridgeModel(group),stage=s.bridgeStage||0;
+    const captions=s.copy?.bridgeCaptions||[];
+    let body='',explanation='';
+    if(stage===0){
+      const highlight=side=>conventionalDrawing(m,side).replace('</svg>','<rect x="47" y="53" width="65" height="108" rx="6" class="tf-bridge-highlight"/></svg>');
+      body=`<div class="tf-bridge-grid"><figure><figcaption>Primer: A1–A2</figcaption>${highlight('hv')}</figure><figure><figcaption>Szekunder: a1–a2</figcaption>${highlight('lv')}</figure></div>`;
+      explanation=t(s,'bridgePairNote');
+    }else if(stage===1){
+      body=`<div class="tf-bridge-grid"><figure><figcaption>Primer tekercsfeszültség</figcaption>${bridgeCoil('hv')}</figure><figure><figcaption>Szekunder tekercsfeszültség</figcaption>${bridgeCoil('lv')}</figure></div>`;
+      explanation=t(s,'bridgeCoilNote');
+    }else if(stage===2){
+      body=`<div class="tf-bridge-grid"><figure><figcaption>U_AB: B-től A-ig</figcaption>${bridgePhase(m,'hv')}</figure><figure><figcaption>U_ab: b-től a-ig</figcaption>${bridgePhase(m,'lv')}</figure></div>`;
+      explanation=[t(s,group==='Dy11'?'bridgeDeltaNote':'bridgeStarNote'),t(s,'bridgeDifference'),t(s,group==='Dy11'?'bridgeDeltaCenter':'bridgeStarCenter')].join(' ');
+    }else if(stage===3){body=pairedMeasurement({...s,bridgeGroup:group,pair:0,merged:false});explanation=t(s,'bridgeMeasureNote');}
+    else {
+      const vectors=s.bridgePhases?m.hvPhase:m.hvLine,start=((angleOf(vectors[0])+180)%360)-180;
+      body=`<div class="tf-bridge-clock" style="--tf-bridge-angle:${start}deg">${clock(group,0,0,true,!!s.bridgePhases)}<p class="tf-bridge-result">${m.clock} · 30° = ${m.clock*30}° → ${group}</p></div><div class="tf-action-row">${btn(s.bridgePhases?'Vissza a vonali nyilakhoz':'U_A és U_a: így olvasd a feladat ábráját','bridge-phases','',!!s.bridgePhases)}</div>`;
+      explanation=t(s,s.bridgePhases?(group==='Dy11'?'bridgePhaseNote':'bridgePhaseStarNote'):'bridgeClockNote');
+    }
+    return `<div class="tf-action-row">${['Dy11','Yy6'].map(g=>btn(g,'bridge-group',g,group===g)).join('')}</div><h4 class="tf-bridge-caption">${captions[stage]}</h4><div class="tf-bridge-board" data-bridge-stage="${stage}">${body}</div>${note(explanation)}<div class="tf-action-row tf-bridge-controls">${btn('Vissza','bridge-prev')}<output>${stage+1} / 5</output>${btn(stage===4?'Újra':'Tovább','bridge-next')}</div>`;
+  }
   function recognition(s,id,prompt,options,correct,feedback) {
     const chosen=s.answers[id];return `<div class="tf-quiz"><p class="tf-question">${prompt}</p><div class="tf-choice-row">${options.map((t,i)=>btn(t,'answer',id+':'+i,chosen===i)).join('')}</div><p class="tf-feedback ${chosen===undefined?'':chosen===correct?'tf-correct':'tf-rethink'}" aria-live="polite">${chosen===undefined?'Válassz, majd nézd meg az indoklást.':feedback[chosen]}</p></div>`;
   }
@@ -210,7 +250,7 @@
       case 3:return `${lead()}<div class="tf-z-layout"><div>${zigzag(s)}</div><div class="tf-z-controls"><p>Melyik fázis útját követed?</p><div class="tf-choice-row">${LOWER.map((p,i)=>btn(p+'–n út','z',i,s.z===i)).join('')}</div><p class="tf-note">${t(s,'zpath',{phase:LOWER[s.z],core1:PHASES[s.z],core2:PHASES[(s.z+1)%3]})}</p><p class="tf-small-copy">${t(s,'znote')}</p></div></div>`;
       case 4:return `${lead()}<div class="tf-voltage-board"><figure><figcaption>Csillag · Y</figcaption>${shape('Y',true,false,s.measure)}<p>${formula("U_v = √3 · U_t")}</p></figure><figure><figcaption>Delta · D</figcaption>${shape('D',true,false,s.measure)}<p>${formula("U_v = U_t")}</p></figure></div><div class="tf-action-row">${btn(s.measure?'Mérj két fázisvezető között':'Mérj a tekercs két végén','measure','',s.measure)}</div>${recognition(s,'voltage',t(s,'voltagePrompt'),['230 V','400 V','690 V'],1,s.copy?.voltageFeedback||[])}<p class="tf-small-copy">${t(s,'voltageNote')}</p>`;
       case 5:return `${lead()}<div data-tf-wave>${waveform(s)}</div><div class="tf-action-row">${btn('Lépés egy nyolcad körrel','phase')}${btn('Egy teljes kör lejátszása','play')}${btn('Vissza a kezdőállapotba','phase-reset')}</div>${note(t(s,'note5'))}<p class="tf-small-copy">${t(s,'waveNote')}</p>`;
-      case 6:return `${lead()}<div class="tf-action-row tf-pairs" role="group" aria-label="Megfelelő vonali feszültségpárok">${PHASES.map((p,i)=>btn(p+PHASES[(i+1)%3]+' / '+LOWER[i]+LOWER[(i+1)%3],'pair',i,s.pair===i)).join('')}</div><div class="tf-main-illustration">${pairedMeasurement(s)}</div><div class="tf-action-row">${btn(s.merged?'Vissza a mérőpontokhoz':'Tedd közös kezdőpontba a nyilakat','merge','',s.merged)}</div>${note(t(s,s.merged?'note6on':'note6off'))}`;
+      case 6:return windingToClock(s);
       case 7:return `${lead()}<div class="tf-hour-layout"><div>${clock(hours[s.hour])}</div><div class="tf-hour-controls"><div class="tf-choice-row" role="group" aria-label="Óraállás">${[0,1,5,6,11].map(h=>btn(h+' óra','hour',h,s.hour===h)).join('')}</div><p class="tf-hour-reading"><b>${s.hour===0?'0°':s.hour*30+'° az óramutató szerint'}</b><span>${s.copy?.hourText?.[s.hour]||''}</span></p>${note(t(s,s.hour===11?'hour11':s.hour===0?'hour0':'hourOther'))}<p class="tf-small-copy">${t(s,'arrowNote')}</p></div></div>${recognition(s,'clock',t(s,'clockPrompt'),['1','11'],1,s.copy?.clockFeedback||[])}`;
       case 8:return `${lead()}<div class="tf-group-controls" role="group" aria-label="Kapcsolási csoportpéldák">${Object.keys(groups).map(g=>btn(g,'group',g,s.group===g)).join('')}</div>${groupParts(s)}${recognition(s,'symbol',t(s,'symbolPrompt'),s.copy?.symbolOptions||[],1,s.copy?.symbolFeedback||[])}<p class="tf-small-copy tf-parallel-note">${t(s,'parallelNote')}</p>`;
       default:return '';
@@ -222,14 +262,15 @@
   }
   function notation(root) {
     const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];
-    while(walker.nextNode())if(!walker.currentNode.parentElement?.closest('svg,sub,script,style')&&/U_[A-Za-z]+/.test(walker.currentNode.textContent))nodes.push(walker.currentNode);
-    nodes.forEach(node=>{const fragment=document.createDocumentFragment();let start=0;for(const m of node.textContent.matchAll(/U_([A-Za-z]+)/g)){fragment.append(document.createTextNode(node.textContent.slice(start,m.index)+'U'));const subscript=document.createElement('sub');subscript.textContent=m[1];fragment.append(subscript);start=m.index+m[0].length;}fragment.append(document.createTextNode(node.textContent.slice(start)));node.replaceWith(fragment);});
+    while(walker.nextNode())if(!walker.currentNode.parentElement?.closest('svg,sub,script,style')&&/U_[A-Za-z][A-Za-z0-9]*/.test(walker.currentNode.textContent))nodes.push(walker.currentNode);
+    nodes.forEach(node=>{const fragment=document.createDocumentFragment();let start=0;for(const m of node.textContent.matchAll(/U_([A-Za-z][A-Za-z0-9]*)/g)){fragment.append(document.createTextNode(node.textContent.slice(start,m.index)+'U'));const subscript=document.createElement('sub');subscript.textContent=m[1];fragment.append(subscript);start=m.index+m[0].length;}fragment.append(document.createTextNode(node.textContent.slice(start)));node.replaceWith(fragment);});
   }
   function update(panel,s,focus=null) {
     panel.querySelector('[data-tf-title]').textContent=title(s);panel.querySelector('[data-tf-content]').innerHTML=slide(s);
     panel.querySelector('[data-tf-count]').textContent=(s.step+1)+' / 9';panel.querySelector('[data-tf-action="prev"]').disabled=s.step===0;
     panel.querySelector('[data-tf-action="next"]').textContent=s.step===8?'Vissza az elejére':'Következő';
     panel.querySelectorAll('[data-tf-action="step"]').forEach(b=>{if(Number(b.dataset.value)===s.step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
+    const bridgeBack=panel.querySelector('[data-tf-action="bridge-prev"]');if(bridgeBack)bridgeBack.disabled=!(s.bridgeStage>0);
     panel.dataset.tfStep=s.step+1;panel.dataset.tfGroup=s.group;notation(panel);
     if(focus){const buttons=[...panel.querySelectorAll('button')],target=buttons.find(b=>b.dataset.tfAction===focus.action&&b.dataset.value===focus.value);target?.focus({preventScroll:true});}
   }
@@ -248,6 +289,7 @@
         const b=event.target.closest('button[data-tf-action]');if(!b||!panel.contains(b))return;
         const a=b.dataset.tfAction,v=b.dataset.value,oldStep=s.step;if(a==='play'){play(panel,s);return;}stop(panel);
         if(a==='step')s.step=Number(v);else if(a==='prev')s.step=Math.max(0,s.step-1);else if(a==='next')s.step=(s.step+1)%9;
+        else if(a==='bridge-group'){s.bridgeGroup=v;s.bridgeStage=0;s.bridgePhases=false;}else if(a==='bridge-next')s.bridgeStage=((s.bridgeStage||0)+1)%5;else if(a==='bridge-prev')s.bridgeStage=Math.max(0,(s.bridgeStage||0)-1);else if(a==='bridge-phases')s.bridgePhases=!s.bridgePhases;
         else if(['flux','y','d','measure'].includes(a))s[a]=!s[a];else if(a==='z')s.z=Number(v);else if(a==='phase')s.phase=normal(s.phase+45);else if(a==='phase-reset')s.phase=0;
         else if(a==='merge')s.merged=!s.merged;else if(a==='pair')s.pair=Number(v);else if(a==='hour')s.hour=Number(v);else if(a==='group'){s.group=v;if(s.part==='n'&&!groups[v].neutral)s.part='lv';}else if(a==='part')s.part=v;
         else if(a==='answer'){const [id,index]=v.split(':');s.answers[id]=Number(index);if(id==='clock')s.hour=Number(index)===1?11:1;if(id==='symbol'){s.group='Yd11';s.part='lv';}}else return;

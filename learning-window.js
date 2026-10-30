@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const VERSION = '20261029r16';
+  const VERSION = '20261030r26';
   const esc = value => String(value).replace(/[&<>"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
   let dialog, frame, notice, returnTo, generation = 0;
   let referenceDialog, referenceReturnTo;
@@ -55,7 +55,7 @@
       referenceDialog = document.createElement('dialog');
       referenceDialog.className = 'learning-reference-dialog';
       referenceDialog.setAttribute('aria-labelledby','learningReferenceTitle');
-      referenceDialog.innerHTML = '<header class="learning-window-header"><h2 id="learningReferenceTitle"></h2><button type="button" class="button outline" autofocus>Bezárás ×</button></header><div class="learning-reference-body"></div>';
+      referenceDialog.innerHTML = '<header class="learning-window-header"><h2 id="learningReferenceTitle"></h2><button type="button" class="button outline" autofocus>← Vissza</button></header><div class="learning-reference-body"></div>';
       document.body.append(referenceDialog);
       referenceDialog.querySelector('button').addEventListener('click',()=>referenceDialog.close());
       referenceDialog.addEventListener('keydown',event=>{if(event.key==='Escape')event.stopPropagation();});
@@ -80,7 +80,7 @@
     dialog = document.createElement('dialog');
     dialog.className = 'learning-dialog';
     dialog.setAttribute('aria-labelledby', 'learningWindowTitle');
-    dialog.innerHTML = '<header class="learning-window-header"><h2 id="learningWindowTitle">Tananyag</h2><button type="button" class="button outline" data-learning-close autofocus>Bezárás ×</button></header><p class="learning-window-notice" role="status">Tananyag betöltése…</p><iframe class="learning-window-frame" title="Kapcsolódó tananyag" hidden></iframe>';
+    dialog.innerHTML = '<header class="learning-window-header"><h2 id="learningWindowTitle">Tananyag</h2><button type="button" class="button outline" data-learning-close autofocus>← Vissza a feladathoz</button></header><p class="learning-window-notice" role="status">Tananyag betöltése…</p><iframe class="learning-window-frame" title="Kapcsolódó tananyag" hidden></iframe>';
     document.body.append(dialog);
     frame = dialog.querySelector('iframe');
     notice = dialog.querySelector('[role=status]');
@@ -103,8 +103,8 @@
 
   function childDocument() {
     const base = new URL('.', location.href).href;
-    const styles = ['style.css','experience.css','learning.css','learning-visuals.css','learning-networks.css','learning-sort.css','formula-diagram.css','learning-labs.css','learning-comparisons.css','learning-spd.css'];
-    const scripts = ['readable-text.js','question-labels.js','formula-diagram.js','learning-labs.js','learning-comparisons.js','learning-spd.js','learning-visuals.js','learning-networks.js','learning-sort.js','learning.js','learning-window.js'];
+    const styles = ['style.css','experience.css','reading-layout.css','view-themes.css','learning.css','learning-visuals.css','learning-networks.css','learning-sort.css','formula-diagram.css','learning-labs.css','learning-comparisons.css','learning-spd.css','learning-switches.css','learning-transformers.css'];
+    const scripts = ['readable-text.js','question-labels.js','formula-diagram.js','learning-labs.js','learning-comparisons.js','learning-spd.js','learning-visuals.js','learning-networks.js','learning-sort.js','learning-switches.js','learning-transformers.js','learning.js','learning-window.js'];
     return `<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="${esc(base)}">${styles.map(file=>`<link rel="stylesheet" href="${esc(file)}?v=${VERSION}">`).join('')}${scripts.map(file=>`<script defer src="${esc(file)}?v=${VERSION}"></script>`).join('')}<style>
       html,body{margin:0;background:#f5f7f8;min-width:0}body{padding:12px}#learnView{display:block}
       .learn-workspace{display:block!important}.learn-rail{display:none!important}.learn-lesson{margin:0!important}
@@ -120,6 +120,7 @@
   async function open(href, trigger) {
     const route = new URL(href, location.href).hash;
     if (!/^#learn(?:\/|$)/.test(route)) return;
+    document.dispatchEvent(new CustomEvent('vv-question-learning-help'));
     ensureDialog();
     const request = ++generation;
     returnTo = trigger || document.activeElement;
@@ -139,6 +140,12 @@
           child.VV_DATA = window.VV_DATA;
           child.VV_LEARNING = window.VV_LEARNING;
           child.VV_ASSETS = window.VV_ASSETS;
+          child.VV_STORAGE = Object.freeze({get:key=>window.VV_STORAGE?.get(key),set:(key,value)=>{
+            const result=window.VV_STORAGE?.set(key,value);
+            window.dispatchEvent(new CustomEvent('vv-storage-change',{detail:{key,value,external:true,reason:'lesson-window',persisted:!!window.VV_STORAGE?.allowed}}));
+            document.dispatchEvent(new CustomEvent('vv-learning-progress'));
+            return result;
+          }});
           child.VV_LABELS?.setup(window.VV_DATA);
           child.location.hash = route;
           // A srcdoc document may only change its own fragment. Relative URLs

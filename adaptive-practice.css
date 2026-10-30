@@ -7,3 +7,5 @@
 @media(max-width:900px){.ap-quick{grid-template-columns:1fr auto;gap:10px 12px;max-width:600px}.ap-quick-title{grid-column:1/-1}.ap-quick-count{grid-column:1;grid-row:2}.ap-quick-start{grid-column:2;grid-row:2}.ap-quick-sources{grid-column:1/-1;grid-row:3;gap:12px}}
 @media(max-width:380px){.ap-quick-sources{gap:8px}.ap-quick-sources label{flex:1}.ap-quick-sources label span{min-width:0}}
 @media(prefers-reduced-motion:reduce){.ap-quick-start{transition:none}}
+
+.ap-quick-start:hover .ap-smart-node,.ap-quick-start:focus-visible .ap-smart-node{animation:ap-node 1.5s ease-in-out infinite}@keyframes ap-node{50%{opacity:.35}}@media(prefers-reduced-motion:reduce){.ap-quick-start .ap-smart-node{animation:none!important}}
