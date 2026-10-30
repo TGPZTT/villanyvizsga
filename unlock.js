@@ -117,7 +117,7 @@
     document.querySelector('.shell').hidden = false;
     document.querySelector('.skip').hidden = false;
     const script = document.createElement('script');
-    script.src = 'app.js?v=20261030r27';
+    script.src = 'app.js?v=20261030r28';
     script.onerror = () => {
       document.querySelector('.shell').hidden = true;
       screen.hidden = false;

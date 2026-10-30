@@ -14,3 +14,12 @@
 .ap-start{display:inline-flex;align-items:center;justify-content:center;gap:8px}.ap-start .sf-art-svg{width:29px;height:29px;flex:0 0 29px}
 
 @media(max-width:650px){.ap-quick-overview{align-items:center;gap:8px 11px}.ap-quick-art,.ap-quick-art svg{height:54px}.ap-quick-copy{display:contents}.ap-quick .ap-quick-title{margin:0}.ap-quick-copy p{grid-column:1/-1}}
+
+/* Keep the kind of practice visible after launch and after the last question. */
+.practice-session-mode{display:flex;align-items:center;gap:8px;width:fit-content;max-width:100%;box-sizing:border-box;margin:0 0 14px;padding:6px 11px;border:1px solid #c3d6e3;border-radius:8px;background:#edf4f9;color:#2b526e;font:650 14px/1.4 var(--sans,Arial,sans-serif)}
+.practice-session-mode>span,.practice-session-mode svg{display:block;width:26px;height:26px;flex:0 0 26px}
+.practice-session-mode strong{min-width:0}
+#practiceSession[data-practice-mode=custom] .practice-main{border-top-color:#708fa6}
+#practiceSession[data-practice-mode=smart] .practice-main{border-top-color:#5a9575}
+#practiceSession[data-practice-mode=smart] .practice-session-mode{border-color:#b9d1bd;background:#edf6eb;color:#2d6046}
+.ap-start-slot .ap-start{white-space:normal;text-align:center}

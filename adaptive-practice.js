@@ -112,7 +112,7 @@
     if(!slot||start.hidden||!uiConfig)return;
     let button=slot.querySelector('[data-adaptive-start]');
     if(!button){
-      button=document.createElement('button');button.type='button';button.className='button outline ap-start';button.dataset.adaptiveStart='';button.innerHTML=(root.VV_SELECTION?.icon('smart')||'')+'<span>Okos gyakorlás</span>';button.title='A hibákból, a segítségkérésből és a tényleges megoldásokból állít össze gyakorlást.';
+      button=document.createElement('button');button.type='button';button.className='button outline ap-start';button.dataset.adaptiveStart='';button.innerHTML=(root.VV_SELECTION?.icon('smart')||'')+'<span>Okos válogatás a kijelölésből</span>';button.title='A hibákból, a segítségkérésből és a tényleges megoldásokból állít össze gyakorlást.';
       button.addEventListener('click',()=>{
         const result=plan(uiConfig.pool(),uiConfig.count(),{progress:uiConfig.progress(),topicOf:q=>root.VV_SELECTION?.topicFor(q)||q.topic||''});
         if(result.questions.length)uiConfig.launch(result.questions,result.meta);
