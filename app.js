@@ -118,6 +118,7 @@
     }).join('\n');
   };
   const displayTopic=q=>window.VV_SELECTION?.topicLabel(q)||q.topic;
+  function questionSearchText(q){return [q.prompt,...(isMultipart(q)?answerFields(q).map(field=>field.label||''):[]),sourceLabel(q),q.number,q.topic,displayTopic(q),answerLabel(q)].join(' ')}
   const attemptStatus=q=>progress[q.id]?.status||'new';
   let view='home',bankPage=0,practice=null,exam=null,timerId=null,questionState=null;
   const progressManager={selected:new Set(),pending:null,returnView:'bank'};
@@ -196,7 +197,7 @@
   }
   function progressManagerQuestions(){
     const query=norm($('#progressSearch')?.value),status=$('#progressStatusFilter')?.value||'',scope=$('#progressScopeFilter')?.value||'';
-    return labelledQuestions().filter(q=>(!status||attemptStatus(q)===status)&&(!scope||(scope==='generated'?q.sourceId.startsWith('generated-exam-'):scope==='papers'?isExamPaper(q)&&!q.sourceId.startsWith('generated-exam-'):isContest(q)))&&(!query||norm(`${q.prompt} ${sourceLabel(q)} ${q.number} ${q.topic}`).includes(query))).sort((a,b)=>(progress[b.id]?.at||0)-(progress[a.id]?.at||0)||a.id.localeCompare(b.id));
+    return labelledQuestions().filter(q=>(!status||attemptStatus(q)===status)&&(!scope||(scope==='generated'?q.sourceId.startsWith('generated-exam-'):scope==='papers'?isExamPaper(q)&&!q.sourceId.startsWith('generated-exam-'):isContest(q)))&&(!query||norm(questionSearchText(q)).includes(query))).sort((a,b)=>(progress[b.id]?.at||0)-(progress[a.id]?.at||0)||a.id.localeCompare(b.id));
   }
   function cancelProgressRemoval({focus=false}={}){
     progressManager.pending=null;
@@ -349,7 +350,7 @@
   }
   function filteredBankQuestions(){
     const query=norm($('#searchInput').value),source=$('#sourceFilter').value,topic=$('#topicFilter').value,type=$('#typeFilter').value,status=$('#statusFilter').value;
-    const list=qlist.filter(q=>(!window.VV_SELECTION||window.VV_SELECTION.matchesBank(q))&&(!query||norm(`${q.prompt} ${sourceLabel(q)} ${q.topic} ${displayTopic(q)} ${answerLabel(q)}`).includes(query))&&(!source||q.sourceId===source)&&(!topic||q.topic===topic)&&(!type||q.type===type)&&(!status||attemptStatus(q)===status));
+    const list=qlist.filter(q=>(!window.VV_SELECTION||window.VV_SELECTION.matchesBank(q))&&(!query||norm(questionSearchText(q)).includes(query))&&(!source||q.sourceId===source)&&(!topic||q.topic===topic)&&(!type||q.type===type)&&(!status||attemptStatus(q)===status));
     list.sort((a,b)=>window.VV_LABELS.compareSources(a,b)||String(a.number).localeCompare(String(b.number),'hu',{numeric:true}));
     return list;
   }
@@ -384,20 +385,21 @@
   function isMultipart(q){return q.interaction==='multipart'}
   function partQuestion(q,field,index){
     const options=(field.options||[]).map((option,i)=>{const key=String(typeof option==='string'?String.fromCharCode(65+i):option.key||String.fromCharCode(65+i)).toUpperCase();return {key,text:optionText(key,typeof option==='string'?option:option.text||option.label||'')}});
-    return {id:`${q.id}-part-${index}`,type:'single',options,answer:field.answer,review:!!q.review,prompt:field.label||'',hint:field.hint||'',explanation:field.explanation||'',optionReasons:field.optionReasons||{},points:field.points,solutionSteps:field.solutionSteps};
+    return {...field,id:`${q.id}-part-${index}`,type:field.questionType||(field.kind==='number'?'number':'single'),options,answer:field.answer,review:!!q.review||!!field.review,prompt:field.label||'',hint:field.hint||'',explanation:field.explanation||'',optionReasons:field.optionReasons||{},points:field.points,solutionSteps:field.solutionSteps};
   }
   function typeLabel(q){const fields=answerFields(q);if(isMultipart(q))return 'Többrészes feladat';if(q.interaction==='order')return 'Sorrend';if(q.type==='number'&&fields.length&&fields.every(field=>field.kind==='choice'))return 'Párosítás';if(q.type==='number'&&fields.some(field=>field.kind==='choice'))return 'Számolás és választás';return TYPE[q.type]||'Feladat'}
   function numericTolerance(field,q,expected){
-    if(field&&Object.hasOwn(field,'tolerance'))return Math.max(0,Number(field.tolerance)||0);
-    if(q&&Object.hasOwn(q,'tolerance'))return Math.max(0,Number(q.tolerance)||0);
+    if(field&&Object.hasOwn(field,'tolerance')&&field.tolerance!=null)return Math.max(0,Number(field.tolerance)||0);
+    if(q&&Object.hasOwn(q,'tolerance')&&q.tolerance!=null)return Math.max(0,Number(q.tolerance)||0);
     return Math.max(.01,Math.abs(expected)*.015)
   }
   function fieldCorrect(field,value,q){if(field.kind==='choice')return norm(value)===norm(field.answer);const expected=Number(field.answer),got=parseEnteredNumber(value),tol=numericTolerance(field,q,expected);return Number.isFinite(got)&&Math.abs(got-expected)<=tol}
-  function isAuto(q){const nums=String(q.answer??'').match(/[-+]?\d+(?:[.,]\d+)?/g)||[],fields=answerFields(q);return !q.review&&((q.type==='single'||q.type==='multi')&&getCorrectKeys(q).length>0||q.type==='number'&&(fields.length?fields.every(field=>field.kind==='choice'?field.answer!=null:Number.isFinite(Number(field.answer))):nums.length===1&&Number.isFinite(parseNumeric(q.answer))))}
+  function isAuto(q){const nums=String(q.answer??'').match(/[-+]?\d+(?:[.,]\d+)?/g)||[],fields=answerFields(q);if(isMultipart(q))return !q.review&&fields.length>0&&fields.every((field,index)=>isAuto(partQuestion(q,field,index)));return !q.review&&((q.type==='single'||q.type==='multi')&&getCorrectKeys(q).length>0||q.type==='number'&&(fields.length?fields.every(field=>field.kind==='choice'?field.answer!=null:Number.isFinite(Number(field.answer))):nums.length===1&&Number.isFinite(parseNumeric(q.answer))))}
   function parseNumeric(v){if(typeof v==='number')return v;const m=String(v??'').replace(/\s/g,'').replace(',','.').match(/[-+]?\d+(?:\.\d+)?/);return m?Number(m[0]):NaN}
   function parseEnteredNumber(v){const value=String(v??'').trim().replace(/\s/g,'').replace(',','.');return /^[-+]?\d+(?:\.\d+)?$/.test(value)?Number(value):NaN}
   function grade(q,response){
     if(!isAuto(q))return null;
+    if(isMultipart(q)){const values=Array.isArray(response)?response:[response];return answerFields(q).every((field,index)=>grade(partQuestion(q,field,index),values[index])===true)}
     if(q.type==='number'){
       const fields=answerFields(q);
       if(fields.length){const entered=Array.isArray(response)?response:[response];return fields.every((field,index)=>fieldCorrect(field,entered[index],q))}
@@ -407,6 +409,11 @@
   }
   function earnedPoints(q,response){
     if(!isAuto(q))return 0;
+    if(isMultipart(q)){
+      const values=Array.isArray(response)?response:[response],fields=answerFields(q),weights=fields.map(field=>Number.isFinite(field.points)&&field.points>=0?field.points:1),total=weights.reduce((sum,weight)=>sum+weight,0);
+      const earned=fields.reduce((sum,field,index)=>{const part=partQuestion(q,field,index);return sum+(part.points>0?earnedPoints(part,values[index])*weights[index]/part.points:0)},0);
+      return total>0?q.points*earned/total:0;
+    }
     if(q.type==='number'&&answerFields(q).length){
       const values=Array.isArray(response)?response:[response],fields=answerFields(q);
       if(fields.some(field=>Number.isFinite(field.points)&&field.points>=0)){
@@ -514,12 +521,23 @@
     const values=Array.isArray(response)?response:[response],fields=answerFields(q);
     const weights=fields.map(field=>Number.isFinite(field.points)&&field.points>=0?field.points:1),total=weights.reduce((sum,weight)=>sum+weight,0);
     return `<div class="task-parts" data-multipart-question="${esc(q.id)}">${fields.map((field,index)=>{
-      const part=partQuestion(q,field,index),right=show?getCorrectKeys(part):[],selected=String(values[index]??'');
+      const part=partQuestion(q,field,index),right=show?getCorrectKeys(part):[],selected=values[index];
       const points=total>0?q.points*weights[index]/total:0,label=field.partLabel||`${index+1}.`;
-      const options=part.options.map(option=>choiceOptionMarkup(part,option,{selected:selected===option.key,correct:right.includes(option.key),show:show||mode==='review',multi:false,mode,inputName:`task-part-${mode}-${q.id}-${index}`,partIndex:index})).join('');
+      const chosen=Array.isArray(selected)?selected:[selected];
+      const options=part.options.map(option=>choiceOptionMarkup(part,option,{selected:chosen.includes(option.key),correct:right.includes(option.key),show:show||mode==='review',multi:part.type==='multi',mode,inputName:`task-part-${mode}-${q.id}-${index}`,partIndex:index})).join('');
+      const inputs=part.type==='number'?multipartNumericMarkup(part,index,selected,show||mode==='review'):`<div class="options">${options}</div>`;
       const solution=show?`<div class="task-part-solution explanation"><strong>Megoldás</strong><p class="task-part-answer">${inlineMathText(answerLabel(part))}</p>${wrongAnswerMarkup(part,selected)}${part.explanation?`<strong class="task-part-why">Miért?</strong>${explanationMarkup(part)}`:''}</div>`:'';
       const links=field.lessonIds?.length?learningLinksMarkup(q,mode,field.lessonIds):'';
-      return `<fieldset class="task-part" data-task-part="${index}"><legend><span class="task-part-label">${esc(label)}</span><span class="task-part-prompt">${inlineMathText(field.label||'Válassz egy választ.')}</span><small class="task-part-points">${esc(Number(points.toFixed(2)))} pont</small></legend>${links}<div class="options">${options}</div>${solution}</fieldset>`;
+      return `<fieldset class="task-part" data-task-part="${index}"><legend><span class="task-part-label">${esc(label)}</span><span class="task-part-prompt">${inlineMathText(field.label||'Válaszolj a kérdésre.')}</span><small class="task-part-points">${esc(Number(points.toFixed(2)))} pont</small></legend>${links}${inputs}${solution}</fieldset>`;
+    }).join('')}</div>`;
+  }
+  function multipartNumericMarkup(part,partIndex,response,show){
+    const fields=answerFields(part),items=fields.length?fields:[{label:'Válasz',answer:parseNumeric(part.answer),unit:part.unit,tolerance:part.tolerance}],values=fields.length?(Array.isArray(response)?response:[response]):[response];
+    return `<div class="numeric-answer-list task-part-numeric">${items.map((field,index)=>{
+      const attrs=`data-part-index="${partIndex}" data-part-field-index="${index}"`,value=values[index]??'',disabled=show?'disabled':'';
+      const state=show?(fieldCorrect(field,value,part)?'correct':String(value).trim()?'wrong':'omitted'):'';
+      const input=field.kind==='choice'?`<select class="answer-input answer-field-select" ${attrs} aria-label="${esc(field.label)}" ${disabled}><option value="">Válassz…</option>${field.options.map(option=>`<option value="${esc(option)}" ${String(option)===String(value)?'selected':''}>${esc(option)}</option>`).join('')}</select>`:`<input class="answer-input numeric-answer" ${attrs} inputmode="decimal" type="text" aria-label="${esc(field.label)} számértéke" value="${esc(value)}" placeholder="Számérték" ${disabled}>`;
+      return `<label class="numeric-answer-row" ${state?`data-field-answer-state="${state}"`:''}><span><b>${esc(field.label)}</b><small>${field.unit?`<span class="unit-chip" aria-label="Mértékegység: ${esc(field.unit)}">${esc(field.unit)}</span>`:'Számérték, mértékegység nélkül'}</small></span>${input}</label>`;
     }).join('')}</div>`;
   }
   function questionBody(q,mode,response,show){
@@ -539,9 +557,9 @@
     const rationale=show&&mode!=='review'&&!isMultipart(q)?wrongAnswerMarkup(q,response):'';
     return `<div class="question-top"><div class="tags"><span class="chip">${esc(displayTopic(q))}</span><span class="chip">${esc(typeLabel(q))}</span>${q.requiresFigure?'<span class="chip">Ábrás feladat</span>':''}${q.review?'<span class="chip review">Megoldás ellenőrzendő</span>':''}</div><span>${q.points} pont</span></div>${title}${prompt}${figure}${sourceFigureLink}${learningLinksMarkup(q,mode)}${hint}${opts}${input}${mobileActions}${!auto&&mode==='exam'?'<div class="feedback review">Ezt a feladatot a vizsga végén önellenőrzéssel lehet értékelni.</div>':''}${show&&mode!=='review'&&!isMultipart(q)?`<div class="explanation"><strong>${q.review?'Forrás szerinti megoldás':'Megoldás'}</strong><p>${inlineMathText(answerLabel(q))}</p>${rationale}${q.explanation?`<strong style="margin-top:14px">Miért?</strong>${explanationMarkup(q)}`:''}${q.review?'<p>A forrás vagy a válaszkulcs ellenőrzése szükséges; biztonsági szempontból kétes állítást ne tanulj meg tényként.</p>':''}${sourceLink(q)}</div>`:''}`;
   }
-  function selectedFrom(root,q){if(isMultipart(q))return answerFields(q).map((_,index)=>$(`input[data-part-index="${index}"]:checked`,root)?.value||'');if(q.type==='single'||q.type==='multi'){const checked=$$('input[name="answer"]:checked',root).map(x=>x.value);return q.type==='multi'?checked:checked[0]||''}if(q.type==='number'&&answerFields(q).length)return $$('.numeric-answer, .answer-field-select',root).map(input=>input.value);return $('#freeAnswer',root)?.value||''}
-  function restoreNumericResponse(root,q,response){if(q.type!=='number')return;if(isMultipart(q)){const values=Array.isArray(response)?response:[response];$$('input[data-part-index]',root).forEach(input=>{input.checked=String(values[Number(input.dataset.partIndex)]??'')===input.value;input.closest('.option')?.classList.toggle('selected',input.checked)});return}if(answerFields(q).length){const values=Array.isArray(response)?response:[response];$$('.numeric-answer, .answer-field-select',root).forEach((input,index)=>input.value=values[index]||'')}else if($('#freeAnswer',root))$('#freeAnswer',root).value=response||''}
-  function isEmptyResponse(q,response){return Array.isArray(response)?!response.some(value=>String(value??'').trim()):!String(response??'').trim()}
+  function selectedFrom(root,q){if(isMultipart(q))return answerFields(q).map((field,index)=>{const part=partQuestion(q,field,index);if(part.type==='number'){const values=$$(`[data-part-index="${index}"][data-part-field-index]`,root).map(input=>input.value);return answerFields(part).length?values:values[0]??''}const checked=$$(`input[data-part-index="${index}"]:checked`,root).map(input=>input.value);return part.type==='multi'?checked:checked[0]||''});if(q.type==='single'||q.type==='multi'){const checked=$$('input[name="answer"]:checked',root).map(x=>x.value);return q.type==='multi'?checked:checked[0]||''}if(q.type==='number'&&answerFields(q).length)return $$('.numeric-answer, .answer-field-select',root).map(input=>input.value);return $('#freeAnswer',root)?.value||''}
+  function restoreNumericResponse(root,q,response){if(q.type!=='number')return;if(isMultipart(q)){const values=Array.isArray(response)?response:[response];$$('input[data-part-index], select[data-part-index]',root).forEach(input=>{const value=values[Number(input.dataset.partIndex)];if(Object.hasOwn(input.dataset,'partFieldIndex'))input.value=Array.isArray(value)?value[Number(input.dataset.partFieldIndex)]??'':value??'';else{input.checked=(Array.isArray(value)?value.map(String):[String(value??'')]).includes(input.value);input.closest('.option')?.classList.toggle('selected',input.checked)}});return}if(answerFields(q).length){const values=Array.isArray(response)?response:[response];$$('.numeric-answer, .answer-field-select',root).forEach((input,index)=>input.value=values[index]??'')}else if($('#freeAnswer',root))$('#freeAnswer',root).value=response??''}
+  function isEmptyResponse(q,response){const hasValue=value=>Array.isArray(value)?value.some(hasValue):!!String(value??'').trim();return !hasValue(response)}
   function bindOptions(root){$$('.option input',root).forEach(input=>input.addEventListener('change',()=>$$('.option',root).forEach(label=>label.classList.toggle('selected',!!$('input:checked',label)))))}
   function openQuestion(q,{fromRoute=false,origin=view}={}){
     if(!q||exam&&!exam.submitted)return;
@@ -810,7 +828,7 @@
     $('#examNextMobile',root)?.addEventListener('click',()=>$('#examNext',root).click());
     $('#examNext',root).addEventListener('click',()=>{
       preserve();const response=exam.drafts[q.id];
-      const empty=Array.isArray(response)?!response.some(value=>String(value??'').trim()):!String(response??'').trim();
+      const empty=isEmptyResponse(q,response);
       if(empty){$('#examWarning',root).hidden=false;$('#examWarning',root).scrollIntoView({behavior:'smooth',block:'center'});return}
       commitExam(q,response);
     });
@@ -862,7 +880,7 @@
       const q=examCurrent(),root=$('#examSession');
       if(q&&($('#freeAnswer',root)||$('input[name="answer"]',root)||$('input[data-part-index]',root)||$('[data-numeric-index]',root))){
         const response=selectedFrom(root,q);
-        if(Array.isArray(response)?response.some(value=>String(value??'').trim()):String(response).trim())exam.responses[q.id]=response;
+        if(!isEmptyResponse(q,response))exam.responses[q.id]=response;
       }
     }
     window.VV_TIMING?.pause();clearInterval(timerId);exam.submitted=true;exam.endReason=reason;exam.remaining=Math.max(0,Math.ceil((exam.deadline-Date.now())/1000));exam.evaluation=evaluateExam();
@@ -881,7 +899,7 @@
   function recordExamOutcomes(){
     if(!exam||exam.resultsRecorded)return;
     exam.resultsRecorded=true;
-    exam.list.forEach(q=>{const answer=exam.responses[q.id];if(Array.isArray(answer)?!answer.some(value=>String(value??'').trim()):!String(answer??'').trim())return;const points=earnedPoints(q,answer);mark(q,points===q.points,false,{session:exam,verified:true})});renderWrongTasks();
+    exam.list.forEach(q=>{const answer=exam.responses[q.id];if(isEmptyResponse(q,answer))return;const points=earnedPoints(q,answer);mark(q,points===q.points,false,{session:exam,verified:true})});renderWrongTasks();
   }
   function renderExamLearning(){
     if(!exam||!exam.submitted)return;
@@ -898,7 +916,7 @@
   }
   function setupWorkedAnimations(root){if(root){window.VV_WORKED?.setup(root);window.VV_GUIDE?.setup(root)}}
   function init(){
-    setupFilters();window.VV_SELECTION?.setup({questions:qlist,status:attemptStatus,searchMatch:q=>{const query=norm($('#searchInput').value);return !query||norm(`${q.prompt} ${sourceLabel(q)} ${q.topic} ${displayTopic(q)} ${answerLabel(q)}`).includes(query)},onBankChange:()=>{bankPage=0;renderBank()}});renderHome();setupProgressManager();renderWrongTasks();setupWorkedAnimations($('#guideView'));
+    setupFilters();window.VV_SELECTION?.setup({questions:qlist,status:attemptStatus,searchMatch:q=>{const query=norm($('#searchInput').value);return !query||norm(questionSearchText(q)).includes(query)},onBankChange:()=>{bankPage=0;renderBank()}});renderHome();setupProgressManager();renderWrongTasks();setupWorkedAnimations($('#guideView'));
     window.VV_LEARN?.setup({root:$('#learnView'),data:window.VV_LEARNING,questions:qlist});
     document.addEventListener('vv-learning-start-questions',()=>{
       if(view!=='learn'||exam&&!exam.submitted)return;

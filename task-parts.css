@@ -8,6 +8,10 @@
 .task-part .options { margin: 12px 0 0; }
 .task-part .option { min-width: 0; }
 .task-part .option-copy { min-width: 0; overflow-wrap: anywhere; }
+.task-part-numeric { margin-top: 12px; }
+.task-part-numeric [data-field-answer-state="correct"] { border-color: #60a47c; background: #edf8f0; }
+.task-part-numeric [data-field-answer-state="wrong"] { border-color: #cb795e; background: #fff0ea; }
+.task-part-numeric [data-field-answer-state="omitted"] { border-color: #bc9c4d; background: #fff8e8; }
 .task-part .learn-question-links { margin: 2px 0 14px; font-size: .84rem; }
 .task-part-solution.explanation { margin: 20px 0 0; padding: 18px 0 0; border: 0; border-top: 1px solid #dbe6e0; border-radius: 0; background: transparent; }
 .task-part-solution .task-part-answer { margin: 6px 0 14px; }

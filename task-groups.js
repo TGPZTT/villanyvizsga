@@ -33,7 +33,13 @@
     for(const id of Object.keys(progress))if(targets.has(resolveId(id,raw)))delete progress[id];
   }
   function canonicalizeHistory(rows,raw){
-    return Array.isArray(rows)?rows.map(row=>row&&Array.isArray(row.ids)?{...row,ids:[...new Set(row.ids.map(id=>resolveId(id,raw)))]}:row):rows;
+    if(!Array.isArray(rows))return rows;
+    const seen=new Set();
+    return rows.map(row=>row&&Array.isArray(row.ids)?{...row,ids:[...new Set(row.ids.map(id=>resolveId(id,raw)))]}:row).filter(row=>{
+      if(!row||!Array.isArray(row.ids))return true;
+      const key=JSON.stringify([row.at,row.scope,row.sources,row.ids]);
+      if(seen.has(key))return false;seen.add(key);return true;
+    });
   }
   function canonicalizeExposure(saved,raw){
     if(!saved||typeof saved!=='object'||!saved.byId||typeof saved.byId!=='object')return saved;

@@ -111,7 +111,8 @@
       if(!n||n>runs||!last||last>runs)throw Error('A fájl ellentmondó vizsgaszámlálót tartalmaz.');
       byId[id]={count:n,last};
     }
-    return {data:{questions,learning,examHistory:examHistory.slice(-8),examExposure:{runs,byId}},ignored};
+    const canonicalHistory=window.VV_TASK_GROUPS?.canonicalizeHistory?.(examHistory)||examHistory;
+    return {data:{questions,learning,examHistory:canonicalHistory.slice(-8),examExposure:{runs,byId}},ignored};
   }
   function currentData(){return {questions:read(Q)||{},learning:read(L)||{read:{},checks:{},lastLesson:''},examHistory:read(H)||[],examExposure:read(E)||{runs:0,byId:{}}};}
   function snapshot() {return {format:FORMAT,version:1,createdAt:new Date().toISOString(),data:normalize(currentData(),catalog()).data};}
@@ -128,7 +129,10 @@
     const questions={...current.questions};
     for(const [id,row] of Object.entries(incoming.questions)){
       const old=questions[id];if(!old){questions[id]=row;continue;}
-      const newer=old.status==='new'&&row.status!=='new'?row:row.status==='new'&&old.status!=='new'?old:row.at>old.at?row:old,results=new Map();
+      // A real whole-task attempt outranks a derived parts-only summary at
+      // the same timestamp. Newer timestamps and verified ties keep their policy.
+      const wholeTie=row.at===old.at&&row.results?.length&&!old.results?.length&&window.VV_DATA?.questions?.some(q=>String(q.id)===id&&q.interaction==='multipart');
+      const newer=old.status==='new'&&row.status!=='new'?row:row.status==='new'&&old.status!=='new'?old:row.at>old.at||wholeTie?row:old,results=new Map();
       for(const r of [...(old.results||[]),...(row.results||[])]){
         if(results.has(r.id)&&JSON.stringify(results.get(r.id))!==JSON.stringify(r))throw Error('A mentés egy próbálkozása eltér az itt tárolttól.');
         results.set(r.id,r);
@@ -140,7 +144,8 @@
     for(const [id,value] of Object.entries(incoming.learning.read))learning.read[id]=Math.max(Number(learning.read[id])||0,Number(value)||0)||value;
     for(const [id,row] of Object.entries(incoming.learning.checks))if(!learning.checks[id]||row.at>learning.checks[id].at)learning.checks[id]=row;
     const history=new Map();
-    for(const row of [...current.examHistory,...incoming.examHistory])history.set(JSON.stringify([row.at,row.scope,row.sources,row.ids]),row);
+    const combinedHistory=[...current.examHistory,...incoming.examHistory];
+    for(const row of window.VV_TASK_GROUPS?.canonicalizeHistory?.(combinedHistory)||combinedHistory)history.set(JSON.stringify([row.at,row.scope,row.sources,row.ids]),row);
     const examHistory=[...history.values()].sort((a,b)=>a.at-b.at).slice(-8),runs=Math.max(current.examExposure.runs,incoming.examExposure.runs),byId={};
     for(const source of [current.examExposure,incoming.examExposure])for(const [id,row] of Object.entries(source.byId))byId[id]={count:Math.max(byId[id]?.count||0,row.count),last:Math.max(byId[id]?.last||0,runs-source.runs+row.last)};
     return {questions,learning,examHistory,examExposure:{runs,byId}};
