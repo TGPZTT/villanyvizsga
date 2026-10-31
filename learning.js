@@ -35,7 +35,7 @@
   const href = lesson => `#${lessonRoute(lesson)}`;
   const countRead = list => list.filter(lesson => !!progress.read[lesson.id]).length;
   const isGenerated = q => q.generated?.machineGenerated === true;
-  const isPaper = q => !isGenerated(q) && (q.sourceId === 'online_2022.04.11.pdf' || /^Villanyszerelő_írásbeli_/u.test(q.sourceId || ''));
+  const isPaper = q => !isGenerated(q) && (q.sourceId === 'online_2022.04.11.pdf' || /^Villanyszerelő_írásbeli_/u.test(q.sourceId || '') || String(q.sourceId || '').startsWith('interactive-exam-'));
   const physicalUnit = value => /^(?:mertekegyseg nelkul|nincs mertekegysege|nincs mertekegyseguk)$/u.test(norm(value)) ? '' : String(value || '');
   const unit = value => physicalUnit(value) ? `<span class="learn-unit">${esc(physicalUnit(value))}</span>` : '';
   const lineText = value => typeof value === 'object' && value !== null ? value.text || value.label || '' : String(value ?? '');

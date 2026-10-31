@@ -91,7 +91,7 @@
     });
   }
   const sourceLabel=q=>window.VV_LABELS.sourceLabel(q);
-  const isExamPaper=q=>q.sourceId==='online_2022.04.11.pdf'||/^Villanyszerelő_írásbeli_/u.test(q.sourceId)||q.sourceId.startsWith('generated-exam-');
+  const isExamPaper=q=>q.sourceId==='online_2022.04.11.pdf'||/^Villanyszerelő_írásbeli_/u.test(q.sourceId)||q.sourceId.startsWith('generated-exam-')||q.sourceId.startsWith('interactive-exam-');
   const isContest=q=>q.sourceId==='szkt_írásbeli.pdf'||q.sourceId.startsWith('szakmasztar_forrasok/')||q.id.startsWith('szs-');
   const inSourceScope=(q,scope)=>isExamPaper(q)||(scope==='papers-plus-star'&&isContest(q));
   const answerLabel=q=>{
@@ -403,7 +403,8 @@
     const right=getCorrectKeys(q),given=(Array.isArray(response)?response:[response]).filter(Boolean);
     const good=given.filter(x=>right.includes(x)).length;
     const wrong=given.filter(x=>!right.includes(x)).length;
-    return Math.max(0,Math.min(q.points,(good-wrong)*q.points/right.length));
+    const wrongWeight=Number.isFinite(q.wrongAnswerPenaltyFactor)&&q.wrongAnswerPenaltyFactor>=0?q.wrongAnswerPenaltyFactor:1;
+    return Math.max(0,Math.min(q.points,(good-wrong*wrongWeight)*q.points/right.length));
   }
   function mark(q,result,refresh=true,{session=null,verified=false,assisted=false}={}){
     if(result===null)return;
