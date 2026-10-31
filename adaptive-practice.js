@@ -5,13 +5,15 @@
   const stop=new Set('a az egy es vagy hogy mi mit melyik melyek helyes igaz allitas feladat valasz meg megoldas kell van'.split(' '));
   const tokens=q=>new Set(norm(q.prompt).replace(/\d+(?:[.,]\d+)?/g,' # ').match(/[a-z]+|#/g)?.filter(t=>t.length>1&&!stop.has(t))||[]);
   const family=q=>q.examSimilarityGroup||q.generated?.conceptFamily||'';
+  const families=q=>q.examSimilarityGroups?.length?q.examSimilarityGroups:[family(q)].filter(Boolean);
   const figures=q=>new Set(q.examImageGroups||q.figurePaths||[q.figurePath].filter(Boolean));
-  const kind=q=>q.numericFields?.length||q.type==='number'||q.type==='numeric'?'number':q.type==='multi'||q.type==='multiple'?'multiple':'single';
+  const kind=q=>q.interaction==='multipart'?'multiple':q.numericFields?.length||q.type==='number'||q.type==='numeric'?'number':q.type==='multi'||q.type==='multiple'?'multiple':'single';
   const logs=row=>Array.isArray(row?.results)?row.results.filter(r=>r&&typeof r.correct==='boolean'):[];
   const time=value=>Number.isFinite(value)&&value>=5000&&value<=1200000?value:0;
   function streak(row){let n=0;const results=logs(row);for(let i=results.length-1;i>=0;i--){const r=results[i];if(!r.correct||r.assisted||r.hintUsed||r.solutionUsed)break;n++;}return n;}
   function state(row){if(!logs(row).length&&(!row||!['correct','retry'].includes(row.status)))return 'new';return row.status==='correct'&&streak(row)>=2?'repeated':'repeat';}
   function expected(q){
+    if(q.interaction==='multipart')return (q.answerFields||[]).reduce((sum,field)=>sum+(32+Math.min(90,(String(field.label||'').length+JSON.stringify(field.options||[]).length)*.035))*1000,0);
     const text=String(q.prompt||'').replace(/<[^>]*>/g,' '),options=(q.options||[]).map(o=>typeof o==='string'?o:JSON.stringify(o)).join(' ');
     return ({single:32,multiple:50,number:72}[kind(q)]+Math.min(90,(text.length+options.length)*.035))*1000;
   }
@@ -53,7 +55,7 @@
     return {weight:Math.max(MIN_WEIGHT,Math.min(15,weight)),state:level,reasons:[...new Set(reasons)]};
   }
   function related(a,b){
-    if(a.family&&a.family===b.family)return true;
+    if((a.families||[a.family]).some(f=>f&&(b.families||[b.family]).includes(f)))return true;
     if([...a.figures].some(path=>b.figures.has(path)))return true;
     const shared=[...a.tokens].filter(t=>b.tokens.has(t)).length,union=a.tokens.size+b.tokens.size-shared;
     return shared>=4&&union>0&&shared/union>=.66;
@@ -66,7 +68,7 @@
   function select(pool,count,{progress={},now=Date.now(),random=Math.random,topicOf=q=>q.topic||'',recent=[],lessonErrors={}}={}){
     const unique=[...new Map((Array.isArray(pool)?pool:[]).filter(q=>q&&q.id!==undefined).map(q=>[String(q.id),q])).values()];
     const requested=Math.max(0,Math.min(unique.length,Math.floor(Number(count)||0))),baseline=baselines(unique,progress),reasons={},composition={new:0,repeat:0,repeated:0};
-    const rows=unique.map(q=>{const f=family(q),times=recent.filter(r=>r.id===String(q.id)).length,close=f&&recent.some(r=>r.family===f),factor=times?Math.max(.28,Math.pow(.55,times)):close?.65:1;const info=describe(q,progress[String(q.id)],{now,baseline:baseline[kind(q)],conceptError:lessonErrors[String(q.id)]||0});return {q,id:String(q.id),family:f,figures:figures(q),tokens:tokens(q),topic:topicOf(q),...info,weight:info.weight*factor};});
+    const rows=unique.map(q=>{const f=family(q),times=recent.filter(r=>r.id===String(q.id)).length,close=families(q).some(f=>recent.some(r=>(r.families||[r.family]).includes(f))),factor=times?Math.max(.28,Math.pow(.55,times)):close?.65:1;const info=describe(q,progress[String(q.id)],{now,baseline:baseline[kind(q)],conceptError:lessonErrors[String(q.id)]||0});return {q,id:String(q.id),family:f,families:families(q),figures:figures(q),tokens:tokens(q),topic:topicOf(q),...info,weight:info.weight*factor};});
     const chosen=[],topics=new Map();let candidates=[...rows],exploration=false;
     const add=row=>{chosen.push(row);composition[row.state]++;reasons[row.id]=row.reasons[0];topics.set(row.topic,(topics.get(row.topic)||0)+1);candidates=candidates.filter(other=>other.id!==row.id&&!related(row,other));};
     if(requested){const fresh=candidates.filter(row=>row.state==='new');if(fresh.length){add(draw(fresh,row=>row.weight,random));exploration=true;}}
@@ -74,7 +76,7 @@
     return {questions:chosen.map(row=>row.q),meta:{available:unique.length,requested,selected:chosen.length,exploration,limitedBySimilarity:chosen.length<requested,reasons,composition}};
   }
   const recentSets=[];
-  function remember(questions){recentSets.push(questions.map(q=>({id:String(q.id),family:family(q)})));if(recentSets.length>2)recentSets.shift();}
+  function remember(questions){recentSets.push(questions.map(q=>({id:String(q.id),family:family(q),families:families(q)})));if(recentSets.length>2)recentSets.shift();}
   function lessonErrors(){
     let checks={};try{checks=JSON.parse(root.VV_STORAGE?.get('villanyvizsga-learning-v1'))?.checks||{}}catch{}
     const source=root.VV_LEARNING,out={};if(!source?.chapters)return out;

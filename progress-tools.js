@@ -50,7 +50,7 @@
     const questions=config?.questions||window.VV_DATA?.questions||[];
     const source=window.VV_LEARNING;
     if(!questions.length||!source?.chapters?.length)throw Error('A feladatok még betöltődnek. Próbáld meg újra.');
-    return {questions:new Set(questions.map(q=>String(q.id))),lessons:new Set(source.chapters.flatMap(c=>c.lessons.map(l=>l.id)))};
+    return {questions:new Set([...questions.map(q=>String(q.id)),...Object.keys(window.VV_DATA?.questionAliases||{})]),lessons:new Set(source.chapters.flatMap(c=>c.lessons.map(l=>l.id)))};
   }
   const stamp=value=>{if(!Number.isSafeInteger(value)||value<0||value>8640000000000000)throw Error('A fájl hibás időadatot tartalmaz.');return value;};
   const count=value=>{if(!Number.isSafeInteger(value)||value<0||value>1000000000)throw Error('A fájl hibás számlálót tartalmaz.');return value;};

@@ -1,0 +1,25 @@
+/* One source task, with independently selectable and weighted answer parts. */
+.task-parts { display: grid; gap: 28px; min-width: 0; margin: 26px 0; }
+.task-part { min-width: 0; margin: 0; padding: 20px; border: 1px solid #d5e2dd; border-radius: 16px; background: #fff; }
+.task-part > legend { box-sizing: border-box; max-width: 100%; padding: 0 8px; color: #173b35; font-size: 1rem; font-weight: 650; line-height: 1.5; }
+.task-part-label { display: inline-block; margin-right: .45em; font-weight: 800; }
+.task-part-prompt { white-space: pre-line; overflow-wrap: anywhere; }
+.task-part-points { display: inline-block; margin-left: .7em; font-size: .78rem; font-weight: 500; color: #61776e; white-space: nowrap; }
+.task-part .options { margin: 12px 0 0; }
+.task-part .option { min-width: 0; }
+.task-part .option-copy { min-width: 0; overflow-wrap: anywhere; }
+.task-part .learn-question-links { margin: 2px 0 14px; font-size: .84rem; }
+.task-part-solution.explanation { margin: 20px 0 0; padding: 18px 0 0; border: 0; border-top: 1px solid #dbe6e0; border-radius: 0; background: transparent; }
+.task-part-solution .task-part-answer { margin: 6px 0 14px; }
+.task-part-solution .task-part-why { display: block; margin-top: 16px; }
+.task-part-solution .answer-rationale { margin: 12px 0; }
+.task-parts-hint .question-hint-body p { white-space: pre-line; }
+.review-question .task-parts { margin-bottom: 0; }
+.review-question .task-part { background: #fff; }
+@media (max-width: 650px) {
+  .task-parts { gap: 22px; margin-top: 20px; }
+  .task-part { padding: 14px 12px; border-radius: 12px; }
+  .task-part > legend { padding: 0 5px; font-size: .95rem; }
+  .task-part-points { font-size: .75rem; }
+  .task-part-solution.explanation { padding-top: 14px; }
+}

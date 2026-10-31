@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const VERSION = '20261031r30';
+  const VERSION = '20261031r31';
   const esc = value => String(value).replace(/[&<>"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
   let dialog, frame, notice, returnTo, generation = 0;
   let referenceDialog, referenceReturnTo;

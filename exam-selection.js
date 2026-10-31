@@ -2,6 +2,7 @@
   'use strict';
   const norm=text=>String(text||'').toLocaleLowerCase('hu').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const stop=new Set('a az egy es vagy hogy mi mit melyik melyek helyes igaz allitas feladat valasz meg megoldas kell van'.split(' '));
+  const families=q=>new Set(q.examSimilarityGroups?.length?q.examSimilarityGroups:[q.examSimilarityGroup||q.generated?.conceptFamily||''].filter(Boolean));
   const tokens=q=>new Set(norm(q.prompt).replace(/\d+(?:[.,]\d+)?/g,' # ').match(/[a-z]+|#/g)?.filter(x=>x.length>1&&!stop.has(x))||[]);
   function shuffle(list,random){const out=[...list];for(let i=out.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;}
   function quotas(count,areas){
@@ -14,11 +15,11 @@
   function catalogFor(catalog){
     if(catalogs.has(catalog))return catalogs.get(catalog);
     const questions=[...new Map(catalog.map(q=>[String(q.id),q])).values()];
-    const descriptors=questions.map(q=>({family:q.examSimilarityGroup||q.generated?.conceptFamily||'',figures:new Set(q.examImageGroups||q.figurePaths||[]),tokens:tokens(q)}));
+    const descriptors=questions.map(q=>({families:families(q),figures:new Set(q.examImageGroups||q.figurePaths||[]),tokens:tokens(q)}));
     const conflicts=new Map(questions.map(q=>[String(q.id),new Set([String(q.id)])]));
     for(let i=0;i<questions.length;i++)for(let j=0;j<i;j++){
       const x=descriptors[i],y=descriptors[j];
-      let similar=!!x.family&&x.family===y.family||[...x.figures].some(f=>y.figures.has(f));
+      let similar=[...x.families].some(f=>y.families.has(f))||[...x.figures].some(f=>y.figures.has(f));
       if(!similar){
         const shared=[...x.tokens].filter(t=>y.tokens.has(t)).length,union=x.tokens.size+y.tokens.size-shared;
         similar=shared>=4&&union>0&&shared/union>=.66;

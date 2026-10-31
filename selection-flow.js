@@ -50,6 +50,7 @@
       inspection:'gen-exam-r5-004 gen-exam-r5-008 gen-exam-r5-010 gen-exam-r5-051 gen-exam-r5-052 gen-exam-r5-056 gen-exam-r5-080 gen-exam-r5-081 gen-exam-r5-082 gen-exam-r5-083 gen-exam-r5-084 local-01-11 local-01-14 local-02-15 local-02-16 local-07-03-a local-07-03-f local-07-03-i local-07-04 local-07-09 local-11-03e local-11-03g local-11-03i local-11-03j local-13-09 szs-2024-10 szs-2024-19 szs-2024-34 szs-2025-10 szs-2025-13 szs-2025-19 szs-2025-24 szs-2026-14 szs-2026-23 szs-2026-7 exam-photo-2026-05-20-06',
     }).flatMap(([topic,ids])=>ids.split(' ').map(id=>[id,topic])));
     return function(q){
+      if(TOPICS.some(([id])=>id===q.practiceTopicId))return q.practiceTopicId;
       if(reviewed.has(q.id))return reviewed.get(q.id);
       const s=norm(q.sourceTopic||q.topic),p=norm(q.prompt),t=p+' '+s;
       if(/feszultsegment|szigetelesi ellenallas.*(mer|vizsg)|folytonossag.*(mer|vizsg)|uzembe helyez|szereloi ellenorz|hurokimpedanciat.*mer|elsosegely|munkaved|baleset|eletment|ujraeleszt/.test(p))return 'inspection';
@@ -66,13 +67,15 @@
       return 'basics';
     };
   })();
+  const typeFor=q=>q.interaction==='multipart'?'multipart':q.type;
+  const topicsFor=q=>q.practiceTopics?.length?q.practiceTopics:[topicFor(q)];
   const kind=q=>q.generated?.machineGenerated||q.sourceId?.startsWith('generated-exam-')?'generated':window.VV_LABELS.sourceKind(q)==='Versenyfeladat'?'competition':'papers';
   const sourceTitle=id=>window.VV_LABELS.sourceOptionLabel(id);
   let questions=[],status=()=> 'new',onBankChange=()=>{},searchMatch=()=>true,step=0,ready=false;
   const bank={topics:new Set(),sources:new Set(),kinds:new Set(),type:'',status:''};
   const practice={topics:new Set(),kinds:new Set(['papers']),retry:false,count:10};
-  const topicCounts=pool=>new Map(TOPICS.map(([id])=>[id,pool.filter(q=>topicFor(q)===id).length]));
-  const match=(q,f,{ignoreTopics=false,ignoreSources=false}={})=>(!f.kinds.size||f.kinds.has(kind(q)))&&(ignoreTopics||!f.topics.size||f.topics.has(topicFor(q)))&&(ignoreSources||!f.sources?.size||f.sources.has(q.sourceId))&&(!f.retry||status(q)==='retry');
+  const topicCounts=pool=>new Map(TOPICS.map(([id])=>[id,pool.filter(q=>topicsFor(q).includes(id)).length]));
+  const match=(q,f,{ignoreTopics=false,ignoreSources=false}={})=>(!f.kinds.size||f.kinds.has(kind(q)))&&(ignoreTopics||!f.topics.size||topicsFor(q).some(id=>f.topics.has(id)))&&(ignoreSources||!f.sources?.size||f.sources.has(q.sourceId))&&(!f.retry||status(q)==='retry');
   const pool=()=>practice.kinds.size?questions.filter(q=>match(q,practice,{ignoreSources:true})):[];
   function choices(f,context){
     if(context==='practice'&&!f.kinds.size)return '<p class="sf-empty">Előbb válassz legalább egy feladatcsoportot.</p>';
@@ -99,8 +102,8 @@
   }
   function bankCount(){return parseInt($('#resultCount')?.textContent,10)||0}
   function bankDialogChange(e){const i=e.target;if(!/^(bankTopic|bankSource)$/.test(i.name))return;toggle(i.name==='bankTopic'?bank.topics:bank.sources,i.value,i.checked);i.closest('label').classList.toggle('is-picked',i.checked);updateBank();$('.sf-dialog-total',e.currentTarget).textContent=`${bankCount()} feladat`}
-  function matchesBank(q){return match(q,bank)&&(!bank.type||q.type===bank.type)&&(!bank.status||status(q)===bank.status)}
-  function bankOtherMatches(q){return searchMatch(q)&&(!bank.type||q.type===bank.type)&&(!bank.status||status(q)===bank.status)}
+  function matchesBank(q){return match(q,bank)&&(!bank.type||typeFor(q)===bank.type)&&(!bank.status||status(q)===bank.status)}
+  function bankOtherMatches(q){return searchMatch(q)&&(!bank.type||typeFor(q)===bank.type)&&(!bank.status||status(q)===bank.status)}
   function updateBank(){
     const root=$('#bankModernFilters');if(!root)return;
     $('[data-bank-picker=topics] span',root).textContent=bank.topics.size?`${bank.topics.size} téma`:'Minden téma';
@@ -111,7 +114,7 @@
   function setupBank(){
     const legacy=$('#bankCatalog .filters');legacy.hidden=true;legacy.classList.add('sf-legacy');
     const root=document.createElement('div');root.id='bankModernFilters';root.className='sf-bank';
-    root.innerHTML=`<div class="sf-bank-main"><div class="sf-search-slot"></div><button type="button" class="sf-picker" data-bank-picker="topics">${icon('papers')}<span>Minden téma</span><b>+</b></button><button type="button" class="sf-picker" data-bank-picker="sources">${icon('papers')}<span>Minden feladatsor</span><b>+</b></button></div><div class="sf-bank-secondary"><label>Típus<select id="modernBankType"><option value="">Összes</option><option value="single">Egy jó válasz</option><option value="multi">Több jó válasz</option><option value="number">Számolás</option></select></label><label>Haladás<select id="modernBankStatus"><option value="">Összes</option><option value="new">Még nem gyakorolt</option><option value="correct">Sikerült</option><option value="retry">Újragyakorlás</option></select></label><fieldset><legend>Feladatcsoport</legend>${[['papers','Feladatok'],['generated','Géppel generált'],['competition','Versenyfeladatok']].map(([id,label])=>`<label><input type="checkbox" name="bankKind" value="${id}">${label}</label>`).join('')}</fieldset></div><div class="sf-active-filters" hidden></div>`;
+    root.innerHTML=`<div class="sf-bank-main"><div class="sf-search-slot"></div><button type="button" class="sf-picker" data-bank-picker="topics">${icon('papers')}<span>Minden téma</span><b>+</b></button><button type="button" class="sf-picker" data-bank-picker="sources">${icon('papers')}<span>Minden feladatsor</span><b>+</b></button></div><div class="sf-bank-secondary"><label>Típus<select id="modernBankType"><option value="">Összes</option><option value="single">Egy jó válasz</option><option value="multi">Több jó válasz</option><option value="number">Számolás</option><option value="multipart">Többrészes feladat</option></select></label><label>Haladás<select id="modernBankStatus"><option value="">Összes</option><option value="new">Még nem gyakorolt</option><option value="correct">Sikerült</option><option value="retry">Újragyakorlás</option></select></label><fieldset><legend>Feladatcsoport</legend>${[['papers','Feladatok'],['generated','Géppel generált'],['competition','Versenyfeladatok']].map(([id,label])=>`<label><input type="checkbox" name="bankKind" value="${id}">${label}</label>`).join('')}</fieldset></div><div class="sf-active-filters" hidden></div>`;
     legacy.after(root);$('.sf-search-slot',root).append($('#searchInput').closest('label'));
     $('.sf-search-slot .search-wrap>span',root).innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6" stroke-linecap="round"/></svg>';
     root.addEventListener('click',e=>{const picker=e.target.closest('[data-bank-picker]');if(picker)showBankDialog(picker.dataset.bankPicker);const t=e.target.closest('[data-remove-topic]'),s=e.target.closest('[data-remove-source]');if(t){bank.topics.delete(t.dataset.removeTopic);updateBank()}if(s){bank.sources.delete(s.dataset.removeSource);updateBank()}});
@@ -120,7 +123,7 @@
   }
   function practiceSelectionTools(group){
     const selected=group==='kinds'?practice.kinds:practice.topics;
-    const values=group==='kinds'?['papers','generated','competition']:TOPICS.filter(([id])=>questions.some(q=>practice.kinds.has(kind(q))&&topicFor(q)===id)).map(([id])=>id);
+    const values=group==='kinds'?['papers','generated','competition']:TOPICS.filter(([id])=>questions.some(q=>practice.kinds.has(kind(q))&&topicsFor(q).includes(id))).map(([id])=>id);
     return `<div class="sf-selection-tools" role="group" aria-label="${group==='kinds'?'Feladatcsoportok kijelölése':'Témák kijelölése'}"><button type="button" data-practice-all="${group}" ${values.length&&values.every(id=>selected.has(id))?'disabled':''}>Mind kijelölése</button><button type="button" data-practice-clear="${group}" ${!selected.size?'disabled':''}>Kijelölés törlése</button></div>`;
   }
   function practiceRender(){
@@ -149,7 +152,7 @@
       const all=e.target.closest('[data-practice-all]'),clear=e.target.closest('[data-practice-clear]');
       if(all||clear){
         const group=all?.dataset.practiceAll||clear.dataset.practiceClear,selected=practice[group];selected.clear();
-        if(all)(group==='kinds'?['papers','generated','competition']:TOPICS.filter(([id])=>questions.some(q=>practice.kinds.has(kind(q))&&topicFor(q)===id)).map(([id])=>id)).forEach(id=>selected.add(id));
+        if(all)(group==='kinds'?['papers','generated','competition']:TOPICS.filter(([id])=>questions.some(q=>practice.kinds.has(kind(q))&&topicsFor(q).includes(id))).map(([id])=>id)).forEach(id=>selected.add(id));
         practiceRender();root.querySelector(`[data-practice-${all?'clear':'all'}="${group}"]`)?.focus({preventScroll:true});return;
       }
       const s=e.target.closest('[data-step]'),back=e.target.closest('[data-back]'),next=e.target.closest('[data-next]'),count=e.target.closest('[data-count]');
@@ -165,5 +168,5 @@
     });practiceRender();
   }
   function setup(opts){if(ready)return;ready=true;questions=opts.questions;status=opts.status;onBankChange=opts.onBankChange;searchMatch=opts.searchMatch||searchMatch;setupBank();setupPractice()}
-  window.VV_SELECTION=Object.freeze({icon,setup,matchesBank,practicePool:pool,practiceCount:()=>practice.count,topicFor,topicLabel:q=>TOPICS.find(t=>t[0]===topicFor(q))?.[1]||q.topic,topics:()=>TOPICS.map(([id,title])=>({id,title,count:questions.filter(q=>topicFor(q)===id).length})),refresh:()=>{if(ready){updateBank();practiceRender()}}});
+  window.VV_SELECTION=Object.freeze({icon,setup,matchesBank,practicePool:pool,practiceCount:()=>practice.count,topicFor,topicsFor,topicLabel:q=>TOPICS.find(t=>t[0]===topicFor(q))?.[1]||q.topic,topics:()=>TOPICS.map(([id,title])=>({id,title,count:questions.filter(q=>topicsFor(q).includes(id)).length})),refresh:()=>{if(ready){updateBank();practiceRender()}}});
 })();

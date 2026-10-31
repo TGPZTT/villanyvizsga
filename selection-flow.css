@@ -32,3 +32,28 @@
 #practiceSetup .sf-steps{background:#f5f8fb}
 @media(max-width:650px){.sf-custom-heading{padding:14px;gap:10px}.sf-custom-heading h2{font-size:21px}.sf-custom-art,.sf-custom-art svg{width:40px;height:44px;flex-basis:40px}}
 @media(max-width:650px){.sf-kind{padding-right:12px}.sf-kind input{top:auto;bottom:12px;right:12px}}
+
+/* Keep picker controls in view and give the list the only scrollbar. */
+.sf-dialog{
+  box-sizing:border-box;
+  height:min(90vh,800px);
+  height:min(90dvh,800px);
+  max-height:min(90vh,800px);
+  max-height:min(90dvh,800px);
+  overflow:hidden;
+}
+.sf-dialog[open]{display:flex;flex-direction:column}
+.sf-dialog>header,
+.sf-dialog>p,
+.sf-dialog>.sf-dialog-search,
+.sf-dialog>footer{flex:0 0 auto;min-width:0}
+.sf-dialog>.sf-dialog-list{
+  flex:1 1 auto;
+  min-height:0;
+  max-height:none;
+  overflow-x:hidden;
+  overflow-y:auto;
+  padding:5px;
+  scrollbar-gutter:stable;
+}
+.sf-dialog>footer{position:static;bottom:auto}

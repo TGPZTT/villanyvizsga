@@ -43,6 +43,7 @@
   function setup(data = {}) {
     const list = Array.isArray(data.questions) ? data.questions : [];
     questions = new Map(list.map(question => [String(question.id), question]));
+    for (const [alias, target] of Object.entries(data.questionAliases || {})) if (questions.has(String(target))) questions.set(alias, questions.get(String(target)));
     const ids = new Set(list.map(identity).filter(Boolean));
     if (!ids.size) for (const source of data.sources || []) ids.add(identity(source));
     const next = new Map(), used = new Set();
