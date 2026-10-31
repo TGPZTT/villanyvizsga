@@ -1,8 +1,9 @@
 (function () {
   'use strict';
-  const VERSION = '20261031r31';
+  const VERSION = '20261101r34';
   const esc = value => String(value).replace(/[&<>"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
   let dialog, frame, notice, returnTo, generation = 0;
+  let stopProgressSync = () => {};
   let referenceDialog, referenceReturnTo;
 
   function enhanceImageDialog(container, picture) {
@@ -94,7 +95,10 @@
       if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) close();
     });
     dialog.addEventListener('close', () => {
+      // A queued close notification must not tear down an already reopened lesson.
+      if (dialog.open) return;
       generation++;
+      stopProgressSync();
       frame.srcdoc = '';
       frame.hidden = true;
       returnTo?.isConnected && returnTo.focus({preventScroll:true});
@@ -123,6 +127,7 @@
     document.dispatchEvent(new CustomEvent('vv-question-learning-help'));
     ensureDialog();
     const request = ++generation;
+    stopProgressSync();
     returnTo = trigger || document.activeElement;
     notice.hidden = false;
     notice.textContent = 'Tananyag betöltése…';
@@ -140,12 +145,26 @@
           child.VV_DATA = window.VV_DATA;
           child.VV_LEARNING = window.VV_LEARNING;
           child.VV_ASSETS = window.VV_ASSETS;
+          let writingFromChild = false;
           child.VV_STORAGE = Object.freeze({get:key=>window.VV_STORAGE?.get(key),set:(key,value)=>{
-            const result=window.VV_STORAGE?.set(key,value);
-            window.dispatchEvent(new CustomEvent('vv-storage-change',{detail:{key,value,external:true,reason:'lesson-window',persisted:!!window.VV_STORAGE?.allowed}}));
-            document.dispatchEvent(new CustomEvent('vv-learning-progress'));
-            return result;
+            writingFromChild = true;
+            try {
+              const result=window.VV_STORAGE?.set(key,value);
+              window.dispatchEvent(new CustomEvent('vv-storage-change',{detail:{key,value,external:true,reason:'lesson-window',persisted:!!window.VV_STORAGE?.allowed}}));
+              document.dispatchEvent(new CustomEvent('vv-learning-progress'));
+              return result;
+            } finally { writingFromChild = false; }
           }});
+          // Imports, deletes and edits in another view must reach the open lesson too.
+          // The lesson renders these notifications without saving them back.
+          const syncEvents = ['vv-storage-change','vv-storage-restored','vv-storage-clear'];
+          const syncProgress = event => {
+            if (writingFromChild || request !== generation || !dialog.open) return;
+            if (event.type === 'vv-storage-change' && event.detail?.key !== 'villanyvizsga-learning-v1') return;
+            child.dispatchEvent(new child.CustomEvent(event.type,{detail:{...event.detail,external:true}}));
+          };
+          for (const name of syncEvents) window.addEventListener(name,syncProgress);
+          stopProgressSync = () => { for (const name of syncEvents) window.removeEventListener(name,syncProgress); stopProgressSync = () => {}; };
           child.VV_LABELS?.setup(window.VV_DATA);
           child.location.hash = route;
           // A srcdoc document may only change its own fragment. Relative URLs

@@ -8,7 +8,7 @@
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const shuffle = values => { const result = [...values]; for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]]; } return result; };
   const readProgress = () => { try { const value = JSON.parse(window.VV_STORAGE?.get(KEY)); return value && typeof value === 'object' && !Array.isArray(value) ? {read: value.read && typeof value.read === 'object' && !Array.isArray(value.read) ? value.read : {}, checks: value.checks && typeof value.checks === 'object' && !Array.isArray(value.checks) ? value.checks : {}, lastLesson: typeof value.lastLesson === 'string' ? value.lastLesson : ''} : {read:{}, checks:{}, lastLesson:''}; } catch { return {read:{}, checks:{}, lastLesson:''}; } };
-  let progress = readProgress();
+  let progress = readProgress(), synchronizingProgress = false;
   let host, data, chapters = [], lessons = [], lessonMap = new Map(), questionMap = new Map(), reverseMap = new Map(), figureMeta = new Map(), commonFigureFirstUse = new Map(), loading;
   let current = null, lastRoute = 'learn', day = 0, query = '', tab = 'read', figureIndex = 0, scope = 'papers', questionPage = 0, resetOpen = false;
   const sessions = new Map(), models = new Map(), cableSelections = new Map();
@@ -20,8 +20,20 @@
   const taskMark=lesson=>taskCount(lesson)?`<span class="learn-task-mark" aria-label="Vizsgaanyag. ${taskCount(lesson)} kapcsolódó feladat." title="${taskCount(lesson)} feladat megoldásához szükséges ismeretet tartalmaz.">${taskMarkerIcon}<span>Vizsgaanyag</span></span>`:'';
   let searchTimer;
   const save = reason => {
+    if (synchronizingProgress) return;
     window.VV_STORAGE?.set(KEY, JSON.stringify(progress));
     if (reason) document.dispatchEvent(new CustomEvent('vv-learning-progress', {detail:{reason}}));
+  };
+  const renderSyncedProgress = () => {
+    if (!host?.getClientRects().length) return;
+    const previous = synchronizingProgress;
+    synchronizingProgress = true;
+    try { renderRoute(location.hash); } finally { synchronizingProgress = previous; }
+  };
+  const refreshProgress = ({clearSessions = false} = {}) => {
+    progress = readProgress();
+    if (clearSessions) sessions.clear();
+    renderSyncedProgress();
   };
   const resetProgress = ({render = true, persist = true} = {}) => {
     progress = {read:{}, checks:{}, lastLesson:''};
@@ -29,7 +41,7 @@
     resetOpen = false;
     if (persist) save('reset');
     else document.dispatchEvent(new CustomEvent('vv-learning-progress', {detail:{reason:'reset'}}));
-    if (render && host?.getClientRects().length) renderRoute(location.hash);
+    if (render) renderSyncedProgress();
   };
   const lessonRoute = lesson => `learn/${encodeURIComponent(lesson.chapter.id)}/${encodeURIComponent(lesson.id)}`;
   const href = lesson => `#${lessonRoute(lesson)}`;
@@ -718,7 +730,8 @@
     lastRoute = selectedCable && tab==='read' ? cableRoute(lesson,selectedCable.id) : lessonRoute(lesson);
     if (['check','model','questions'].includes(tab)) lastRoute+=`/${tab}`;
     if (/^#learn(?:\/|$)/.test(location.hash) && location.hash !== `#${lastRoute}`) history.replaceState(null,'',`#${lastRoute}`);
-    progress.lastLesson = lesson.id; save();
+    // Navigation changes only the resume point, never an older copy of read/check marks.
+    if (!synchronizingProgress) { progress = readProgress(); progress.lastLesson = lesson.id; save(); }
     host.style.setProperty('--learn-chapter-accent',validColor(lesson.chapter.accent?.color,'#a9541b'));
     host.style.setProperty('--learn-chapter-soft',validColor(lesson.chapter.accent?.soft,'#fff0d8'));
     const chapterGroups = groupsFor(lesson.chapter), globalIndex = lessons.indexOf(lesson), previous = lessons[globalIndex - 1], next = lessons[globalIndex + 1], related = relatedQuestions(lesson), groupIndex = chapterGroups.findIndex(items => items.includes(lesson));
@@ -783,6 +796,7 @@
     if (check.type === 'number') state.correct = Math.abs(Number(state.number.replace(',','.')) - Number(check.correct)) <= Number(check.tolerance ?? 0.01) + Number.EPSILON;
     state.submitted = true; state.notice = '';
     const checkedAt = Date.now();
+    progress = readProgress();
     progress.checks[current.id] = {correct:state.correct, at:checkedAt};
     // A completed checkpoint and the manual read button mark the same lesson.
     // Failed or incomplete retries must never erase an existing read marker.
@@ -870,7 +884,7 @@
       if (target.hasAttribute('data-learn-state')) { const widths=new Map($$('[data-learn-channel]',host).map(element=>[element.dataset.learnChannel,element.style.width]));models.get(current.id).index = Number(target.dataset.learnState); renderLesson(current); $(`[data-learn-state="${target.dataset.learnState}"]`, host)?.focus({preventScroll:true});if(!matchMedia('(prefers-reduced-motion:reduce)').matches)$$('[data-learn-channel]',host).forEach(element=>{const old=widths.get(element.dataset.learnChannel);if(old)element.animate([{width:old},{width:element.style.width}],{duration:650,easing:'cubic-bezier(.2,.7,.2,1)'});}); return; }
       switch (target.dataset.learnAction) {
         case 'questions-start': if (current && relatedQuestions(current).length) document.dispatchEvent(new CustomEvent('vv-learning-start-questions')); break;
-        case 'mark': if (progress.read[current.id]) delete progress.read[current.id]; else progress.read[current.id] = Date.now(); save('mark'); renderLesson(current); $('[data-learn-action="mark"]', host)?.focus({preventScroll:true}); break;
+        case 'mark': progress = readProgress(); if (progress.read[current.id]) delete progress.read[current.id]; else progress.read[current.id] = Date.now(); save('mark'); renderLesson(current); $('[data-learn-action="mark"]', host)?.focus({preventScroll:true}); break;
         case 'hint': { const state = sessionFor(current); state.hint = !state.hint; renderLesson(current); $('[data-learn-action="hint"]', host)?.focus({preventScroll:true}); break; }
         case 'check': evaluateCheck(); break;
         case 'retry': sessions.delete(checkId(current)); renderLesson(current); break;
@@ -898,7 +912,7 @@
 
   function setup({root, data:source, questions = []} = {}) {
     if (!root) return Promise.resolve();
-    if (host !== root) { host = root; setupEvents(); }
+    if (host !== root) { progress = readProgress(); host = root; setupEvents(); }
     questionMap = new Map(questions.map(question => [String(question.id), question]));
     if (source) { ingest(source); renderRoute(location.hash); document.dispatchEvent(new CustomEvent('vv-learning-ready')); return Promise.resolve(); }
     if (data) return Promise.resolve();
@@ -906,9 +920,9 @@
     return loading;
   }
 
-  window.addEventListener('vv-storage-change',event=>{if(event.detail.key===KEY&&event.detail.external){progress=readProgress();if(host?.getClientRects().length)renderRoute(location.hash);}});
+  window.addEventListener('vv-storage-change',event=>{if(event.detail.key===KEY&&event.detail.external)refreshProgress();});
   window.addEventListener('vv-storage-clear',()=>resetProgress({persist:false}));
-  window.addEventListener('vv-storage-restored',()=>{progress=readProgress();sessions.clear();if(host?.getClientRects().length)renderRoute(location.hash);});
+  window.addEventListener('vv-storage-restored',()=>refreshProgress({clearSessions:true}));
 
   window.VV_LEARN = Object.freeze({setup, renderRoute, resetProgress, capture: captureInputs, currentRoute: () => lastRoute, linksForQuestion: id => (reverseMap.get(String(id)) || []).map(lesson => ({id:lesson.id,title:lesson.title,chapterTitle:lesson.chapter.title,href:href(lesson),focus:lesson.id==='machines-vector-group'?(String(id)===lesson.transformerLesson?.phaseLab?.questionId?'vector-task':'vectors'):''})), questionIds: () => current ? relatedQuestions(current).map(q => q.id) : [], stats: () => ({chapters:chapters.length,lessons:lessons.length,topics:allGroups().length,linkedQuestions:reverseMap.size,read:countRead(lessons)})});
 })();
