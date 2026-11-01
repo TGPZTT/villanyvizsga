@@ -1,6 +1,6 @@
 (function () {
   'use strict';
-  const VERSION = '20261101r37';
+  const VERSION = '20261101r38';
   const esc = value => String(value).replace(/[&<>"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]));
   let dialog, frame, notice, returnTo, generation = 0;
   let stopProgressSync = () => {};

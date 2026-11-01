@@ -3,6 +3,7 @@
   const raw=window.VV_LABELS.payload(window.VV_READABLE.payload(window.VV_DATA||{questions:[],sources:[]}));
   const TYPE={single:'Egy jó válasz',multi:'Több jó válasz',number:'Számolás',open:'Kifejtés'};
   const pointsText=q=>`${q.points} ${q.pointBasis==='estimated-practice'||q.generated?.machineGenerated?'gyakorlópont':'pont'}`;
+  const isSupplementary=q=>q.supplementary===true||q.generated?.machineGenerated===true||q.sourceId?.startsWith('generated-exam-');
   const KEY='villanyvizsga-progress-v1';
   const norm=s=>String(s??'').toLocaleLowerCase('hu').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
   const CATEGORY={foundations:'Villanyszerelési alapok, készülékek és kapcsolások',calculation:'Számítás és méretezés',safety:'Biztonság, védelem és mérések',wiring:'Vezetékek és szereléstechnológia'};
@@ -94,9 +95,9 @@
     });
   }
   const sourceLabel=q=>window.VV_LABELS.sourceLabel(q);
-  const isExamPaper=q=>q.sourceId==='online_2022.04.11.pdf'||/^Villanyszerelő_írásbeli_/u.test(q.sourceId)||q.sourceId.startsWith('generated-exam-')||q.sourceId.startsWith('interactive-exam-');
+  const isExamPaper=q=>!isSupplementary(q)&&(q.sourceId==='online_2022.04.11.pdf'||/^Villanyszerelő_írásbeli_/u.test(q.sourceId)||q.sourceId.startsWith('interactive-exam-'));
   const isContest=q=>q.sourceId==='szkt_írásbeli.pdf'||q.sourceId.startsWith('szakmasztar_forrasok/')||q.id.startsWith('szs-');
-  const inSourceScope=(q,scope)=>isExamPaper(q)||(scope==='papers-plus-star'&&isContest(q));
+  const inSourceScope=(q,scope)=>scope==='generated'?isSupplementary(q):isExamPaper(q)||(scope==='papers-plus-star'&&isContest(q));
   const answerLabel=q=>{
     if(isMultipart(q))return answerFields(q).map((field,index)=>`${field.partLabel||`${index+1}.`} ${answerLabel(partQuestion(q,field,index))}`).join('\n');
     if(answerFields(q).length)return answerFields(q).map(field=>`${field.label}: ${field.answer}${field.unit?` ${field.unit}`:''}`).join('\n');
@@ -198,7 +199,7 @@
   }
   function progressManagerQuestions(){
     const query=norm($('#progressSearch')?.value),status=$('#progressStatusFilter')?.value||'',scope=$('#progressScopeFilter')?.value||'';
-    return labelledQuestions().filter(q=>(!status||attemptStatus(q)===status)&&(!scope||(scope==='generated'?q.sourceId.startsWith('generated-exam-'):scope==='papers'?isExamPaper(q)&&!q.sourceId.startsWith('generated-exam-'):isContest(q)))&&(!query||norm(questionSearchText(q)).includes(query))).sort((a,b)=>(progress[b.id]?.at||0)-(progress[a.id]?.at||0)||a.id.localeCompare(b.id));
+    return labelledQuestions().filter(q=>(!status||attemptStatus(q)===status)&&(!scope||(scope==='generated'?isSupplementary(q):scope==='papers'?isExamPaper(q):isContest(q)))&&(!query||norm(questionSearchText(q)).includes(query))).sort((a,b)=>(progress[b.id]?.at||0)-(progress[a.id]?.at||0)||a.id.localeCompare(b.id));
   }
   function cancelProgressRemoval({focus=false}={}){
     progressManager.pending=null;
@@ -747,7 +748,7 @@
     return 'material';
   }
   const EXAM_SOURCES=['papers','generated','competition'];
-  const examSource=q=>q.generated?.machineGenerated===true?'generated':isContest(q)?'competition':isExamPaper(q)?'papers':'';
+  const examSource=q=>isSupplementary(q)?'generated':isContest(q)?'competition':isExamPaper(q)?'papers':'';
   function examSources(scope){
     const values=Array.isArray(scope)?scope:scope instanceof Set?[...scope]:scope==='papers-plus-star'?['papers','competition']:[scope];
     return EXAM_SOURCES.filter(source=>values.includes(source));
@@ -755,7 +756,7 @@
   const selectedExamSources=()=>examSources($$('[name="examSource"]:checked',$('#examSources')).map(input=>input.value));
   function examPool(scope){
     const selected=new Set(examSources(scope));
-    const all=qlist.filter(q=>!q.practiceOnly&&!q.review&&['single','multi','number'].includes(q.type)&&(q.type==='number'||q.options.length>=2)&&isAuto(q)&&(!q.requiresFigure||q.figurePaths.length));
+    const all=qlist.filter(q=>(!q.practiceOnly||q.supplementary===true)&&!q.review&&['single','multi','number'].includes(q.type)&&(q.type==='number'||q.options.length>=2)&&isAuto(q)&&(!q.requiresFigure||q.figurePaths.length));
     return all.filter(q=>selected.has(examSource(q)));
   }
   const EXAM_HISTORY_KEY='villanyvizsga-exam-history-v1';

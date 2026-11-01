@@ -7,7 +7,7 @@
   const read=key=>{try{return JSON.parse(window.VV_STORAGE?.get(key))}catch{return null}};
   const nowId=()=>globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
   let config, dialog, returnFocus, scope='papers', queued=false, pending=null, fileToken=0;
-  const scopeOf=q=>q.generated?.machineGenerated||q.sourceId?.startsWith('generated-exam-')?'generated':window.VV_LABELS?.sourceKind(q)==='Versenyfeladat'?'competition':'papers';
+  const scopeOf=q=>q.supplementary===true||q.generated?.machineGenerated||q.sourceId?.startsWith('generated-exam-')?'generated':window.VV_LABELS?.sourceKind(q)==='Versenyfeladat'?'competition':'papers';
   function telemetryFields(value,strict=false) {
     const out={};
     if(!object(value)){if(strict)throw Error('A fájl hibás próbálkozást tartalmaz.');return out;}
@@ -175,7 +175,7 @@
     if(!config)return;
     if(!dialog){
       dialog=document.createElement('dialog');dialog.className='pt-dialog';dialog.setAttribute('aria-labelledby','ptTitle');
-      dialog.innerHTML='<h2 id="ptTitle">Felkészültség témánként</h2><p class="pt-intro">Két önálló, helyes megoldás után jelenik meg a „Többször sikerült” állapot. A felkészültség kizárólag a feladatmegoldásokból számítódik.</p><div class="pt-scopes" role="group" aria-label="Feladatkör"><button type="button" data-pt-scope="papers">Feladatok</button><button type="button" data-pt-scope="generated">Géppel generált</button><button type="button" data-pt-scope="competition">Versenyfeladatok</button></div><div class="pt-topic-grid" data-pt-rows></div><button type="button" class="pt-close" aria-label="Felkészültség bezárása">×</button>';
+      dialog.innerHTML='<h2 id="ptTitle">Felkészültség témánként</h2><p class="pt-intro">Két önálló, helyes megoldás után jelenik meg a „Többször sikerült” állapot. A felkészültség kizárólag a feladatmegoldásokból számítódik.</p><div class="pt-scopes" role="group" aria-label="Feladatkör"><button type="button" data-pt-scope="papers">Feladatok</button><button type="button" data-pt-scope="generated">Generált és közösségi</button><button type="button" data-pt-scope="competition">Versenyfeladatok</button></div><div class="pt-topic-grid" data-pt-rows></div><button type="button" class="pt-close" aria-label="Felkészültség bezárása">×</button>';
       dialog.addEventListener('click',event=>{
         const source=event.target.closest('[data-pt-scope]');if(source){scope=source.dataset.ptScope;renderTopics();dialog.querySelector(`[data-pt-scope="${scope}"]`).focus();return;}
         const topic=event.target.closest('[data-topic]');if(topic){const row=topicRows().find(row=>row.id===topic.dataset.topic);if(row){closeTopics();config.startPractice(row.list.map(q=>q.id));}return;}
