@@ -68,7 +68,7 @@
   const byId=new Map(bankEntries.map(q=>[q.id,q]));
   const uniqueQuestions=list=>occurrenceIndex?.unique(list)||list;
   const progressQuestionId=q=>occurrenceIndex?.questionId(q)||q.id;
-  const questionGroupId=q=>occurrenceIndex?.groupId(q)||q.id;
+  const questionGroupId=q=>occurrenceIndex?.groupId(q)||String(q?.id??q??'');
   const progressProjection=()=>occurrenceIndex?.projection(progress)||progress;
   const resolveQuestionId=id=>String(window.VV_TASK_GROUPS?.resolveId?.(String(id),raw)||id);
   const $=(s,root=document)=>root.querySelector(s);
@@ -818,7 +818,7 @@
     }
     return {runs,byId};
   }
-  function selectExam(pool,count,exposure=examExposure()){return window.VV_EXAM_PICKER.select(pool,count,{areas:EXAM_AREAS,areaOf:examArea,history:examHistory(),catalog:qlist,exposure})}
+  function selectExam(pool,count){return window.VV_EXAM_PICKER.select(pool,count,{areas:EXAM_AREAS,areaOf:examArea,history:examHistory(),groupOf:questionGroupId})}
   function examNotice(message){
     const setup=$('#examSetup');let notice=$('#examPoolNotice',setup);
     if(!notice){setup.insertAdjacentHTML('beforeend','<p id="examPoolNotice" class="feedback review" role="alert"></p>');notice=$('#examPoolNotice',setup)}
@@ -833,12 +833,13 @@
       return;
     }
     $('#examPoolNotice')?.remove();
-    const exposure=examExposure(),selection=selectExam(pool,count,exposure),list=selection.questions;
-    if(list.length<count){examNotice(`Most ${list.length} kellően eltérő kérdésből álló feladatsort sikerült összeállítani. ${list.length>=15?'Válassz 15 kérdést, vagy jelölj ki további forrást.':'Jelölj ki másik vagy további forrást.'}`);return;}
+    const selection=selectExam(pool,count),list=selection.questions;
+    if(list.length<count){examNotice('Nincs elegendő különböző feladat. Válassz kevesebb kérdést, vagy jelölj ki további forrást.');return;}
+    const exposure=examExposure();
     exposure.runs++;
     for(const id of new Set(list.map(q=>String(q.id))))exposure.byId[id]={count:(exposure.byId[id]?.count||0)+1,last:exposure.runs};
     window.VV_STORAGE?.set(EXAM_EXPOSURE_KEY,JSON.stringify(exposure));window.VV_STORAGE?.set(EXAM_HISTORY_KEY,JSON.stringify([...examHistory(),{at:Date.now(),scope:sources.join('+'),sources,ids:list.map(q=>q.id)}].slice(-8)));
-    exam={list,index:0,phase:'main',responses:{},drafts:{},skipped:[],remaining:90*60,deadline:Date.now()+90*60*1000,submitted:false,revealed:false,endReason:''};
+    exam={list,index:0,phase:'main',responses:{},drafts:{},skipped:[],previousOverlap:selection.meta.previousOverlap,remaining:90*60,deadline:Date.now()+90*60*1000,submitted:false,revealed:false,endReason:''};
     $('#examSetup').classList.add('hidden');$('#examSession').classList.remove('hidden');$('#examView').classList.add('exam-running');document.body.classList.add('exam-running');
     renderExam();clearInterval(timerId);timerId=setInterval(tickExam,250);
   }
@@ -869,7 +870,8 @@
     if(exam.phase==='skippedIntro'||exam.phase==='ready'){renderExamCheckpoint();return}
     const q=examCurrent(),root=$('#examSession'),r=exam.drafts[q.id]??'';
     const second=exam.phase==='skipped',position=exam.index+1,total=second?exam.skipped.length:exam.list.length;
-    root.innerHTML=`<div class="exam-szev-layout"><article class="exam-szev-main"><div class="exam-szev-top"><span class="kicker">${second?'ÁTLÉPETT FELADATOK · MÁSODIK KÖR':'MINTAVIZSGA · ELSŐ KÖR'}</span><span class="exam-szev-count">${position} / ${total}</span></div><div class="exam-szev-mobile-summary"><span>Hátralévő idő <b id="examTimerMobile">${formatTime(exam.remaining)}</b></span><span>Átlépett: ${second?exam.skipped.length-exam.index:exam.skipped.length}</span></div>${questionBody(q,'exam',r,false)}<div class="exam-szev-actions-mobile">${second?'':`<button id="examSkipMobile" class="button outline" type="button">Átlépem</button>`}<button id="examNextMobile" class="button primary" type="button">Következő →</button></div><p class="exam-szev-rule">A beadott válasz után nincs visszalépés. A megoldások a próba lezárása után érhetők el. Az oldal frissítése megszakítja ezt a próbát.</p></article>${examRail(true)}</div>`;
+    const repeatNote=exam.previousOverlap?`<p class="exam-szev-rule" data-previous-repeat-note role="status">Kevés másik feladat maradt, ezért ${exam.previousOverlap} feladat ismétlődik az előző sorból.</p>`:'';
+    root.innerHTML=`<div class="exam-szev-layout"><article class="exam-szev-main"><div class="exam-szev-top"><span class="kicker">${second?'ÁTLÉPETT FELADATOK · MÁSODIK KÖR':'MINTAVIZSGA · ELSŐ KÖR'}</span><span class="exam-szev-count">${position} / ${total}</span></div><div class="exam-szev-mobile-summary"><span>Hátralévő idő <b id="examTimerMobile">${formatTime(exam.remaining)}</b></span><span>Átlépett: ${second?exam.skipped.length-exam.index:exam.skipped.length}</span></div>${repeatNote}${questionBody(q,'exam',r,false)}<div class="exam-szev-actions-mobile">${second?'':`<button id="examSkipMobile" class="button outline" type="button">Átlépem</button>`}<button id="examNextMobile" class="button primary" type="button">Következő →</button></div><p class="exam-szev-rule">A beadott válasz után nincs visszalépés. A megoldások a próba lezárása után érhetők el. Az oldal frissítése megszakítja ezt a próbát.</p></article>${examRail(true)}</div>`;
     bindOptions(root);restoreNumericResponse(root,q,r);
     const preserve=()=>{exam.drafts[q.id]=selectedFrom(root,q)};
     $$('input[name="answer"], input[data-part-index], [data-numeric-index]',root).forEach(el=>{el.addEventListener('change',preserve);el.addEventListener('input',preserve)});$('#freeAnswer',root)?.addEventListener('input',preserve);
@@ -914,11 +916,13 @@
     $('#examAbortYes',root).addEventListener('click',resetExam);
   }
   function evaluateExam(){
+    const activeWeight=EXAM_AREAS.filter(area=>exam.list.some(q=>examArea(q)===area.id)).reduce((sum,area)=>sum+area.weight,0);
     const breakdown=EXAM_AREAS.map(area=>{
       const list=exam.list.filter(q=>examArea(q)===area.id);
       const possible=list.reduce((sum,q)=>sum+q.points,0);
       const earned=list.reduce((sum,q)=>sum+earnedPoints(q,exam.responses[q.id]??''),0);
-      return {...area,count:list.length,points:possible?area.weight*earned/possible:0};
+      const weight=list.length&&activeWeight?100*area.weight/activeWeight:0;
+      return {...area,weight,count:list.length,points:possible?weight*earned/possible:0};
     });
     const score=Number(breakdown.reduce((sum,area)=>sum+area.points,0).toFixed(2));
     const correct=exam.list.filter(q=>grade(q,exam.responses[q.id]??'')===true).length;
@@ -961,7 +965,7 @@
       const explanation=isMultipart(q)?'':q.explanation?`<div class="review-explanation">${wrongAnswerMarkup(q,answer)}<strong>Miért ez a megoldás?</strong>${explanationMarkup(q)}</div>`:'<p class="review-explanation-missing">Ehhez a feladathoz nem tartozik külön magyarázat.</p>';
       return `<article class="review-row"><div class="review-heading"><strong>${i+1}. feladat</strong><span class="review-status ${grade(q,answer)===true?'is-correct':points>0?'is-partial':'is-wrong'}">${status}</span><small class="review-points">${scoreText(points)} / ${pointsText(q)}</small></div><div class="review-question">${questionBody(q,'review',answer,true)}</div>${q.type==='single'||q.type==='multi'||isMultipart(q)?'':`<div class="review-answer-grid"><div class="${grade(q,answer)===true?'is-correct':'is-wrong'}"><span>Válaszod</span><p>${inlineMathText(answerForReview(q,answer))}</p></div><div class="is-correct"><span>Helyes válasz</span><p>${inlineMathText(answerLabel(q))}</p></div></div>`}${explanation}</article>`;
     }).join('');
-    root.innerHTML=`<div class="exam-szev-results"><div class="kicker">TANULÁSI KIÉRTÉKELÉS</div><h2 class="question-title">A mintavizsga eredménye</h2><div class="exam-summary"><strong>${scoreText(score)} / 100 pont</strong><p>${correct} teljes pontszámú feladat ${exam.list.length} közül. A 40%-os KKK-küszöböt ez a gyakorló eredmény ${score>=40?'eléri':'nem éri el'}. Ez nem hivatalos vizsgaeredmény.</p></div><div class="exam-area-breakdown">${breakdown.map(area=>`<div><span>${esc(area.label)}</span><strong>${scoreText(area.points)} / ${area.weight} pont</strong><small>${area.count} mintafeladat</small></div>`).join('')}</div><p class="exam-score-note">A négy KKK-témakör pontjait 20 / 20 / 20 / 40 arányra súlyoztuk. A kérdések száma és válogatása saját gyakorló összeállítás.</p><div class="question-actions"><button id="newExam" class="button outline" type="button">Új mintavizsga</button></div><section id="examReview" class="exam-review"><h3>Válaszaid és a helyes megoldások</h3>${reviewMarkup()}</section></div>`;
+    root.innerHTML=`<div class="exam-szev-results"><div class="kicker">TANULÁSI KIÉRTÉKELÉS</div><h2 class="question-title">A mintavizsga eredménye</h2><div class="exam-summary"><strong>${scoreText(score)} / 100 pont</strong><p>${correct} teljes pontszámú feladat ${exam.list.length} közül. A 40%-os KKK-küszöböt ez a gyakorló eredmény ${score>=40?'eléri':'nem éri el'}. Ez nem hivatalos vizsgaeredmény.</p></div><div class="exam-area-breakdown">${breakdown.map(area=>`<div><span>${esc(area.label)}</span><strong>${area.count?`${scoreText(area.points)} / ${scoreText(area.weight)} pont`:"Nem szerepelt a sorban"}</strong><small>${area.count} mintafeladat</small></div>`).join('')}</div><p class="exam-score-note">A témakörök pontaránya 20 / 20 / 20 / 40. Ha egy témakör nem szerepelt a sorban, a többi súlyát arányosan 100 pontra számítjuk át.</p><div class="question-actions"><button id="newExam" class="button outline" type="button">Új mintavizsga</button></div><section id="examReview" class="exam-review"><h3>Válaszaid és a helyes megoldások</h3>${reviewMarkup()}</section></div>`;
     $('#newExam',root).addEventListener('click',resetExam);hydrateAssets(root);
   }
   function setupWorkedAnimations(root){if(root){window.VV_WORKED?.setup(root);window.VV_GUIDE?.setup(root)}}
