@@ -140,7 +140,7 @@
       if(root&&!$('#examNavigationNotice',root))root.insertAdjacentHTML('afterbegin','<div id="examNavigationNotice" class="feedback review" role="status">A folyamatban lévő próbából a „Próba megszakítása” gombbal léphetsz ki.</div>');
       return;
     }
-
+    if(target==='guide'){window.location.assign('szamolas.html');return}
     window.VV_TIMING?.pause();
     if(view==='question'&&target!=='question')captureQuestionResponse();
     if(view==='practice'&&practice&&target!=='practice'){const active=practice.list[practice.index];practice.responses[active.id]=selectedFrom($('#practiceSession'),active)}
@@ -403,6 +403,17 @@
   function validChoiceResponse(q,response){return (Array.isArray(response)?response:[response]).every(value=>value==null||value===''||typeof value==='string'&&(!value.trim()||q.options.some(option=>option.key===value.trim().toUpperCase())))}
   function scoreText(value){return new Intl.NumberFormat('hu-HU',{maximumFractionDigits:2}).format(Number(value)||0)}
   function fieldWeights(fields){return fields.map(field=>Number.isFinite(field.points)&&field.points>=0?field.points:1)}
+  function partEligible(q,field,values){
+    return (field.requiresAnsweredFields||[]).every(index=>{
+      const prerequisite=answerFields(q)[index];if(!prerequisite)return false;
+      const part=partQuestion(q,prerequisite,index),value=values[index];
+      if(part.type==='number'){
+        const fields=answerFields(part),entered=Array.isArray(value)?value:[value];
+        return fields.length?fields.every((item,i)=>item.kind==='choice'?item.options.includes(entered[i]):Number.isFinite(parseEnteredNumber(entered[i]))):Number.isFinite(parseEnteredNumber(value));
+      }
+      return validChoiceResponse(part,value)&&selectionKeys(value).length>0;
+    });
+  }
   function grade(q,response){
   if(!isAuto(q))return null;
   if((q.type==='single'||q.type==='multi')&&!validChoiceResponse(q,response))return false;
@@ -420,7 +431,7 @@
   if(grade(q,response)===true)return q.points;
   if(isMultipart(q)){
     const values=Array.isArray(response)?response:[response],fields=answerFields(q),weights=fieldWeights(fields),total=weights.reduce((sum,weight)=>sum+weight,0);
-    const earned=fields.reduce((sum,field,index)=>{const part=partQuestion(q,field,index);return sum+(part.points>0?earnedPoints(part,values[index])*weights[index]/part.points:0)},0);
+    const earned=fields.reduce((sum,field,index)=>{const part=partQuestion(q,field,index);return sum+(part.points>0&&partEligible(q,field,values)?earnedPoints(part,values[index])*weights[index]/part.points:0)},0);
     return total>0?Math.max(0,Math.min(q.points,q.points*earned/total)):0;
   }
   if(q.type==='number'&&answerFields(q).length){
@@ -441,7 +452,7 @@
   if(q.type==='multi'){
     const right=getCorrectKeys(q),given=selectionKeys(response),good=given.filter(key=>right.includes(key)).length;
     detail=`${good} helyes jelölés, ${given.length-good} téves jelölés, ${right.length-good} kihagyott helyes válasz. A kihagyásért nem jár pont, a téves jelölésért levonás jár.`;
-  }else detail='A részfeladatok pontjai összeadódnak. Egy hibás vagy kihagyott rész nem csökkenti a többi részre kapott pontot.';
+  }else detail=answerFields(q).some(field=>field.requiresAnsweredFields?.length)?'A részpontok összeadódnak. A minősítés csak a hozzá tartozó számítás eredményének megadása után ér pontot.':'A részfeladatok pontjai összeadódnak. Egy hibás vagy kihagyott rész nem csökkenti a többi részre kapott pontot.';
   return `<div class="question-score" role="note"><strong>Elért pont: ${scoreText(earnedPoints(q,response))} / ${pointsText(q)}</strong><p>${esc(detail)}</p></div>`;
 }
   function mark(q,result,refresh=true,{session=null,verified=false,assisted=false}={}){
@@ -542,7 +553,7 @@
       const inputs=part.type==='number'?multipartNumericMarkup(part,index,selected,show||mode==='review'):`<div class="options">${options}</div>`;
       const solution=show?`<div class="task-part-solution explanation"><strong>Megoldás</strong><p class="task-part-answer">${inlineMathText(answerLabel(part))}</p>${wrongAnswerMarkup(part,selected)}${part.explanation?`<strong class="task-part-why">Miért?</strong>${explanationMarkup(part)}`:''}</div>`:'';
       const links=field.lessonIds?.length?learningLinksMarkup(q,mode,field.lessonIds):'';
-      return `<fieldset class="task-part" data-task-part="${index}"><legend><span class="task-part-label">${esc(label)}</span><span class="task-part-prompt">${inlineMathText(field.label||'Válaszolj a kérdésre.')}</span><small class="task-part-points">${show?scoreText(earnedPoints({...part,points},selected))+' / ':''}${scoreText(points)} pont</small></legend>${links}${inputs}${solution}</fieldset>`;
+      return `<fieldset class="task-part" data-task-part="${index}"><legend><span class="task-part-label">${esc(label)}</span><span class="task-part-prompt">${inlineMathText(field.label||'Válaszolj a kérdésre.')}</span><small class="task-part-points">${show?scoreText(partEligible(q,field,values)?earnedPoints({...part,points},selected):0)+' / ':''}${scoreText(points)} pont</small></legend>${links}${inputs}${solution}</fieldset>`;
     }).join('')}</div>`;
   }
   function multipartNumericMarkup(part,partIndex,response,show){
