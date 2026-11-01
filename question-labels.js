@@ -19,7 +19,7 @@
     '8fe9f19bcfadf049',
     '3459ca5106b201df', 'd52bd3712233c91f'
   ];
-  let catalog = new Map(), questions = new Map();
+  let catalog = new Map(), questions = new Map(), communitySources = new Set();
 
   function fingerprint(value) {
     const hash = seed => {
@@ -44,6 +44,9 @@
   function setup(data = {}) {
     const list = Array.isArray(data.questions) ? data.questions : [];
     questions = new Map(list.map(question => [String(question.id), question]));
+    communitySources = new Set([...list, ...(data.sources || [])]
+      .filter(item => item?.originVerification?.kind === 'community-adaptation')
+      .map(identity));
     for (const [alias, target] of Object.entries(data.questionAliases || {})) if (questions.has(String(target))) questions.set(alias, questions.get(String(target)));
     const ids = new Set(list.map(identity).filter(Boolean));
     if (!ids.size) for (const source of data.sources || []) ids.add(identity(source));
@@ -66,6 +69,7 @@
   function sourceNumber(value) { return catalog.get(identity(value)) || null; }
   function sourceLabel(value) {
     const number = sourceNumber(value);
+    if(communitySources.has(identity(value)))return number ? `${number}. közösségi gyakorlósor` : 'Közösségi gyakorlósor';
     if(identity(value).startsWith('generated-exam-'))return number ? `${number}. géppel generált kérdéssor` : 'Géppel generált kérdéssor';
     return number ? `${number}. feladatsor` : 'Feladatsor';
   }
