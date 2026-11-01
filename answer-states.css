@@ -85,3 +85,10 @@
   .answer-state-badge { grid-column: 3; width: 26px; margin-left: auto; }
   .learn-option-top > :is(.answer-state-feedback,.answer-state-badge) { grid-column: 4; }
 }
+
+/* Local task totals use the same scorer in bank, practice and exam review. */
+.question-score { margin: 14px 0; padding: 12px 15px; border: 1px solid #c4d9d5; border-radius: 10px; background: linear-gradient(110deg,#f1f8f5,#fbfcf8); color: #214b50; min-width: 0; }
+.question-score strong { display: block; font-variant-numeric: tabular-nums; }
+.question-score p { margin: 5px 0 0; line-height: 1.5; }
+.question-community { border-color: #d8c7a5; background: #faf5eb; color: #775531; }
+.task-part-points { font-variant-numeric: tabular-nums; }

@@ -272,7 +272,7 @@
     for (const lesson of lessons) lesson.sourceTaskCount = 0;
     for (const [id, linked] of reverseMap) {
       const question = questionMap.get(id);
-      if (question && !isGenerated(question)) for (const lesson of new Set(linked)) lesson.sourceTaskCount++;
+      if (question && !question.practiceOnly && !isGenerated(question)) for (const lesson of new Set(linked)) lesson.sourceTaskCount++;
     }
   }
 

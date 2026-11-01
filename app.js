@@ -386,7 +386,7 @@
   function isMultipart(q){return q.interaction==='multipart'}
   function partQuestion(q,field,index){
     const options=(field.options||[]).map((option,i)=>{const key=String(typeof option==='string'?String.fromCharCode(65+i):option.key||String.fromCharCode(65+i)).toUpperCase();return {key,text:optionText(key,typeof option==='string'?option:option.text||option.label||'')}});
-    return {...field,id:`${q.id}-part-${index}`,type:field.questionType||(field.kind==='number'?'number':'single'),options,answer:field.answer,review:!!q.review||!!field.review,prompt:field.label||'',hint:field.hint||'',explanation:field.explanation||'',optionReasons:field.optionReasons||{},points:field.points,solutionSteps:field.solutionSteps};
+    return {...field,id:`${q.id}-part-${index}`,type:field.questionType||(field.kind==='number'?'number':'single'),options,answer:field.answer,review:!!q.review||!!field.review,prompt:field.label||'',hint:field.hint||'',explanation:field.explanation||'',optionReasons:field.optionReasons||{},points:Number.isFinite(field.points)&&field.points>=0?field.points:1,solutionSteps:field.solutionSteps};
   }
   function typeLabel(q){const fields=answerFields(q);if(isMultipart(q))return 'Többrészes feladat';if(q.interaction==='order')return 'Sorrend';if(q.type==='number'&&fields.length&&fields.every(field=>field.kind==='choice'))return 'Párosítás';if(q.type==='number'&&fields.some(field=>field.kind==='choice'))return 'Számolás és választás';return TYPE[q.type]||'Feladat'}
   function numericTolerance(field,q,expected){
@@ -398,39 +398,51 @@
   function isAuto(q){const nums=String(q.answer??'').match(/[-+]?\d+(?:[.,]\d+)?/g)||[],fields=answerFields(q);if(isMultipart(q))return !q.review&&fields.length>0&&fields.every((field,index)=>isAuto(partQuestion(q,field,index)));return !q.review&&((q.type==='single'||q.type==='multi')&&getCorrectKeys(q).length>0||q.type==='number'&&(fields.length?fields.every(field=>field.kind==='choice'?field.answer!=null:Number.isFinite(Number(field.answer))):nums.length===1&&Number.isFinite(parseNumeric(q.answer))))}
   function parseNumeric(v){if(typeof v==='number')return v;const m=String(v??'').replace(/\s/g,'').replace(',','.').match(/[-+]?\d+(?:\.\d+)?/);return m?Number(m[0]):NaN}
   function parseEnteredNumber(v){const value=String(v??'').trim().replace(/\s/g,'').replace(',','.');return /^[-+]?\d+(?:\.\d+)?$/.test(value)?Number(value):NaN}
+  function selectionKeys(response){return [...new Set((Array.isArray(response)?response:[response]).filter(value=>typeof value==='string'&&value.trim()).map(value=>value.trim().toUpperCase()))]}
+  function validChoiceResponse(q,response){return (Array.isArray(response)?response:[response]).every(value=>value==null||value===''||typeof value==='string'&&(!value.trim()||q.options.some(option=>option.key===value.trim().toUpperCase())))}
+  function scoreText(value){return new Intl.NumberFormat('hu-HU',{maximumFractionDigits:2}).format(Number(value)||0)}
+  function fieldWeights(fields){return fields.map(field=>Number.isFinite(field.points)&&field.points>=0?field.points:1)}
   function grade(q,response){
-    if(!isAuto(q))return null;
-    if(isMultipart(q)){const values=Array.isArray(response)?response:[response];return answerFields(q).every((field,index)=>grade(partQuestion(q,field,index),values[index])===true)}
-    if(q.type==='number'){
-      const fields=answerFields(q);
-      if(fields.length){const entered=Array.isArray(response)?response:[response];return fields.every((field,index)=>fieldCorrect(field,entered[index],q))}
-      const expected=parseNumeric(q.answer),got=parseEnteredNumber(response),tol=numericTolerance(null,q,expected);return Number.isFinite(got)&&Math.abs(got-expected)<=tol;
-    }
-    const right=getCorrectKeys(q).sort(),given=(Array.isArray(response)?response:[response]).filter(Boolean).sort();return right.length===given.length&&right.every((k,i)=>k===given[i]);
+  if(!isAuto(q))return null;
+  if((q.type==='single'||q.type==='multi')&&!validChoiceResponse(q,response))return false;
+  if(isMultipart(q)){const values=Array.isArray(response)?response:[response];return answerFields(q).every((field,index)=>grade(partQuestion(q,field,index),values[index])===true)}
+  if(q.type==='number'){
+    const fields=answerFields(q);
+    if(fields.length){const entered=Array.isArray(response)?response:[response];return fields.every((field,index)=>fieldCorrect(field,entered[index],q))}
+    const expected=parseNumeric(q.answer),got=parseEnteredNumber(response),tol=numericTolerance(null,q,expected);return Number.isFinite(got)&&Math.abs(got-expected)<=tol;
   }
+  const right=getCorrectKeys(q),given=selectionKeys(response);return right.length===given.length&&right.every(key=>given.includes(key));
+}
   function earnedPoints(q,response){
-    if(!isAuto(q))return 0;
-    if(isMultipart(q)){
-      const values=Array.isArray(response)?response:[response],fields=answerFields(q),weights=fields.map(field=>Number.isFinite(field.points)&&field.points>=0?field.points:1),total=weights.reduce((sum,weight)=>sum+weight,0);
-      const earned=fields.reduce((sum,field,index)=>{const part=partQuestion(q,field,index);return sum+(part.points>0?earnedPoints(part,values[index])*weights[index]/part.points:0)},0);
-      return total>0?q.points*earned/total:0;
-    }
-    if(q.type==='number'&&answerFields(q).length){
-      const values=Array.isArray(response)?response:[response],fields=answerFields(q);
-      if(fields.some(field=>Number.isFinite(field.points)&&field.points>=0)){
-        const weights=fields.map(field=>Number.isFinite(field.points)&&field.points>=0?field.points:1),total=weights.reduce((sum,weight)=>sum+weight,0);
-        const earned=fields.reduce((sum,field,index)=>sum+(fieldCorrect(field,values[index],q)?weights[index]:0),0);
-        return total>0?q.points*(earned/total):0;
-      }
-      const passed=fields.filter((field,index)=>fieldCorrect(field,values[index],q)).length;return q.points*passed/fields.length;
-    }
-    if(q.type!=='multi')return grade(q,response)?q.points:0;
-    const right=getCorrectKeys(q),given=(Array.isArray(response)?response:[response]).filter(Boolean);
-    const good=given.filter(x=>right.includes(x)).length;
-    const wrong=given.filter(x=>!right.includes(x)).length;
-    const wrongWeight=Number.isFinite(q.wrongAnswerPenaltyFactor)&&q.wrongAnswerPenaltyFactor>=0?q.wrongAnswerPenaltyFactor:1;
-    return Math.max(0,Math.min(q.points,(good-wrong*wrongWeight)*q.points/right.length));
+  if(!isAuto(q)||!Number.isFinite(q.points)||q.points<=0)return 0;
+  if((q.type==='single'||q.type==='multi')&&!validChoiceResponse(q,response))return 0;
+  if(grade(q,response)===true)return q.points;
+  if(isMultipart(q)){
+    const values=Array.isArray(response)?response:[response],fields=answerFields(q),weights=fieldWeights(fields),total=weights.reduce((sum,weight)=>sum+weight,0);
+    const earned=fields.reduce((sum,field,index)=>{const part=partQuestion(q,field,index);return sum+(part.points>0?earnedPoints(part,values[index])*weights[index]/part.points:0)},0);
+    return total>0?Math.max(0,Math.min(q.points,q.points*earned/total)):0;
   }
+  if(q.type==='number'&&answerFields(q).length){
+    const values=Array.isArray(response)?response:[response],fields=answerFields(q),weights=fieldWeights(fields),total=weights.reduce((sum,weight)=>sum+weight,0);
+    const earned=fields.reduce((sum,field,index)=>sum+(fieldCorrect(field,values[index],q)?weights[index]:0),0);
+    return total>0?q.points*earned/total:0;
+  }
+  if(q.type!=='multi')return 0;
+  const right=getCorrectKeys(q),given=selectionKeys(response),good=given.filter(key=>right.includes(key)).length,wrong=given.length-good;
+  const correctAward=q.points/right.length,wrongOptions=q.options.filter(option=>!right.includes(option.key)).length;
+  const wrongDeduction=Number.isFinite(q.wrongAnswerPenaltyFactor)&&q.wrongAnswerPenaltyFactor>=0?q.wrongAnswerPenaltyFactor*correctAward:q.points/Math.max(1,wrongOptions);
+  const result=q.scoringBasis==='verified-source'||Number.isFinite(q.wrongAnswerPenaltyFactor)?good*correctAward-wrong*wrongDeduction:q.points*(good/right.length-wrong/Math.max(1,wrongOptions));
+  return Math.max(0,Math.min(q.points,result));
+}
+  function scoreMarkup(q,response,mode){
+  if(mode==='exam'||!isAuto(q)||mode!=='review'&&isEmptyResponse(q,response)||q.type!=='multi'&&!isMultipart(q)&&!answerFields(q).length)return '';
+  let detail='';
+  if(q.type==='multi'){
+    const right=getCorrectKeys(q),given=selectionKeys(response),good=given.filter(key=>right.includes(key)).length;
+    detail=`${good} helyes jelölés, ${given.length-good} téves jelölés, ${right.length-good} kihagyott helyes válasz. A kihagyásért nem jár pont, a téves jelölésért levonás jár.`;
+  }else detail='A részfeladatok pontjai összeadódnak. Egy hibás vagy kihagyott rész nem csökkenti a többi részre kapott pontot.';
+  return `<div class="question-score" role="note"><strong>Elért pont: ${scoreText(earnedPoints(q,response))} / ${pointsText(q)}</strong><p>${esc(detail)}</p></div>`;
+}
   function mark(q,result,refresh=true,{session=null,verified=false,assisted=false}={}){
     if(result===null)return;
     const telemetry=verified&&session?window.VV_TIMING?.finish(session,q.id)||{}:{};
@@ -529,7 +541,7 @@
       const inputs=part.type==='number'?multipartNumericMarkup(part,index,selected,show||mode==='review'):`<div class="options">${options}</div>`;
       const solution=show?`<div class="task-part-solution explanation"><strong>Megoldás</strong><p class="task-part-answer">${inlineMathText(answerLabel(part))}</p>${wrongAnswerMarkup(part,selected)}${part.explanation?`<strong class="task-part-why">Miért?</strong>${explanationMarkup(part)}`:''}</div>`:'';
       const links=field.lessonIds?.length?learningLinksMarkup(q,mode,field.lessonIds):'';
-      return `<fieldset class="task-part" data-task-part="${index}"><legend><span class="task-part-label">${esc(label)}</span><span class="task-part-prompt">${inlineMathText(field.label||'Válaszolj a kérdésre.')}</span><small class="task-part-points">${esc(Number(points.toFixed(2)))} pont</small></legend>${links}${inputs}${solution}</fieldset>`;
+      return `<fieldset class="task-part" data-task-part="${index}"><legend><span class="task-part-label">${esc(label)}</span><span class="task-part-prompt">${inlineMathText(field.label||'Válaszolj a kérdésre.')}</span><small class="task-part-points">${show?scoreText(earnedPoints({...part,points},selected))+' / ':''}${scoreText(points)} pont</small></legend>${links}${inputs}${solution}</fieldset>`;
     }).join('')}</div>`;
   }
   function multipartNumericMarkup(part,partIndex,response,show){
@@ -556,7 +568,7 @@
     const prompt=mode==='bank'?`<h1 id="questionTitle" class="question-title question-prompt" tabindex="-1">${questionPromptMarkup(q)}</h1>`:`<h2 class="question-title question-prompt">${questionPromptMarkup(q)}</h2>`;
     const mobileActions=mode==='bank'?`<div class="question-mobile-actions">${isAuto(q)?'<button id="questionCheckMobile" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!show?`<button id="questionShowMobile" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}</div><div id="questionFeedbackMobile" role="status" aria-live="polite"></div>`:'';
     const rationale=show&&mode!=='review'&&!isMultipart(q)?wrongAnswerMarkup(q,response):'';
-    return `<div class="question-top"><div class="tags"><span class="chip">${esc(displayTopic(q))}</span><span class="chip">${esc(typeLabel(q))}</span>${q.requiresFigure?'<span class="chip">Ábrás feladat</span>':''}${q.review?'<span class="chip review">Megoldás ellenőrzendő</span>':''}</div><span>${pointsText(q)}</span></div>${title}${prompt}${figure}${sourceFigureLink}${learningLinksMarkup(q,mode)}${hint}${opts}${input}${mobileActions}${!auto&&mode==='exam'?'<div class="feedback review">Ezt a feladatot a vizsga végén önellenőrzéssel lehet értékelni.</div>':''}${show&&mode!=='review'&&!isMultipart(q)?`<div class="explanation"><strong>${q.review?'Forrás szerinti megoldás':'Megoldás'}</strong><p>${inlineMathText(answerLabel(q))}</p>${rationale}${q.explanation?`<strong style="margin-top:14px">Miért?</strong>${explanationMarkup(q)}`:''}${q.review?'<p>A forrás vagy a válaszkulcs ellenőrzése szükséges; biztonsági szempontból kétes állítást ne tanulj meg tényként.</p>':''}${sourceLink(q)}</div>`:''}`;
+    return `<div class="question-top"><div class="tags"><span class="chip">${esc(displayTopic(q))}</span><span class="chip">${esc(typeLabel(q))}</span>${q.requiresFigure?'<span class="chip">Ábrás feladat</span>':''}${q.practiceOnly?'<span class="chip question-community" title="A feladat vizsgaeredete nem igazolt.">Közösségi gyakorlókérdés</span>':''}${q.review?'<span class="chip review">Megoldás ellenőrzendő</span>':''}</div><span>${pointsText(q)}</span></div>${title}${prompt}${figure}${sourceFigureLink}${learningLinksMarkup(q,mode)}${hint}${opts}${input}${show?scoreMarkup(q,response,mode):''}${mobileActions}${!auto&&mode==='exam'?'<div class="feedback review">Ezt a feladatot a vizsga végén önellenőrzéssel lehet értékelni.</div>':''}${show&&mode!=='review'&&!isMultipart(q)?`<div class="explanation"><strong>${q.review?'Forrás szerinti megoldás':'Megoldás'}</strong><p>${inlineMathText(answerLabel(q))}</p>${rationale}${q.explanation?`<strong style="margin-top:14px">Miért?</strong>${explanationMarkup(q)}`:''}${q.review?'<p>A forrás vagy a válaszkulcs ellenőrzése szükséges; biztonsági szempontból kétes állítást ne tanulj meg tényként.</p>':''}${sourceLink(q)}</div>`:''}`;
   }
   function selectedFrom(root,q){if(isMultipart(q))return answerFields(q).map((field,index)=>{const part=partQuestion(q,field,index);if(part.type==='number'){const values=$$(`[data-part-index="${index}"][data-part-field-index]`,root).map(input=>input.value);return answerFields(part).length?values:values[0]??''}const checked=$$(`input[data-part-index="${index}"]:checked`,root).map(input=>input.value);return part.type==='multi'?checked:checked[0]||''});if(q.type==='single'||q.type==='multi'){const checked=$$('input[name="answer"]:checked',root).map(x=>x.value);return q.type==='multi'?checked:checked[0]||''}if(q.type==='number'&&answerFields(q).length)return $$('.numeric-answer, .answer-field-select',root).map(input=>input.value);return $('#freeAnswer',root)?.value||''}
   function restoreNumericResponse(root,q,response){if(q.type!=='number')return;if(isMultipart(q)){const values=Array.isArray(response)?response:[response];$$('input[data-part-index], select[data-part-index]',root).forEach(input=>{const value=values[Number(input.dataset.partIndex)];if(Object.hasOwn(input.dataset,'partFieldIndex'))input.value=Array.isArray(value)?value[Number(input.dataset.partFieldIndex)]??'':value??'';else{input.checked=(Array.isArray(value)?value.map(String):[String(value??'')]).includes(input.value);input.closest('.option')?.classList.toggle('selected',input.checked)}});return}if(answerFields(q).length){const values=Array.isArray(response)?response:[response];$$('.numeric-answer, .answer-field-select',root).forEach((input,index)=>input.value=values[index]??'')}else if($('#freeAnswer',root))$('#freeAnswer',root).value=response??''}
@@ -743,7 +755,7 @@
   const selectedExamSources=()=>examSources($$('[name="examSource"]:checked',$('#examSources')).map(input=>input.value));
   function examPool(scope){
     const selected=new Set(examSources(scope));
-    const all=qlist.filter(q=>!q.review&&['single','multi','number'].includes(q.type)&&(q.type==='number'||q.options.length>=2)&&isAuto(q)&&(!q.requiresFigure||q.figurePaths.length));
+    const all=qlist.filter(q=>!q.practiceOnly&&!q.review&&['single','multi','number'].includes(q.type)&&(q.type==='number'||q.options.length>=2)&&isAuto(q)&&(!q.requiresFigure||q.figurePaths.length));
     return all.filter(q=>selected.has(examSource(q)));
   }
   const EXAM_HISTORY_KEY='villanyvizsga-exam-history-v1';
@@ -871,8 +883,8 @@
       const earned=list.reduce((sum,q)=>sum+earnedPoints(q,exam.responses[q.id]??''),0);
       return {...area,count:list.length,points:possible?area.weight*earned/possible:0};
     });
-    const score=Math.round(breakdown.reduce((sum,area)=>sum+area.points,0));
-    const correct=exam.list.filter(q=>earnedPoints(q,exam.responses[q.id]??'')===q.points).length;
+    const score=Number(breakdown.reduce((sum,area)=>sum+area.points,0).toFixed(2));
+    const correct=exam.list.filter(q=>grade(q,exam.responses[q.id]??'')===true).length;
     return {score,correct,breakdown};
   }
   function submitExam(reason='manual'){
@@ -900,7 +912,7 @@
   function recordExamOutcomes(){
     if(!exam||exam.resultsRecorded)return;
     exam.resultsRecorded=true;
-    exam.list.forEach(q=>{const answer=exam.responses[q.id];if(isEmptyResponse(q,answer))return;const points=earnedPoints(q,answer);mark(q,points===q.points,false,{session:exam,verified:true})});renderWrongTasks();
+    exam.list.forEach(q=>{const answer=exam.responses[q.id];if(isEmptyResponse(q,answer))return;const points=earnedPoints(q,answer);mark(q,grade(q,answer)===true,false,{session:exam,verified:true})});renderWrongTasks();
   }
   function renderExamLearning(){
     if(!exam||!exam.submitted)return;
@@ -908,11 +920,11 @@
     recordExamOutcomes();
     const {score,correct,breakdown}=exam.evaluation,root=$('#examSession');
     const reviewMarkup=()=>exam.list.map((q,i)=>{
-      const points=earnedPoints(q,exam.responses[q.id]??''),answer=exam.responses[q.id],status=points===q.points?'Jó válasz':points>0?'Részpont':'Nem sikerült';
+      const points=earnedPoints(q,exam.responses[q.id]??''),answer=exam.responses[q.id],status=grade(q,answer)===true?'Jó válasz':points>0?'Részpont':'Nem sikerült';
       const explanation=isMultipart(q)?'':q.explanation?`<div class="review-explanation">${wrongAnswerMarkup(q,answer)}<strong>Miért ez a megoldás?</strong>${explanationMarkup(q)}</div>`:'<p class="review-explanation-missing">Ehhez a feladathoz nem tartozik külön magyarázat.</p>';
-      return `<article class="review-row"><div class="review-heading"><strong>${i+1}. feladat</strong><span class="review-status ${points===q.points?'is-correct':points>0?'is-partial':'is-wrong'}">${status}</span><small class="review-points">${Number(points.toFixed(1))} / ${pointsText(q)}</small></div><div class="review-question">${questionBody(q,'review',answer,true)}</div>${q.type==='single'||q.type==='multi'||isMultipart(q)?'':`<div class="review-answer-grid"><div class="${points===q.points?'is-correct':'is-wrong'}"><span>Válaszod</span><p>${inlineMathText(answerForReview(q,answer))}</p></div><div class="is-correct"><span>Helyes válasz</span><p>${inlineMathText(answerLabel(q))}</p></div></div>`}${explanation}</article>`;
+      return `<article class="review-row"><div class="review-heading"><strong>${i+1}. feladat</strong><span class="review-status ${grade(q,answer)===true?'is-correct':points>0?'is-partial':'is-wrong'}">${status}</span><small class="review-points">${scoreText(points)} / ${pointsText(q)}</small></div><div class="review-question">${questionBody(q,'review',answer,true)}</div>${q.type==='single'||q.type==='multi'||isMultipart(q)?'':`<div class="review-answer-grid"><div class="${grade(q,answer)===true?'is-correct':'is-wrong'}"><span>Válaszod</span><p>${inlineMathText(answerForReview(q,answer))}</p></div><div class="is-correct"><span>Helyes válasz</span><p>${inlineMathText(answerLabel(q))}</p></div></div>`}${explanation}</article>`;
     }).join('');
-    root.innerHTML=`<div class="exam-szev-results"><div class="kicker">TANULÁSI KIÉRTÉKELÉS</div><h2 class="question-title">A mintavizsga eredménye</h2><div class="exam-summary"><strong>${score} / 100 pont</strong><p>${correct} teljes pontszámú feladat ${exam.list.length} közül. A 40%-os KKK-küszöböt ez a gyakorló eredmény ${score>=40?'eléri':'nem éri el'}. Ez nem hivatalos vizsgaeredmény.</p></div><div class="exam-area-breakdown">${breakdown.map(area=>`<div><span>${esc(area.label)}</span><strong>${Math.round(area.points*10)/10} / ${area.weight} pont</strong><small>${area.count} mintafeladat</small></div>`).join('')}</div><p class="exam-score-note">A négy KKK-témakör pontjait 20 / 20 / 20 / 40 arányra súlyoztuk. A kérdések száma és válogatása saját gyakorló összeállítás.</p><div class="question-actions"><button id="newExam" class="button outline" type="button">Új mintavizsga</button></div><section id="examReview" class="exam-review"><h3>Válaszaid és a helyes megoldások</h3>${reviewMarkup()}</section></div>`;
+    root.innerHTML=`<div class="exam-szev-results"><div class="kicker">TANULÁSI KIÉRTÉKELÉS</div><h2 class="question-title">A mintavizsga eredménye</h2><div class="exam-summary"><strong>${scoreText(score)} / 100 pont</strong><p>${correct} teljes pontszámú feladat ${exam.list.length} közül. A 40%-os KKK-küszöböt ez a gyakorló eredmény ${score>=40?'eléri':'nem éri el'}. Ez nem hivatalos vizsgaeredmény.</p></div><div class="exam-area-breakdown">${breakdown.map(area=>`<div><span>${esc(area.label)}</span><strong>${scoreText(area.points)} / ${area.weight} pont</strong><small>${area.count} mintafeladat</small></div>`).join('')}</div><p class="exam-score-note">A négy KKK-témakör pontjait 20 / 20 / 20 / 40 arányra súlyoztuk. A kérdések száma és válogatása saját gyakorló összeállítás.</p><div class="question-actions"><button id="newExam" class="button outline" type="button">Új mintavizsga</button></div><section id="examReview" class="exam-review"><h3>Válaszaid és a helyes megoldások</h3>${reviewMarkup()}</section></div>`;
     $('#newExam',root).addEventListener('click',resetExam);hydrateAssets(root);
   }
   function setupWorkedAnimations(root){if(root){window.VV_WORKED?.setup(root);window.VV_GUIDE?.setup(root)}}
