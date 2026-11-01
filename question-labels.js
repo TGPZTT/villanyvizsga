@@ -16,7 +16,8 @@
     '30f20487c0d6d7d5', '31f2061abdd6d31c', 'aceef62438d3c326',
     'a4e426febacac71c', 'fbfbbd92d2adb268', '69534dd9f3feb83b',
     '8cc84f53c67ec351', 'ca85a02c24417dae', '69458877897a7be5',
-    '8fe9f19bcfadf049'
+    '8fe9f19bcfadf049',
+    '3459ca5106b201df', 'd52bd3712233c91f'
   ];
   let catalog = new Map(), questions = new Map();
 
