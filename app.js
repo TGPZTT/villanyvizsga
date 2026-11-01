@@ -140,7 +140,6 @@
       if(root&&!$('#examNavigationNotice',root))root.insertAdjacentHTML('afterbegin','<div id="examNavigationNotice" class="feedback review" role="status">A folyamatban lévő próbából a „Próba megszakítása” gombbal léphetsz ki.</div>');
       return;
     }
-    if(target==='guide'){window.location.assign('szamolas.html');return}
     window.VV_TIMING?.pause();
     if(view==='question'&&target!=='question')captureQuestionResponse();
     if(view==='practice'&&practice&&target!=='practice'){const active=practice.list[practice.index];practice.responses[active.id]=selectedFrom($('#practiceSession'),active)}
