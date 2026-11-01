@@ -375,8 +375,9 @@
   function getCorrectKeys(q){
     if(!q.options.length||q.answer==null)return [];
     const clean=value=>norm(value).replace(/^[a-z][.)]\s+/u,'').replace(/[.!;]+$/u,'').trim();
-    const match=value=>q.options.find(o=>norm(o.text)===norm(value)||clean(o.text)===clean(value))?.key
-      ??q.options.find(o=>norm(o.key)===norm(value).replace(/[.)]$/u,''))?.key;
+    // Stored option keys take precedence over text such as an RCD's "B" type.
+    const match=value=>q.options.find(o=>norm(o.key)===norm(value).replace(/[.)]$/u,''))?.key
+      ??q.options.find(o=>norm(o.text)===norm(value)||clean(o.text)===clean(value))?.key;
     const whole=!Array.isArray(q.answer)?match(String(q.answer)):undefined;
     if(whole!==undefined)return [whole];
     const ans=Array.isArray(q.answer)?q.answer.map(String):String(q.answer).split(/[;,]/u).map(s=>s.trim());
