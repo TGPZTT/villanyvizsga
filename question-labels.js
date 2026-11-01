@@ -18,9 +18,10 @@
     '8cc84f53c67ec351', 'ca85a02c24417dae', '69458877897a7be5',
     '8fe9f19bcfadf049',
     '3459ca5106b201df', 'd52bd3712233c91f',
-    '9e5a6a6395bc2be9', 'c56cbd404c2649a6', '10ddf862e6e1af58', '7704cae03abc6576', 'bb97630919ccb73f', 'd0bdde89a252b19b', '6c2f21f62ca3689c', '0ba90fb1bc9059e7', '60273a48937c678a', '1acdde159b6ed32b', '15a612ada09b21fb'
+    '9e5a6a6395bc2be9', 'c56cbd404c2649a6', '10ddf862e6e1af58', '7704cae03abc6576', 'bb97630919ccb73f', 'd0bdde89a252b19b', '6c2f21f62ca3689c', '0ba90fb1bc9059e7', '60273a48937c678a', '1acdde159b6ed32b', '15a612ada09b21fb',
+    '8d066c957af08727'
   ];
-  let catalog = new Map(), questions = new Map(), communitySources = new Set();
+  let catalog = new Map(), questions = new Map(), communitySources = new Set(), sourceYears = new Map();
 
   function fingerprint(value) {
     const hash = seed => {
@@ -42,9 +43,29 @@
       || String(value?.id || '').startsWith('szs-');
   }
 
+  function validYear(value) {
+    const text = String(value ?? '').trim();
+    return /^(?:19|20)\d{2}$/u.test(text) ? Number(text) : null;
+  }
+
   function setup(data = {}) {
     const list = Array.isArray(data.questions) ? data.questions : [];
     questions = new Map(list.map(question => [String(question.id), question]));
+    sourceYears = new Map();
+    // Use the catalogue metadata, not dates embedded in filenames. Some source
+    // filenames describe their release date rather than the actual exam year.
+    for (const source of data.sources || []) {
+      const year = validYear(source?.year) || validYear(source?.createdYear);
+      if (year) sourceYears.set(identity(source), year);
+    }
+    const questionYears = new Map();
+    for (const question of list) {
+      const id = identity(question), year = validYear(question.year);
+      if (!year) continue;
+      if (!questionYears.has(id)) questionYears.set(id, new Set());
+      questionYears.get(id).add(year);
+    }
+    for (const [id, years] of questionYears) if (!sourceYears.has(id) && years.size === 1) sourceYears.set(id, [...years][0]);
     communitySources = new Set([...list, ...(data.sources || [])]
       .filter(item => item?.originVerification?.kind === 'community-adaptation')
       .map(identity));
@@ -68,17 +89,23 @@
   }
 
   function sourceNumber(value) { return catalog.get(identity(value)) || null; }
-  function sourceLabel(value) {
+  function sourceYear(value) { return sourceYears.get(identity(value)) || validYear(value?.year) || validYear(value?.createdYear); }
+  function sourceBaseLabel(value) {
     const number = sourceNumber(value);
     if(communitySources.has(identity(value)))return number ? `${number}. közösségi gyakorlósor` : 'Közösségi gyakorlósor';
     if(identity(value).startsWith('generated-exam-'))return number ? `${number}. géppel generált kérdéssor` : 'Géppel generált kérdéssor';
     return number ? `${number}. feladatsor` : 'Feladatsor';
   }
+  function sourceLabel(value) {
+    const year = sourceYear(value);
+    return sourceBaseLabel(value) + (year ? ` (${year})` : '');
+  }
   function sourceKind(value, plural = false) {
     return contest(value) ? (plural ? 'Versenyfeladatok' : 'Versenyfeladat') : (plural ? 'Feladatok' : 'Feladat');
   }
   function sourceOptionLabel(value) {
-    return sourceLabel(value) + (contest(value) ? ' (versenyfeladatok)' : '');
+    const details = [sourceYear(value), contest(value) ? 'versenyfeladatok' : null].filter(Boolean);
+    return sourceBaseLabel(value) + (details.length ? ` (${details.join(', ')})` : '');
   }
   function questionLabel(question) {
     const number = String(question?.number ?? question?.taskNumber ?? '').trim().replace(/\.+$/u, '');
@@ -119,7 +146,7 @@
   }
 
   root.VV_LABELS = Object.freeze({
-    setup, payload, sourceNumber, sourceLabel, sourceKind, sourceOptionLabel,
+    setup, payload, sourceNumber, sourceYear, sourceLabel, sourceKind, sourceOptionLabel,
     questionLabel, compareSources, sourceRows, labelQuestionLinks
   });
 })(typeof window !== 'undefined' ? window : globalThis);

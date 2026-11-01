@@ -561,7 +561,7 @@
       const attrs=`data-part-index="${partIndex}" data-part-field-index="${index}"`,value=values[index]??'',disabled=show?'disabled':'';
       const state=show?(fieldCorrect(field,value,part)?'correct':String(value).trim()?'wrong':'omitted'):'';
       const input=field.kind==='choice'?`<select class="answer-input answer-field-select" ${attrs} aria-label="${esc(field.label)}" ${disabled}><option value="">Válassz…</option>${field.options.map(option=>`<option value="${esc(option)}" ${String(option)===String(value)?'selected':''}>${esc(option)}</option>`).join('')}</select>`:`<input class="answer-input numeric-answer" ${attrs} inputmode="decimal" type="text" aria-label="${esc(field.label)} számértéke" value="${esc(value)}" placeholder="Számérték" ${disabled}>`;
-      return `<label class="numeric-answer-row" ${state?`data-field-answer-state="${state}"`:''}><span><b>${esc(field.label)}</b><small>${field.unit?`<span class="unit-chip" aria-label="Mértékegység: ${esc(field.unit)}">${esc(field.unit)}</span>`:'Számérték, mértékegység nélkül'}</small></span>${input}</label>`;
+      return `<label class="numeric-answer-row" ${state?`data-field-answer-state="${state}"`:''}><span><b>${esc(field.label)}</b><small>${field.unit?`<span class="unit-chip" aria-label="Mértékegység: ${esc(field.unit)}">${esc(field.unit)}</span>`:field.kind==='choice'?'Válassz egy értéket':'Számérték, mértékegység nélkül'}</small></span>${input}</label>`;
     }).join('')}</div>`;
   }
   function questionBody(q,mode,response,show){
