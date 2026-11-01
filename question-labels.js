@@ -49,7 +49,10 @@
   }
 
   function setup(data = {}) {
-    const list = Array.isArray(data.questions) ? data.questions : [];
+    const originals = Array.isArray(data.questions) ? data.questions : [];
+    const originalById = new Map(originals.map(question => [String(question.id), question]));
+    const occurrences = (data.questionOccurrences || []).filter(item => originalById.has(String(item.questionId))).map(item => ({...originalById.get(String(item.questionId)), ...item}));
+    const list = [...originals, ...occurrences];
     questions = new Map(list.map(question => [String(question.id), question]));
     sourceYears = new Map();
     // Use the catalogue metadata, not dates embedded in filenames. Some source

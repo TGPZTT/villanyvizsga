@@ -32,6 +32,7 @@
 !/readable-text.js
 
 !/question-labels.js
+!/question-occurrences.js
 !/learning-window.js
 
 !/formula-diagram.js

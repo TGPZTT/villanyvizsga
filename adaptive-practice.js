@@ -89,7 +89,7 @@
   let uiConfig,observer,scheduled=false;
   const quick={count:10,kinds:new Set(['papers'])};
   const sourceKind=q=>q.supplementary===true||q.generated?.machineGenerated||q.sourceId?.startsWith('generated-exam-')?'generated':root.VV_LABELS?.sourceKind(q)==='Versenyfeladat'?'competition':'papers';
-  function quickPool(){return (uiConfig?.allPool?.()||[]).filter(q=>quick.kinds.has(sourceKind(q)));}
+  function quickPool(){const pool=(uiConfig?.allPool?.()||[]).filter(q=>quick.kinds.has(sourceKind(q)));return uiConfig?.unique?.(pool)||pool;}
   function quickStart(parent){
     if(!parent||!uiConfig?.allPool)return;
     let panel=document.querySelector('#practiceView [data-adaptive-quick-panel]');

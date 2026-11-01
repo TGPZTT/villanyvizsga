@@ -63,7 +63,13 @@
     return {...q,id:String(q.id||`q-${i+1}`),sourceId:q.sourceId||src?.id||file,sourceTitle:q.sourceTitle||src?.title||file,sourceFile:file,sourcePath:q.sourcePath||src?.path||'',year,page,number:q.number||q.taskNumber||`${i+1}`,section:q.section||'',sourceTopic,topic:questionCategory(sourceTopic,prompt,categorizationType),type,options,answer,explanation:q.explanation||q.solution||'',points:Number(q.points)||2,review:low||answer===null||answer==='',requiresFigure:!!q.requiresFigure,figurePath:figurePaths[0]||'',figurePaths,figureCaptions:Array.isArray(q.figureCaptions)?q.figureCaptions:[],prompt};
   }).filter(q=>!q.drawing&&q.prompt.trim());
   if(window.VV_TASK_GROUPS?.migrateProgress?.(progress,qlist,raw))save();
-  const byId=new Map(qlist.map(q=>[q.id,q]));
+  const occurrenceIndex=window.VV_OCCURRENCES?.create(raw,qlist);
+  const bankEntries=occurrenceIndex?.entries||qlist;
+  const byId=new Map(bankEntries.map(q=>[q.id,q]));
+  const uniqueQuestions=list=>occurrenceIndex?.unique(list)||list;
+  const progressQuestionId=q=>occurrenceIndex?.questionId(q)||q.id;
+  const questionGroupId=q=>occurrenceIndex?.groupId(q)||q.id;
+  const progressProjection=()=>occurrenceIndex?.projection(progress)||progress;
   const resolveQuestionId=id=>String(window.VV_TASK_GROUPS?.resolveId?.(String(id),raw)||id);
   const $=(s,root=document)=>root.querySelector(s);
   const $$=(s,root=document)=>Array.from(root.querySelectorAll(s));
@@ -121,7 +127,7 @@
   };
   const displayTopic=q=>window.VV_SELECTION?.topicLabel(q)||q.topic;
   function questionSearchText(q){return [q.prompt,...(isMultipart(q)?answerFields(q).map(field=>field.label||''):[]),sourceLabel(q),q.number,q.topic,displayTopic(q),answerLabel(q)].join(' ')}
-  const attemptStatus=q=>progress[q.id]?.status||'new';
+  const attemptStatus=q=>progress[progressQuestionId(q)]?.status||'new';
   let view='home',bankPage=0,practice=null,exam=null,timerId=null,questionState=null;
   const progressManager={selected:new Set(),pending:null,returnView:'bank'};
 
@@ -174,14 +180,14 @@
     if(view==='progress')renderProgressManager();
   }
   function renderHome(){
-    window.VV_DASHBOARD?.render({questions:qlist,progress,navigate,onReset:resetSavedResults});
-    window.VV_PROGRESS?.setup({questions:qlist,startPractice:ids=>{
+    window.VV_DASHBOARD?.render({questions:uniqueQuestions(qlist),progress:progressProjection(),navigate,onReset:resetSavedResults});
+    window.VV_PROGRESS?.setup({questions:qlist,uiQuestions:qlist,unique:uniqueQuestions,progress:progressProjection,startPractice:ids=>{
       const list=[...new Set(ids)].map(id=>byId.get(id)).filter(Boolean);
       if(!list.length)return;
       launchPersonalized(list,Math.min(window.VV_SELECTION?.practiceCount()||10,list.length));
     }});
-    window.VV_ADAPTIVE?.mount({pool:()=>window.VV_SELECTION?.practicePool()||[],allPool:()=>qlist,count:()=>window.VV_SELECTION?.practiceCount()||10,progress:()=>progress,launch:(list,meta)=>{navigate('practice');beginPractice(list,list.length,{ordered:true,reasons:meta.reasons,mode:'smart'})}});
-    setText('#navCount',qlist.length);
+    window.VV_ADAPTIVE?.mount({pool:()=>uniqueQuestions(window.VV_SELECTION?.practicePool()||[]),allPool:()=>qlist,unique:uniqueQuestions,count:()=>window.VV_SELECTION?.practiceCount()||10,progress:progressProjection,launch:(list,meta)=>{navigate('practice');beginPractice(list,list.length,{ordered:true,reasons:meta.reasons,mode:'smart'})}});
+    setText('#navCount',bankEntries.length);
   }
   function renderWrongTasks(){
     const root=$('#wrongTaskList');if(!root)return;
@@ -322,7 +328,7 @@
     }
   }
   function setupFilters(){
-    const group=[...new Map(qlist.map(q=>[q.sourceId,sourceLabel(q)])).entries()];
+    const group=[...new Map(bankEntries.map(q=>[q.sourceId,sourceLabel(q)])).entries()];
     $('#sourceFilter').innerHTML='<option value="">Minden feladatsor</option>'+group.sort((a,b)=>window.VV_LABELS.compareSources(a[0],b[0])).map(([id,label])=>`<option value="${esc(id)}">${esc(window.VV_LABELS.sourceOptionLabel(id))}</option>`).join('');
     fillSelect($('#topicFilter'),topicNames(),'Minden téma');
     updatePracticeFilters();
@@ -351,13 +357,13 @@
   }
   function filteredBankQuestions(){
     const query=norm($('#searchInput').value),source=$('#sourceFilter').value,topic=$('#topicFilter').value,type=$('#typeFilter').value,status=$('#statusFilter').value;
-    const list=qlist.filter(q=>(!window.VV_SELECTION||window.VV_SELECTION.matchesBank(q))&&(!query||norm(questionSearchText(q)).includes(query))&&(!source||q.sourceId===source)&&(!topic||q.topic===topic)&&(!type||q.type===type)&&(!status||attemptStatus(q)===status));
+    const list=bankEntries.filter(q=>(!window.VV_SELECTION||window.VV_SELECTION.matchesBank(q))&&(!query||norm(questionSearchText(q)).includes(query))&&(!source||q.sourceId===source)&&(!topic||q.topic===topic)&&(!type||q.type===type)&&(!status||attemptStatus(q)===status));
     list.sort((a,b)=>window.VV_LABELS.compareSources(a,b)||String(a.number).localeCompare(String(b.number),'hu',{numeric:true}));
     return list;
   }
   function renderBank(){
     const list=filteredBankQuestions();
-    setText('#resultCount',`${list.length} feladat található`);
+    setText('#resultCount',`${list.length} találat · ${uniqueQuestions(list).length} különböző feladat`);
     const size=40,pages=Math.max(1,Math.ceil(list.length/size));bankPage=Math.min(bankPage,pages-1);
     const slice=list.slice(bankPage*size,(bankPage+1)*size);
     if(!slice.length){$('#bankList').innerHTML='<div class="empty">Nincs találat. Próbáld meg más szűrőkkel.</div>';$('#bankPager').innerHTML='';return}
@@ -458,16 +464,21 @@
   function mark(q,result,refresh=true,{session=null,verified=false,assisted=false}={}){
     if(result===null)return;
     const telemetry=verified&&session?window.VV_TIMING?.finish(session,q.id)||{}:{};
-    progress[q.id]=window.VV_PROGRESS?window.VV_PROGRESS.record(progress[q.id],result,verified&&session?window.VV_PROGRESS.attemptId(session,q.id):'',assisted||!!telemetry.hintUsed||!!telemetry.solutionUsed,Date.now(),telemetry):{...progress[q.id],status:result?'correct':'retry',at:Date.now()};
+    const id=progressQuestionId(q);
+    progress[id]=window.VV_PROGRESS?window.VV_PROGRESS.record(progress[id],result,verified&&session?window.VV_PROGRESS.attemptId(session,id):'',assisted||!!telemetry.hintUsed||!!telemetry.solutionUsed,Date.now(),telemetry):{...progress[id],status:result?'correct':'retry',at:Date.now()};
     save();if(refresh)renderWrongTasks();
   }
   function noteSupport(q,session,kind){
     const recorded=kind==='hint'?window.VV_TIMING?.hint(session,q.id):window.VV_TIMING?.solution(session,q.id);if(recorded===false)return;
-    if(window.VV_PROGRESS?.noteSupport){progress[q.id]=window.VV_PROGRESS.noteSupport(progress[q.id],kind);save()}
+    if(window.VV_PROGRESS?.noteSupport){const id=progressQuestionId(q);progress[id]=window.VV_PROGRESS.noteSupport(progress[id],kind);save()}
   }
   function resetQuestionAttempt(session,id){
-    window.VV_TIMING?.reset(session,id);
-    for(const key of ['responses','shown','hints','feedback','attemptIds','usedHints'])if(session[key])delete session[key][id];
+    const q=byId.get(id),targets=new Set([id]);
+    const activeIds=session.ids||session.list?.map(item=>item.id)||[];
+    for(const otherId of activeIds){const other=byId.get(otherId);if(q&&other&&questionGroupId(other)===questionGroupId(q)){targets.add(otherId);targets.add(progressQuestionId(other));}}
+    if(q)targets.add(progressQuestionId(q));
+    for(const target of targets){window.VV_TIMING?.reset(session,target);for(const key of ['responses','shown','hints','feedback','attemptIds','usedHints'])if(session[key])delete session[key][target];}
+    if(q&&session.completed)delete session.completed[questionGroupId(q)];
   }
   const inlineMathText=value=>window.VV_READABLE.inlineQuantities(value,part=>esc(String(part??'').replace(/ × /gu,' · ')).replace(/(\p{L})_([\p{L}\p{N}]+(?:[,–][\p{L}\p{N}]+)*)/gu,'$1<sub>$2</sub>'));
   const questionPromptMarkup=q=>window.VV_READABLE.promptParts(q.id,q.prompt).map(part=>`<span class="question-prompt-part">${inlineMathText(part)}</span>`).join('');
@@ -532,7 +543,7 @@
   function learningLinksMarkup(q,mode,lessonIds=null){
     if(mode==='exam')return '';
     if(isMultipart(q)&&lessonIds===null&&answerFields(q).some(field=>field.lessonIds?.length))return '';
-    const links=(window.VV_LEARN?.linksForQuestion(q.id)||[]).filter(link=>!Array.isArray(lessonIds)||lessonIds.includes(link.id));
+    const links=(window.VV_LEARN?.linksForQuestion(progressQuestionId(q))||[]).filter(link=>!Array.isArray(lessonIds)||lessonIds.includes(link.id));
     return links.length?`<div class="learn-question-links"><span>Tananyag ehhez:</span>${links.map(link=>`<a href="${esc(link.href)}" data-learning-window data-learning-focus="${esc(link.focus||'')}" aria-haspopup="dialog">${esc(link.title)} →</a>`).join('')}</div>`:'';
   }
   function choiceOptionMarkup(q,option,{selected,correct,show,multi,mode,inputName=null,partIndex=null}){
@@ -544,10 +555,11 @@
   }
   function multipartMarkup(q,mode,response,show){
     const values=Array.isArray(response)?response:[response],fields=answerFields(q);
+    const numberedParts=fields.some(field=>/^[a-z]\)\s/u.test(field.label||''));
     const weights=fields.map(field=>Number.isFinite(field.points)&&field.points>=0?field.points:1),total=weights.reduce((sum,weight)=>sum+weight,0);
     return `<div class="task-parts" data-multipart-question="${esc(q.id)}">${fields.map((field,index)=>{
       const part=partQuestion(q,field,index),right=show?getCorrectKeys(part):[],selected=values[index];
-      const points=total>0?q.points*weights[index]/total:0,label=field.partLabel||`${index+1}.`;
+      const points=total>0?q.points*weights[index]/total:0,label=numberedParts?`${index+1}.`:field.partLabel||`${index+1}.`;
       const chosen=Array.isArray(selected)?selected:[selected];
       const options=part.options.map(option=>choiceOptionMarkup(part,option,{selected:chosen.includes(option.key),correct:right.includes(option.key),show:show||mode==='review',multi:part.type==='multi',mode,inputName:`task-part-${mode}-${q.id}-${index}`,partIndex:index})).join('');
       const inputs=part.type==='number'?multipartNumericMarkup(part,index,selected,show||mode==='review'):`<div class="options">${options}</div>`;
@@ -586,6 +598,19 @@
   function restoreNumericResponse(root,q,response){if(q.type!=='number')return;if(isMultipart(q)){const values=Array.isArray(response)?response:[response];$$('input[data-part-index], select[data-part-index]',root).forEach(input=>{const value=values[Number(input.dataset.partIndex)];if(Object.hasOwn(input.dataset,'partFieldIndex'))input.value=Array.isArray(value)?value[Number(input.dataset.partFieldIndex)]??'':value??'';else{input.checked=(Array.isArray(value)?value.map(String):[String(value??'')]).includes(input.value);input.closest('.option')?.classList.toggle('selected',input.checked)}});return}if(answerFields(q).length){const values=Array.isArray(response)?response:[response];$$('.numeric-answer, .answer-field-select',root).forEach((input,index)=>input.value=values[index]??'')}else if($('#freeAnswer',root))$('#freeAnswer',root).value=response??''}
   function isEmptyResponse(q,response){const hasValue=value=>Array.isArray(value)?value.some(hasValue):!!String(value??'').trim();return !hasValue(response)}
   function bindOptions(root){$$('.option input',root).forEach(input=>input.addEventListener('change',()=>$$('.option',root).forEach(label=>label.classList.toggle('selected',!!$('input:checked',label)))))}
+  function questionPlan(state){
+    const list=state.ids.map(id=>byId.get(id)).filter(Boolean),distinct=uniqueQuestions(list);
+    state.representatives??=Object.create(null);state.completed??=Object.create(null);
+    for(const q of distinct){const group=questionGroupId(q);if(!state.ids.includes(state.representatives[group]))state.representatives[group]=q.id;}
+    const positions=new Map(state.ids.map((id,index)=>[id,index]));
+    const ids=distinct.map(q=>state.representatives[questionGroupId(q)]).sort((a,b)=>positions.get(a)-positions.get(b)),current=byId.get(state.ids[state.index]);
+    return {ids,total:ids.length,index:ids.findIndex(id=>questionGroupId(byId.get(id))===questionGroupId(current))};
+  }
+  function completeQuestionEntry(state,q){
+    state.completed??=Object.create(null);state.representatives??=Object.create(null);
+    state.completed[questionGroupId(q)]=q.id;state.representatives[questionGroupId(q)]=q.id;
+  }
+  function repeatedEntryCompleted(state,q){const done=state.completed?.[questionGroupId(q)];return !!done&&done!==q.id;}
   function openQuestion(q,{fromRoute=false,origin=view}={}){
     if(!q||exam&&!exam.submitted)return;
     const reuse=questionState&&(view==='question'||view==='learn'&&questionState.origin==='learn'&&questionState.learnReturnRoute===window.VV_LEARN?.currentRoute()&&questionState.ids[questionState.index]===q.id)&&questionState.ids.includes(q.id);
@@ -595,9 +620,9 @@
       const list=homeView==='learn'?learningIds.map(id=>byId.get(id)).filter(Boolean):homeView==='exam'&&exam?.list?exam.list:homeView==='progress'?progressManagerQuestions():filteredBankQuestions();
       const ids=list.map(item=>item.id);
       if(!ids.includes(q.id))ids.unshift(q.id);
-      questionState={ids,index:ids.indexOf(q.id),origin:homeView,originId:q.id,returnScroll:fromRoute?0:window.scrollY,returnPage:bankPage,learnReturnRoute:homeView==='learn'?window.VV_LEARN?.currentRoute()||'learn':'',responses:{},shown:{},hints:{},feedback:{}};
+      questionState={ids,index:ids.indexOf(q.id),origin:homeView,originId:q.id,returnScroll:fromRoute?0:window.scrollY,returnPage:bankPage,learnReturnRoute:homeView==='learn'?window.VV_LEARN?.currentRoute()||'learn':'',responses:{},shown:{},hints:{},feedback:{},representatives:{[questionGroupId(q)]:q.id},completed:Object.create(null)};
       if(fromRoute&&homeView==='bank')bankPage=Math.floor(questionState.index/40);
-    }else questionState.index=Math.max(0,questionState.ids.indexOf(q.id));
+    }else{const shownId=questionState.completed?.[questionGroupId(q)]||q.id;questionState.index=Math.max(0,questionState.ids.indexOf(shownId));questionState.representatives??=Object.create(null);questionState.representatives[questionGroupId(q)]=shownId;}
     renderQuestionPage(fromRoute?'none':view==='question'?'replace':'push',true);
   }
   function captureQuestionResponse(){
@@ -607,9 +632,9 @@
   }
   function questionStep(delta){
     if(!questionState)return;
-    const next=questionState.index+delta;
-    if(next<0||next>=questionState.ids.length)return;
-    captureQuestionResponse();questionState.index=next;renderQuestionPage('replace',true);
+    const plan=questionPlan(questionState),next=plan.index+delta;
+    if(next<0||next>=plan.total)return;
+    captureQuestionResponse();questionState.index=questionState.ids.indexOf(plan.ids[next]);renderQuestionPage('replace',true);
   }
   function returnFromQuestion(){
     if(!questionState)return navigate('bank',{replaceHash:true});
@@ -640,14 +665,14 @@
     if(!q)return;
     const root=$('#questionContent');
     if(!root)return;
-    const total=state.ids.length,ordinal=state.index+1,hasPrev=state.index>0,hasNext=state.index<total-1;
+    const total=state.ids.length,ordinal=state.index+1,plan=questionPlan(state),hasPrev=plan.index>0,hasNext=plan.index<plan.total-1;
     const response=state.responses[q.id]??'',shown=!!state.shown[q.id],feedback=state.feedback[q.id];
     const feedbackHtml=feedback?`<div class="feedback ${feedback.kind}">${esc(feedback.text)}</div>`:'';
     const prev=`<button type="button" class="question-nav-button" data-question-step="-1" ${hasPrev?'':'disabled'} aria-label="Előző találat">← Előző</button>`;
     const next=`<button type="button" class="question-nav-button next" data-question-step="1" ${hasNext?'':'disabled'} aria-label="Következő találat">Következő →</button>`;
-    const jumpOptions=state.ids.map((id,i)=>{const item=byId.get(id);return `<option value="${i}" ${i===state.index?'selected':''}>${i+1}. ${esc(window.VV_LABELS.questionLabel(item))}</option>`}).join('');
+    const jumpOptions=state.ids.map((id,i)=>{const item=byId.get(id),done=repeatedEntryCompleted(state,item),repeat=state.representatives[questionGroupId(item)]!==id;return `<option value="${i}" ${i===state.index?'selected':''} ${done?'disabled title="Ismétlődés miatt már kitöltve"':''}>${i+1}. ${esc(window.VV_LABELS.questionLabel(item))}${done?' · Kitöltve':repeat?' · Ismétlés':''}</option>`}).join('');
     const status=attemptStatus(q)==='correct'?'Sikerült':attemptStatus(q)==='retry'?'Újra gyakorlom':'Még nem gyakorolt';
-    root.innerHTML=`<div class="question-workspace"><header class="question-workspace-nav"><button id="questionBack" class="question-back" type="button">← ${state.origin==='exam'?'Vizsga áttekintése':state.origin==='learn'?'Tananyag':state.origin==='progress'?'Korábbi eredmények':'Feladatbank'}</button><span class="question-workspace-counter">${ordinal}. találat a szűrt ${total} feladatból</span></header><div class="question-workspace-layout"><article class="question-workspace-main">${questionBody(q,'bank',response,shown)}</article><aside class="question-workspace-side" aria-label="Feladat adatai és vezérlés"><div class="question-side-card"><span class="question-side-kicker">FELADAT ADATAI</span><div class="question-side-detail"><span>Téma</span><b>${esc(displayTopic(q))}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(window.VV_LABELS.questionLabel(q))}</b></div><div class="question-side-detail"><span>Típus · pont</span><b>${esc(typeLabel(q))} · ${pointsText(q)}</b></div><div class="question-side-detail"><span>Gyakorlási állapot</span><b>${status}</b></div></div><div class="question-side-nav"><label for="questionJump">Ugrás a szűrt találatok között</label><select id="questionJump" aria-label="Ugrás egy másik találatra">${jumpOptions}</select><div class="question-side-nav-buttons">${prev}${next}</div></div><div class="question-side-actions">${isAuto(q)?'<button id="questionCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="questionShow" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!isAuto(q)&&shown?'<button id="questionGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="questionRetry" class="button outline" type="button">Újra gyakorlom</button></div><div id="questionFeedback" role="status" aria-live="polite">${feedbackHtml}</div></aside></div></div>`;
+    root.innerHTML=`<div class="question-workspace"><header class="question-workspace-nav"><button id="questionBack" class="question-back" type="button">← ${state.origin==='exam'?'Vizsga áttekintése':state.origin==='learn'?'Tananyag':state.origin==='progress'?'Korábbi eredmények':'Feladatbank'}</button><span class="question-workspace-counter">${ordinal}. találat a szűrt ${total} feladatból · ${plan.total} különböző feladat</span></header><div class="question-workspace-layout"><article class="question-workspace-main">${questionBody(q,'bank',response,shown)}</article><aside class="question-workspace-side" aria-label="Feladat adatai és vezérlés"><div class="question-side-card"><span class="question-side-kicker">FELADAT ADATAI</span><div class="question-side-detail"><span>Téma</span><b>${esc(displayTopic(q))}</b></div><div class="question-side-detail"><span>Feladatsor</span><b>${esc(window.VV_LABELS.questionLabel(q))}</b></div><div class="question-side-detail"><span>Típus · pont</span><b>${esc(typeLabel(q))} · ${pointsText(q)}</b></div><div class="question-side-detail"><span>Gyakorlási állapot</span><b>${status}</b></div></div><div class="question-side-nav"><label for="questionJump">Ugrás a szűrt találatok között</label><select id="questionJump" aria-label="Ugrás egy másik találatra">${jumpOptions}</select><div class="question-side-nav-buttons">${prev}${next}</div></div><div class="question-side-actions">${isAuto(q)?'<button id="questionCheck" class="button primary" type="button">Válasz ellenőrzése</button>':''}${!shown?`<button id="questionShow" class="button ${isAuto(q)?'outline':'primary'}" type="button">Megoldás és magyarázat</button>`:''}${!isAuto(q)&&shown?'<button id="questionGotIt" class="button outline" type="button">Megértettem</button>':''}<button id="questionRetry" class="button outline" type="button">Újra gyakorlom</button></div><div id="questionFeedback" role="status" aria-live="polite">${feedbackHtml}</div></aside></div></div>`;
     $('#questionFeedbackMobile',root).innerHTML=feedbackHtml;
     restoreNumericResponse(root,q,response);
     bindOptions(root);
@@ -660,7 +685,7 @@
     if(resetScroll){window.scrollTo({top:0,behavior:'instant'});$('#questionTitle',root).focus({preventScroll:true})}
     $('#questionBack',root).addEventListener('click',returnFromQuestion);
     $$('[data-question-step]',root).forEach(button=>button.addEventListener('click',()=>questionStep(Number(button.dataset.questionStep))));
-    $('#questionJump',root).addEventListener('change',event=>{const index=Number(event.target.value);if(!Number.isInteger(index)||index<0||index>=state.ids.length)return;captureQuestionResponse();state.index=index;renderQuestionPage('replace',true)});
+    $('#questionJump',root).addEventListener('change',event=>{const index=Number(event.target.value);if(!Number.isInteger(index)||index<0||index>=state.ids.length||repeatedEntryCompleted(state,byId.get(state.ids[index])))return;captureQuestionResponse();state.index=index;state.representatives[questionGroupId(byId.get(state.ids[index]))]=state.ids[index];renderQuestionPage('replace',true)});
     $('#questionHintToggle',root)?.addEventListener('click',()=>{
       state.hints[q.id]=!state.hints[q.id];if(state.hints[q.id]){state.usedHints??={};state.usedHints[q.id]=true;noteSupport(q,state,'hint');}
       const open=state.hints[q.id],button=$('#questionHintToggle',root);
@@ -672,7 +697,7 @@
       captureQuestionResponse();
       const answer=state.responses[q.id],empty=isEmptyResponse(q,answer);
       if(empty){state.feedback[q.id]={kind:'review',text:'Előbb add meg a válaszodat. Támpontot is kérhetsz.'};const notice='<div class="feedback review">Előbb add meg a válaszodat. Támpontot is kérhetsz.</div>';$('#questionFeedback',root).innerHTML=notice;$('#questionFeedbackMobile',root).innerHTML=notice;return}
-      const result=grade(q,answer);mark(q,result,true,{session:state,verified:true,assisted:!!(state.shown[q.id]||state.usedHints?.[q.id])});state.shown[q.id]=true;
+      const result=grade(q,answer);mark(q,result,true,{session:state,verified:true,assisted:!!(state.shown[q.id]||state.usedHints?.[q.id])});state.shown[q.id]=true;completeQuestionEntry(state,q);
       state.feedback[q.id]=result===null?{kind:'review',text:'Hasonlítsd össze a válaszodat a megoldással, majd jelöld a feladatot.'}:result?{kind:'',text:'Helyes válasz.'}:{kind:'wrong',text:'Még nem ez a megoldás. Nézd át a magyarázatot, majd próbáld újra.'};
       renderQuestionPage();
       requestAnimationFrame(()=>$('#questionFeedback')?.focus({preventScroll:true}));
@@ -680,7 +705,7 @@
     $('#questionShow',root)?.addEventListener('click',()=>{captureQuestionResponse();noteSupport(q,state,'solution');state.shown[q.id]=true;renderQuestionPage();requestAnimationFrame(()=>$('.explanation',$('#questionContent'))?.scrollIntoView({behavior:'smooth',block:'center'}))});
     $('#questionCheckMobile',root)?.addEventListener('click',()=>$('#questionCheck',root).click());
     $('#questionShowMobile',root)?.addEventListener('click',()=>$('#questionShow',root)?.click());
-    $('#questionGotIt',root)?.addEventListener('click',()=>{mark(q,true);state.feedback[q.id]={kind:'',text:'Önellenőrzés szerint sikerült.'};renderQuestionPage()});
+    $('#questionGotIt',root)?.addEventListener('click',()=>{mark(q,true);completeQuestionEntry(state,q);state.feedback[q.id]={kind:'',text:'Önellenőrzés szerint sikerült.'};renderQuestionPage()});
     $('#questionRetry',root).addEventListener('click',()=>{resetQuestionAttempt(state,q.id);mark(q,false);renderQuestionPage()});
     window.VV_TIMING?.bind(root,q,state,'question');
     hydrateAssets(root);
@@ -738,10 +763,10 @@
     beginPractice(pool,count);
   }
   function beginPractice(pool,count,{ordered=false,reasons=null,mode='custom'}={}){
-    practice={list:(ordered?pool:shuffle(pool)).slice(0,count),index:0,responses:{},shown:{},hints:{},feedback:{},reasons,mode:mode==='smart'?'smart':'custom'};$('#practiceSetup').classList.add('hidden');$('#practiceSession').classList.remove('hidden');$('#practiceView').classList.add('practice-running');if(reasons)window.VV_ADAPTIVE?.remember(practice.list);renderPractice();window.scrollTo({top:0,behavior:'instant'});const heading=$('#practiceSession .question-prompt');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true})}
+    pool=uniqueQuestions(pool);practice={list:(ordered?pool:shuffle(pool)).slice(0,count),index:0,responses:{},shown:{},hints:{},feedback:{},reasons,mode:mode==='smart'?'smart':'custom'};$('#practiceSetup').classList.add('hidden');$('#practiceSession').classList.remove('hidden');$('#practiceView').classList.add('practice-running');if(reasons)window.VV_ADAPTIVE?.remember(practice.list);renderPractice();window.scrollTo({top:0,behavior:'instant'});const heading=$('#practiceSession .question-prompt');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true})}
   }
   function launchPersonalized(pool,count){
-    const selected=window.VV_ADAPTIVE?.plan(pool,count,{progress,topicOf:q=>window.VV_SELECTION?.topicFor(q)||q.topic});
+    pool=uniqueQuestions(pool);const selected=window.VV_ADAPTIVE?.plan(pool,count,{progress:progressProjection(),topicOf:q=>window.VV_SELECTION?.topicFor(q)||q.topic});
     navigate('practice');beginPractice(selected?.questions||pool,selected?.questions.length||count,{ordered:!!selected,reasons:selected?.meta.reasons,mode:'smart'});
   }
   const EXAM_AREAS=[
@@ -768,7 +793,7 @@
   function examPool(scope){
     const selected=new Set(examSources(scope));
     const all=qlist.filter(q=>(!q.practiceOnly||q.supplementary===true)&&!q.review&&['single','multi','number'].includes(q.type)&&(q.type==='number'||q.options.length>=2)&&isAuto(q)&&(!q.requiresFigure||q.figurePaths.length));
-    return all.filter(q=>selected.has(examSource(q)));
+    return uniqueQuestions(all.filter(q=>selected.has(examSource(q))));
   }
   const EXAM_HISTORY_KEY='villanyvizsga-exam-history-v1';
   const EXAM_EXPOSURE_KEY='villanyvizsga-exam-exposure-v1';
@@ -941,7 +966,7 @@
   }
   function setupWorkedAnimations(root){if(root){window.VV_WORKED?.setup(root);window.VV_GUIDE?.setup(root)}}
   function init(){
-    setupFilters();window.VV_SELECTION?.setup({questions:qlist,status:attemptStatus,searchMatch:q=>{const query=norm($('#searchInput').value);return !query||norm(questionSearchText(q)).includes(query)},onBankChange:()=>{bankPage=0;renderBank()}});renderHome();setupProgressManager();renderWrongTasks();setupWorkedAnimations($('#guideView'));
+    setupFilters();window.VV_SELECTION?.setup({questions:qlist,bankQuestions:bankEntries,unique:uniqueQuestions,status:attemptStatus,searchMatch:q=>{const query=norm($('#searchInput').value);return !query||norm(questionSearchText(q)).includes(query)},onBankChange:()=>{bankPage=0;renderBank()}});renderHome();setupProgressManager();renderWrongTasks();setupWorkedAnimations($('#guideView'));
     window.VV_LEARN?.setup({root:$('#learnView'),data:window.VV_LEARNING,questions:qlist});
     document.addEventListener('vv-learning-start-questions',()=>{
       if(view!=='learn'||exam&&!exam.submitted)return;

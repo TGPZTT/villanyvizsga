@@ -157,9 +157,9 @@
     return result;
   }
   function topicRows(selectedScope=scope) {
-    const progress=read(Q)||{};
+    const progress=config?.progress?.()||read(Q)||{};
     return (window.VV_SELECTION?.topics()||[]).map(topic=>{
-      const list=(config?.questions||[]).filter(q=>scopeOf(q)===selectedScope&&window.VV_SELECTION.topicFor(q)===topic.id),counts={new:0,repeat:0,repeated:0};
+      const pool=(config?.uiQuestions||config?.questions||[]).filter(q=>scopeOf(q)===selectedScope&&window.VV_SELECTION.topicFor(q)===topic.id),list=config?.unique?.(pool)||pool,counts={new:0,repeat:0,repeated:0};
       for(const q of list)counts[outcome(progress[q.id])]++;
       return {...topic,list,counts};
     }).filter(topic=>topic.list.length);
@@ -201,7 +201,7 @@
   }
   function updatePracticeSummary(){
     const button=document.querySelector('[data-pt-practice]');if(!button||!config)return;
-    const records=read(Q)||{},questions=config.questions||[],done=questions.filter(q=>['correct','retry'].includes(records[q.id]?.status)),retry=done.filter(q=>outcome(records[q.id])==='repeat').length;
+    const records=config.progress?.()||read(Q)||{},questions=config.unique?.(config.uiQuestions||config.questions||[])||config.uiQuestions||config.questions||[],done=questions.filter(q=>['correct','retry'].includes(records[q.id]?.status)),retry=done.filter(q=>outcome(records[q.id])==='repeat').length;
     button.querySelector('[data-pt-practice-count]').textContent=`${done.length} / ${questions.length} megoldott, ${retry} ismétlendő`;
     button.querySelector('[data-pt-ring]')?.setAttribute('stroke-dasharray',`${questions.length?done.length/questions.length*100:0} 100`);
   }

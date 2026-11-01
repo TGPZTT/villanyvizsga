@@ -71,23 +71,25 @@
   const topicsFor=q=>q.practiceTopics?.length?q.practiceTopics:[topicFor(q)];
   const kind=q=>q.supplementary===true||q.generated?.machineGenerated||q.sourceId?.startsWith('generated-exam-')?'generated':window.VV_LABELS.sourceKind(q)==='Versenyfeladat'?'competition':'papers';
   const sourceTitle=id=>window.VV_LABELS.sourceOptionLabel(id);
-  let questions=[],status=()=> 'new',onBankChange=()=>{},searchMatch=()=>true,step=0,ready=false;
+  let questions=[],bankQuestions=[],distinct=list=>list,status=()=> 'new',onBankChange=()=>{},searchMatch=()=>true,step=0,ready=false;
   const bank={topics:new Set(),sources:new Set(),kinds:new Set(),type:'',status:''};
   const practice={topics:new Set(),kinds:new Set(['papers']),retry:false,count:10};
   const topicCounts=pool=>new Map(TOPICS.map(([id])=>[id,pool.filter(q=>topicsFor(q).includes(id)).length]));
   const match=(q,f,{ignoreTopics=false,ignoreSources=false}={})=>(!f.kinds.size||f.kinds.has(kind(q)))&&(ignoreTopics||!f.topics.size||topicsFor(q).some(id=>f.topics.has(id)))&&(ignoreSources||!f.sources?.size||f.sources.has(q.sourceId))&&(!f.retry||status(q)==='retry');
-  const pool=()=>practice.kinds.size?questions.filter(q=>match(q,practice,{ignoreSources:true})):[];
+  const pool=()=>practice.kinds.size?distinct(questions.filter(q=>match(q,practice,{ignoreSources:true}))):[];
   function choices(f,context){
     if(context==='practice'&&!f.kinds.size)return '<p class="sf-empty">Előbb válassz legalább egy feladatcsoportot.</p>';
-    const counts=topicCounts(questions.filter(q=>match(q,f,{ignoreTopics:true})&&(context!=='bank'||bankOtherMatches(q))));
-    return TOPICS.filter(([id])=>questions.some(q=>topicFor(q)===id)).map(([id,title,description])=>`<label class="sf-topic ${f.topics.has(id)?'is-picked':''}"><input type="checkbox" name="${context}Topic" value="${id}" ${f.topics.has(id)?'checked':''}><span class="sf-topic-icon">${icon(id)}</span><span><strong>${title}</strong><small>${description}</small></span><b>${counts.get(id)}</b></label>`).join('');
+    const catalog=context==='bank'?bankQuestions:questions;
+    const candidates=catalog.filter(q=>match(q,f,{ignoreTopics:true})&&(context!=='bank'||bankOtherMatches(q))),counts=topicCounts(context==='bank'?candidates:distinct(candidates));
+    return TOPICS.filter(([id])=>catalog.some(q=>topicFor(q)===id)).map(([id,title,description])=>`<label class="sf-topic ${f.topics.has(id)?'is-picked':''}"><input type="checkbox" name="${context}Topic" value="${id}" ${f.topics.has(id)?'checked':''}><span class="sf-topic-icon">${icon(id)}</span><span><strong>${title}</strong><small>${description}</small></span><b>${counts.get(id)}</b></label>`).join('');
   }
   function sourceChoices(f,context,query=''){
     if(context==='practice'&&!f.kinds.size)return '<p class="sf-empty">Előbb válassz legalább egy feladatcsoportot.</p>';
-    const list=questions.filter(q=>match(q,f,{ignoreSources:true})&&(context!=='bank'||bankOtherMatches(q))),groups=[...new Set(questions.map(q=>q.sourceId))].filter(id=>questions.some(q=>q.sourceId===id&&(!f.kinds.size||f.kinds.has(kind(q))))).sort(window.VV_LABELS.compareSources);
+    const catalog=context==='bank'?bankQuestions:questions;
+    const list=catalog.filter(q=>match(q,f,{ignoreSources:true})&&(context!=='bank'||bankOtherMatches(q))),groups=[...new Set(catalog.map(q=>q.sourceId))].filter(id=>catalog.some(q=>q.sourceId===id&&(!f.kinds.size||f.kinds.has(kind(q))))).sort(window.VV_LABELS.compareSources);
     return groups.filter(id=>norm(sourceTitle(id)).includes(norm(query))).map(id=>{const n=list.filter(q=>q.sourceId===id).length;return `<label class="sf-source"><input type="checkbox" name="${context}Source" value="${esc(id)}" ${f.sources.has(id)?'checked':''}><span>${esc(sourceTitle(id))}</span><b>${n}</b></label>`}).join('')||'<p class="sf-empty">Nincs ilyen feladatsor.</p>';
   }
-  function sourceKinds(f,context){return [['papers','Feladatok','A meglévő feladatsorok kérdései.','papers'],['generated','Generált és közösségi','Géppel készített és közösségi gyakorlókérdések.','generated'],['competition','Versenyfeladatok','A versenyfeladatsorok kérdései.','competition']].map(([id,title,description,ico])=>`<label class="sf-kind ${f.kinds.has(id)?'is-picked':''}"><input type="checkbox" name="${context}Kind" value="${id}" ${f.kinds.has(id)?'checked':''}><span class="sf-kind-art">${icon(ico)}</span><strong>${title}</strong><span>${description}</span><b>${questions.filter(q=>kind(q)===id).length} feladat</b></label>`).join('')}
+  function sourceKinds(f,context){return [['papers','Feladatok','A meglévő feladatsorok kérdései.','papers'],['generated','Generált és közösségi','Géppel készített és közösségi gyakorlókérdések.','generated'],['competition','Versenyfeladatok','A versenyfeladatsorok kérdései.','competition']].map(([id,title,description,ico])=>`<label class="sf-kind ${f.kinds.has(id)?'is-picked':''}"><input type="checkbox" name="${context}Kind" value="${id}" ${f.kinds.has(id)?'checked':''}><span class="sf-kind-art">${icon(ico)}</span><strong>${title}</strong><span>${description}</span><b>${(context==='bank'?bankQuestions.filter(q=>kind(q)===id):distinct(questions.filter(q=>kind(q)===id))).length} feladat</b></label>`).join('')}
   function toggle(set,value,checked){checked?set.add(value):set.delete(value)}
   function showBankDialog(which){
     let d=$('#bankSelectionDialog');if(!d){d=document.createElement('dialog');d.id='bankSelectionDialog';d.className='sf-dialog';document.body.append(d);d.addEventListener('click',e=>{if(e.target===d)d.close()});d.addEventListener('close',()=>{$(`[data-bank-picker="${d.dataset.picker}"]`)?.focus()})}
@@ -118,7 +120,7 @@
     legacy.after(root);$('.sf-search-slot',root).append($('#searchInput').closest('label'));
     $('.sf-search-slot .search-wrap>span',root).innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6" stroke-linecap="round"/></svg>';
     root.addEventListener('click',e=>{const picker=e.target.closest('[data-bank-picker]');if(picker)showBankDialog(picker.dataset.bankPicker);const t=e.target.closest('[data-remove-topic]'),s=e.target.closest('[data-remove-source]');if(t){bank.topics.delete(t.dataset.removeTopic);updateBank()}if(s){bank.sources.delete(s.dataset.removeSource);updateBank()}});
-    root.addEventListener('change',e=>{if(!e.target.matches('[name="bankKind"],#modernBankType,#modernBankStatus'))return;if(e.target.name==='bankKind'){toggle(bank.kinds,e.target.value,e.target.checked);bank.sources.forEach(id=>{if(bank.kinds.size&&!questions.some(q=>q.sourceId===id&&bank.kinds.has(kind(q))))bank.sources.delete(id)})}if(e.target.id==='modernBankType')bank.type=e.target.value;if(e.target.id==='modernBankStatus')bank.status=e.target.value;updateBank()});
+    root.addEventListener('change',e=>{if(!e.target.matches('[name="bankKind"],#modernBankType,#modernBankStatus'))return;if(e.target.name==='bankKind'){toggle(bank.kinds,e.target.value,e.target.checked);bank.sources.forEach(id=>{if(bank.kinds.size&&!bankQuestions.some(q=>q.sourceId===id&&bank.kinds.has(kind(q))))bank.sources.delete(id)})}if(e.target.id==='modernBankType')bank.type=e.target.value;if(e.target.id==='modernBankStatus')bank.status=e.target.value;updateBank()});
     $('#clearFilters').addEventListener('click',()=>{bank.topics.clear();bank.sources.clear();bank.kinds.clear();bank.type='';bank.status='';$$('input[type=checkbox]',root).forEach(i=>i.checked=false);$$('select',root).forEach(s=>s.value='');updateBank()});
   }
   function practiceSelectionTools(group){
@@ -167,6 +169,6 @@
       updatePracticeCounts();
     });practiceRender();
   }
-  function setup(opts){if(ready)return;ready=true;questions=opts.questions;status=opts.status;onBankChange=opts.onBankChange;searchMatch=opts.searchMatch||searchMatch;setupBank();setupPractice()}
-  window.VV_SELECTION=Object.freeze({icon,setup,matchesBank,practicePool:pool,practiceCount:()=>practice.count,topicFor,topicsFor,topicLabel:q=>TOPICS.find(t=>t[0]===topicFor(q))?.[1]||q.topic,topics:()=>TOPICS.map(([id,title])=>({id,title,count:questions.filter(q=>topicsFor(q).includes(id)).length})),refresh:()=>{if(ready){updateBank();practiceRender()}}});
+  function setup(opts){if(ready)return;ready=true;questions=opts.questions;bankQuestions=opts.bankQuestions||questions;distinct=opts.unique||distinct;status=opts.status;onBankChange=opts.onBankChange;searchMatch=opts.searchMatch||searchMatch;setupBank();setupPractice()}
+  window.VV_SELECTION=Object.freeze({icon,setup,matchesBank,practicePool:pool,practiceCount:()=>practice.count,topicFor,topicsFor,topicLabel:q=>TOPICS.find(t=>t[0]===topicFor(q))?.[1]||q.topic,topics:()=>TOPICS.map(([id,title])=>({id,title,count:distinct(questions).filter(q=>topicsFor(q).includes(id)).length})),refresh:()=>{if(ready){updateBank();practiceRender()}}});
 })();
