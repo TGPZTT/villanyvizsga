@@ -69,6 +69,29 @@ main{max-width:1570px;min-height:calc(100vh - 127px);padding:36px clamp(24px,4vw
 @media(min-width:721px) and (max-width:900px){.hero{display:flex;flex-direction:column}.hero-visual{display:block;height:245px;border-left:0;border-top:1px solid rgba(211,245,239,.08)}.hero-copy{padding:38px}.hero h1{font-size:clamp(45px,6vw,58px)}}
 @media(max-width:900px){.tutorial-toc{scrollbar-width:none}.tutorial-toc::-webkit-scrollbar{display:none}}
 
+/* Readable task data, with one card per equipment group on narrow screens. */
+.question-data-table{min-width:0;max-width:100%;margin:20px 0;color:#2d434c}
+.question-data-table table{width:100%;max-width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:16px;line-height:1.5}
+.question-data-table caption{padding:0 0 12px;text-align:left;color:#244e57;font-size:18px;font-weight:700}
+.question-data-table th,.question-data-table td{min-width:0;padding:12px 10px;border-bottom:1px solid #d8e6e2;text-align:left;vertical-align:top;overflow-wrap:anywhere;font-size:16px}
+.question-data-table thead th{background:#eaf5f2;color:#244e57;font-weight:700}
+.question-data-table th:first-child{width:37%}
+.question-data-table tbody th{font-weight:650}
+.question-data-table-value{font-variant-numeric:tabular-nums}
+.question-data-table-label{display:none}
+.question-data-table-zoom{display:block;width:fit-content;margin:9px 0 0 auto;color:var(--blue);font-size:16px;text-underline-offset:3px}
+@media(max-width:720px){
+ .question-data-table table,.question-data-table tbody{display:block}
+ .question-data-table caption{display:block;width:100%}
+ .question-data-table thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .question-data-table tbody tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 12px;border:1px solid #d8e6e2;border-radius:10px;overflow:hidden;background:#fff}
+ .question-data-table tbody th:first-child{grid-column:1/-1;width:auto;padding:12px;background:#eaf5f2}
+ .question-data-table td{display:flex;min-width:0;flex-direction:column;gap:8px;padding:12px 8px;border-bottom:0}
+ .question-data-table td+td{border-left:1px solid #e3ece8}
+ .question-data-table-label{display:block;color:#526c72;font-size:16px;line-height:1.45}
+ .question-data-table-value{font-size:18px;font-weight:700}
+}
+
 /* Password gate. The application shell remains hidden until the ciphertext is opened. */
 [hidden]{display:none!important}
 .unlock-screen{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.88fr);background:#f5f5ef}
