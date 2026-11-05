@@ -101,7 +101,7 @@
     });
   }
   const sourceLabel=q=>window.VV_LABELS.sourceLabel(q);
-  const isExamPaper=q=>!isSupplementary(q)&&(q.sourceId==='online_2022.04.11.pdf'||/^Villanyszerelő_írásbeli_/u.test(q.sourceId)||q.sourceId.startsWith('interactive-exam-'));
+  const isExamPaper=q=>!isSupplementary(q)&&(q.sourceId==='online_2022.04.11.pdf'||/^Villanyszerelő_írásbeli_/u.test(q.sourceId)||q.sourceId.startsWith('interactive-exam-')||/^user-photos-r52-series-[abc]$/u.test(q.sourceId));
   const isContest=q=>q.sourceId==='szkt_írásbeli.pdf'||q.sourceId.startsWith('szakmasztar_forrasok/')||q.id.startsWith('szs-');
   const inSourceScope=(q,scope)=>scope==='generated'?isSupplementary(q):isExamPaper(q)||(scope==='papers-plus-star'&&isContest(q));
   const answerLabel=q=>{

@@ -20,7 +20,8 @@
     '3459ca5106b201df', 'd52bd3712233c91f',
     '9e5a6a6395bc2be9', 'c56cbd404c2649a6', '10ddf862e6e1af58', '7704cae03abc6576', 'bb97630919ccb73f', 'd0bdde89a252b19b', '6c2f21f62ca3689c', '0ba90fb1bc9059e7', '60273a48937c678a', '1acdde159b6ed32b', '15a612ada09b21fb',
     '8d066c957af08727',
-    '0cb6a93c7925dffa', 'ec552b51889030b7'
+    '0cb6a93c7925dffa', 'ec552b51889030b7',
+    '74151fecf719846e', '771524a5f61982db', '76152312f5198148'
   ];
   let catalog = new Map(), questions = new Map(), communitySources = new Set(), sourceYears = new Map();
 

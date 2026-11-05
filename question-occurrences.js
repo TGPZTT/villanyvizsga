@@ -49,9 +49,11 @@
         sourceTitle:occurrence.sourceTitle??source.title??original.sourceTitle,
         sourcePath:source.path||'',
         number:occurrence.number??original.number,
-        year:occurrence.year??source.year??source.createdYear??original.year,
+        year:Object.hasOwn(occurrence,'year')?occurrence.year:source.year??source.createdYear??original.year,
         page:occurrence.page??original.page,
-        points:Number.isFinite(occurrence.points)&&occurrence.points>0?occurrence.points:original.points};
+        points:Number.isFinite(occurrence.points)&&occurrence.points>0?occurrence.points:original.points,
+        pointBasis:occurrence.pointBasis??original.pointBasis,
+        scoringBasis:occurrence.scoringBasis??original.scoringBasis};
       entries.push(item);entryById.set(id,item);
     }
 
